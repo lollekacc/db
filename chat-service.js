@@ -282,6 +282,12 @@ const normalizeQualification = (qualification = {}) => {
   const priceRange = ['under300', '300-400', '400-500'].includes(qualification.priceRange)
     ? qualification.priceRange
     : null;
+  const streamingCalculation = ['none', 'include', 'unknown'].includes(qualification.streamingCalculation)
+    ? qualification.streamingCalculation
+    : null;
+  const internationalTravel = ['none', 'eu', 'outside_eu'].includes(qualification.internationalTravel)
+    ? qualification.internationalTravel
+    : null;
   const exactMonthlyPrice = Number(qualification.exactMonthlyPrice) > 0
     ? Math.round(Number(qualification.exactMonthlyPrice))
     : null;
@@ -320,6 +326,8 @@ const normalizeQualification = (qualification = {}) => {
     bindingEnds,
     mobileUsage,
     priceRange,
+    streamingCalculation,
+    internationalTravel,
     exactMonthlyPrice,
     exactMonthlyPrices,
     customerSegment,

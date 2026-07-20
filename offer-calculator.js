@@ -4,6 +4,20 @@ const CONTRACT_MONTHS = 24;
 const DEFAULT_REWARD = 4000;
 const MAX_ALLOWED_BINDING_MONTHS = 6;
 
+const streamingServiceMonthlyPrices = {
+  netflix: 169,
+  'netflix standard': 169,
+  hbo: 89,
+  'hbo max': 99,
+  'hbo max basic med reklam': 89,
+  max: 89,
+  disney: 59,
+  'disney+': 59,
+  'disney+ standard med reklam': 59,
+  'amazon prime': 59,
+  'tv4 play plus': 69,
+};
+
 const priceRangeMidpoints = {
   under300: 275,
   '300-400': 350,
@@ -106,10 +120,53 @@ const getAddonForOperator = (operator, plans) => plans.find((plan) =>
   plan.familyPriceType === 'addon'
 ) || null;
 
+const getStreamingServicePrice = (service) => {
+  if (typeof service === 'number') return Math.max(service, 0);
+  if (typeof service === 'string') {
+    return streamingServiceMonthlyPrices[service.trim().toLowerCase()] || 0;
+  }
+  if (!service || typeof service !== 'object') return 0;
+
+  const explicitPrice = Number(
+    service.monthlyPrice ??
+    service.monthlyValue ??
+    service.price ??
+    service.value
+  );
+
+  if (Number.isFinite(explicitPrice) && explicitPrice > 0) return explicitPrice;
+
+  return getStreamingServicePrice(service.name || service.service || service.title);
+};
+
+const getIncludedStreamingServices = (plan = {}) => {
+  if (Array.isArray(plan.includedStreaming) && plan.includedStreaming.length) {
+    return plan.includedStreaming;
+  }
+
+  const text = String(plan.text || '');
+  const services = [];
+  if (/netflix/i.test(text)) services.push('Netflix');
+  if (/\bhbo\b|max/i.test(text)) services.push('HBO');
+  if (/disney/i.test(text)) services.push('Disney+');
+  if (/amazon|prime/i.test(text)) services.push('Amazon Prime');
+  if (/tv4/i.test(text)) services.push('TV4 Play Plus');
+  return services;
+};
+
+const getIncludedStreamingValue = (plan = {}, qualification = {}) => {
+  if (qualification.streamingCalculation !== 'include' || plan.operator !== 'Telia') return 0;
+
+  return getIncludedStreamingServices(plan)
+    .reduce((sum, service) => sum + getStreamingServicePrice(service), 0);
+};
+
 const buildCandidate = ({ basePlan, addonPlan, peopleCount, qualification, today }) => {
   const extraCount = Math.max(peopleCount - 1, 0);
   const addonPrice = extraCount * (Number(addonPlan?.addonPrice ?? addonPlan?.price) || 0);
-  const monthlyPrice = Number(basePlan.price) + addonPrice;
+  const listedMonthlyPrice = Number(basePlan.price) + addonPrice;
+  const includedServiceMonthlyValue = getIncludedStreamingValue(basePlan, qualification);
+  const monthlyPrice = Math.max(listedMonthlyPrice - includedServiceMonthlyValue, 0);
   const pricePerPerson = peopleCount > 0 ? Math.round(monthlyPrice / peopleCount) : monthlyPrice;
   const personProfiles = buildPersonProfiles(qualification, peopleCount, today);
   const currentMonthlyTotal = personProfiles.reduce((sum, person) => sum + person.currentMonthlyPrice, 0);
@@ -158,6 +215,9 @@ const buildCandidate = ({ basePlan, addonPlan, peopleCount, qualification, today
     tier: getDataTier(basePlan),
     peopleCount,
     monthlyPrice,
+    listedMonthlyPrice,
+    includedServiceMonthlyValue,
+    includedStreamingServices: getIncludedStreamingServices(basePlan),
     pricePerPerson,
     addonPrice,
     rewardTotal: DEFAULT_REWARD,
@@ -190,6 +250,9 @@ const buildCandidate = ({ basePlan, addonPlan, peopleCount, qualification, today
         : '',
       !hasExactCurrentPrices
         ? 'Nuvarande pris är uppskattat från valt prisintervall.'
+        : '',
+      includedServiceMonthlyValue > 0
+        ? `Telia streamingvärde ${roundMoney(includedServiceMonthlyValue)} kr/mån är avräknat från totalpriset.`
         : '',
       knownOverlapCost > 0
         ? `Beräknad dubbelkostnad under kvarvarande bindningstid: ${roundMoney(knownOverlapCost)} kr.`
