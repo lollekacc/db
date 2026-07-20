@@ -7,7 +7,6 @@ const collectTeliaMarketData = require('./collectors/telia.collector');
 const collectTele2MarketData = require('./collectors/tele2.collector');
 const collectTelenorMarketData = require('./collectors/telenor.collector');
 const collectTreMarketData = require('./collectors/tre.collector');
-const collectHalebopMarketData = require('./collectors/halebop.collector');
 const { normalizeSnapshots } = require('./normalize-market-data');
 const { mergeMarketData } = require('./merge-market-data');
 
@@ -22,7 +21,6 @@ const collectors = [
   collectTele2MarketData,
   collectTelenorMarketData,
   collectTreMarketData,
-  collectHalebopMarketData,
 ];
 
 const ensureDirs = () => {

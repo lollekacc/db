@@ -115,7 +115,7 @@ const STYLE_PATTERNS = {
   ],
   comparison: [
     /jämför|jamfor|vilken operatör|vilken operator|bäst täckning|bast tackning/i,
-    /\b(telia|tele2|telenor|tre|halebop)\s+eller\s+(telia|tele2|telenor|tre|halebop)\b/i,
+    /\b(telia|tele2|telenor|tre)\s+eller\s+(telia|tele2|telenor|tre)\b/i,
     /vad är billigast|vad ar billigast|cheapest|compare/i,
   ],
   complaint_or_problem: [

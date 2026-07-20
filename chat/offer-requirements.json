@@ -26,7 +26,13 @@
         "Ask this first if it is missing.",
         "Use the answer to know how many operator/binding answers must be collected."
       ],
-      "buttonExamples": ["1", "2", "3", "4", "5+"]
+      "buttonExamples": [
+        "1",
+        "2",
+        "3",
+        "4",
+        "5+"
+      ]
     },
     {
       "id": "currentOperatorAndBindingPerPerson",
@@ -37,12 +43,22 @@
       "fieldsPerPerson": [
         {
           "id": "currentOperator",
-          "allowedValues": ["Telia", "Tele2", "Telenor", "Tre", "Halebop", "Annan / ingen"],
+          "allowedValues": [
+            "Telia",
+            "Tele2",
+            "Telenor",
+            "Tre",
+            "Annan / ingen"
+          ],
           "required": true
         },
         {
           "id": "bindingEnd",
-          "allowedValues": ["Ingen bindningstid", "Vet inte", "YYYY-MM-DD"],
+          "allowedValues": [
+            "Ingen bindningstid",
+            "Vet inte",
+            "YYYY-MM-DD"
+          ],
           "required": true
         }
       ],
@@ -53,7 +69,12 @@
         "If the customer answers 'Vet inte', ask for exact date or months left before making a final offer.",
         "Do not ask for phone numbers or personal identity numbers in chat."
       ],
-      "buttonExamples": ["Telia", "Tele2", "Telenor", "Ingen bindningstid"]
+      "buttonExamples": [
+        "Telia",
+        "Tele2",
+        "Telenor",
+        "Ingen bindningstid"
+      ]
     },
     {
       "id": "mobileUsage",
@@ -84,7 +105,11 @@
         "Use this answer to map the customer to low, medium, or high/unlimited data plans.",
         "If the customer says they want unlimited, treat it as Max surf."
       ],
-      "buttonExamples": ["Mest wifi & sociala medier", "Streaming & video", "Max surf"]
+      "buttonExamples": [
+        "Mest wifi & sociala medier",
+        "Streaming & video",
+        "Max surf"
+      ]
     },
     {
       "id": "currentPricePerSubscription",
@@ -113,7 +138,11 @@
         "If customer does not know, ask them to choose the closest range.",
         "For multiple subscriptions, use exact per-person prices when the customer gives them."
       ],
-      "buttonExamples": ["Under 300 kr", "300–400 kr", "400–500+ kr"]
+      "buttonExamples": [
+        "Under 300 kr",
+        "300–400 kr",
+        "400–500+ kr"
+      ]
     }
   ],
   "offerBuildingRules": [

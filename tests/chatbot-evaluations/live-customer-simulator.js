@@ -119,7 +119,7 @@ const scenarios = [
     name: 'E Student discount',
     language: 'sv',
     profile: [
-      'Customer is student and uses Halebop.',
+      'Customer is student and uses Telia.',
       'Bot should treat student discount as possible and compare carefully.',
     ],
     expectations: {
@@ -127,7 +127,7 @@ const scenarios = [
       shouldAskPriceOrData: true,
     },
     turns: [
-      'jag är student och har halebop',
+      'jag är student och har telia',
       'jag vill veta om ni kan ge bättre',
       'jag tror jag har 20 gb',
       'betalar 249 kr',

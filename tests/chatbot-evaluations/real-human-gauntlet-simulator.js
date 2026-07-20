@@ -133,7 +133,7 @@ const firstMessages = {
   ],
   student: [
     'jag är student och vill ha billigt',
-    'studentpris? har halebop typ',
+    'studentpris? har telia typ',
     'pluggar och behöver inte dyrt abonnemang',
   ],
   business_owner: [

@@ -29,7 +29,6 @@ const providerLogos = {
   Tele2: 'images/tele2.png',
   Tre: 'images/tre.jpg',
   Telenor: 'images/telenor.jpg',
-  Halebop: 'images/halebop.webp',
 };
 
 const tierOrder = {

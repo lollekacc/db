@@ -15,7 +15,7 @@ const {
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-4o-mini';
 const CHAT_RULES_DIR = path.join(__dirname, 'chat');
-const ALLOWED_OPERATORS = ['Telia', 'Tele2', 'Telenor', 'Tre', 'Halebop'];
+const ALLOWED_OPERATORS = ['Telia', 'Tele2', 'Telenor', 'Tre'];
 const KNOWN_CURRENT_OPERATORS = [
   ...ALLOWED_OPERATORS,
   'Comviq',
@@ -570,7 +570,7 @@ const buildMarketClaim = ({ message, messages = [], qualification = {}, offerCal
   const segment = getMarketSegmentFromText(recentText, qualification);
   const firstOperator = qualification.operators?.[0] || null;
   const operatorId = firstOperator ? OPERATOR_ID_BY_NAME[firstOperator] : null;
-  const marketSignal = /telia|tele2|telenor|tre|halebop|operatör|operator|pris|price|betalar|pay|kostar|kr|sek|kronor|spänn|spann|gb|gig|surf|data|obegränsad|obegransad|obegränsat|obegransat|unlimited|familj|family|student|senior|ungdom|youth|barn|child|kampanj|campaign|arbetsgivare|employer|winback|behållet|retained|paket|bundle|rabatt|discount/.test(lower);
+  const marketSignal = /telia|tele2|telenor|tre|operatör|operator|pris|price|betalar|pay|kostar|kr|sek|kronor|spänn|spann|gb|gig|surf|data|obegränsad|obegransad|obegränsat|obegransat|unlimited|familj|family|student|senior|ungdom|youth|barn|child|kampanj|campaign|arbetsgivare|employer|winback|behållet|retained|paket|bundle|rabatt|discount/.test(lower);
   const latestMarketSignal = /pris|price|betalar|pay|kostar|kr|sek|kronor|spänn|spann|gb|gig|surf|data|obegränsad|obegransad|obegränsat|obegransat|unlimited|familj|family|student|senior|ungdom|youth|barn|child|kampanj|campaign|arbetsgivare|employer|winback|behållet|retained|paket|bundle|rabatt|discount|gäller.*månader|bara.*månader|temporary|slå|beat|vanliga pris|ordinary price/.test(latestLower);
   const hasClaim = Boolean(
     claimedPrice !== null &&
@@ -684,7 +684,7 @@ const retrieveKnowledge = ({ message, intent, cart = [] }) => {
 };
 
 const hasDealettTopic = (message) => (
-  /dealett|abonnemang|mobil|telefon|telekom|bredband|5g|fiber|täckning|operator|operatör|telia|tele2|telenor|tre|halebop|presentkort|gift card|surf|varukorg|cart|faktura|konto|mina sidor/i
+  /dealett|abonnemang|mobil|telefon|telekom|bredband|5g|fiber|täckning|operator|operatör|telia|tele2|telenor|tre|presentkort|gift card|surf|varukorg|cart|faktura|konto|mina sidor/i
     .test(String(message || ''))
 );
 
@@ -767,7 +767,7 @@ const hasMobileConversationContext = (text, qualification = {}) => Boolean(
   qualification.operators?.length ||
   qualification.bindingEnds?.length ||
   qualification.exactMonthlyPrices?.length ||
-  /mobil|abonnemang|telefon|operatör|operator|telia|tele2|telenor|tre|halebop|surf|gb|kr|sek|billig|dyrt|bindning|kampanj|winback|student|senior|familj/i.test(text)
+  /mobil|abonnemang|telefon|operatör|operator|telia|tele2|telenor|tre|surf|gb|kr|sek|billig|dyrt|bindning|kampanj|winback|student|senior|familj/i.test(text)
 );
 
 const isGreetingOnly = (message) => (
@@ -1052,7 +1052,7 @@ const detectIntent = ({ message, messages = [], page = {}, qualification = {}, c
   const broadbandContextActive = /bredband|5g[-\s]?bredband|internet hemma|router|fiber|broadband/.test(recentUserConversation);
   const checkoutContextActive = /köp|köpa|beställ|beställa|personnummer|uppgifter|checkout|cart|buy|purchase|personal details/.test(recentUserConversation);
   const offerContextActive = /mobilabonnemang eller bredband|mobile subscription or broadband|hur många abonnemang|how many subscriptions|bästa|basta|billigast|för dyrt|dyrt|erbjudande|jämför|jamfor|hitta billigare|kan.*slå|beat it|current deal/i.test(recentConversation);
-  const salesClaimSignal = /telia|tele2|telenor|tre|halebop|comviq|hallon|vimla|fello|operatör|operator|pris|price|betalar|pay|kostar|kr|sek|kronor|spänn|spann|gb|gig|surf|data|wifi|wi-fi|obegränsad|obegransad|unlimited/i.test(text);
+  const salesClaimSignal = /telia|tele2|telenor|tre|comviq|hallon|vimla|fello|operatör|operator|pris|price|betalar|pay|kostar|kr|sek|kronor|spänn|spann|gb|gig|surf|data|wifi|wi-fi|obegränsad|obegransad|unlimited/i.test(text);
   const hasQualification = Boolean(
     qualification.peopleCount ||
     qualification.mobileUsage ||
@@ -1121,13 +1121,13 @@ const detectIntent = ({ message, messages = [], page = {}, qualification = {}, c
   if (hasStrongOfferIntent(text) && hasMobileConversationContext(fullUserContext, qualification)) return 'mobile_offer';
   if (
     hasQualification &&
-    /telia|tele2|telenor|tre|halebop|operatör|operator|no contract|ingen bindningstid|månader kvar|months? left|social|stream|wifi|surf|kr|sek|kronor|spänn|spann|billigare|bättre|slå|byta|hitta billigare|cheaper|better|beat|switch/i.test(text)
+    /telia|tele2|telenor|tre|operatör|operator|no contract|ingen bindningstid|månader kvar|months? left|social|stream|wifi|surf|kr|sek|kronor|spänn|spann|billigare|bättre|slå|byta|hitta billigare|cheaper|better|beat|switch/i.test(text)
   ) return 'mobile_offer';
   if (
     hasQualification &&
     /förklara|rekommendation|kalkyl|varför|bättre|explain|recommendation|calculation|why|details|worth/i.test(text)
   ) return 'mobile_offer';
-  if (coverageContextActive && /tre|telia|tele2|telenor|halebop/i.test(text)) return 'coverage';
+  if (coverageContextActive && /tre|telia|tele2|telenor/i.test(text)) return 'coverage';
   if (isReluctantMessage(text)) return 'not_interested';
   if (isBrowsingMessage(text) && !hasStrongOfferIntent(text)) return 'browsing';
   if (/behovsanalys/i.test(text) && !/abonnemang|mobil|telefon|bredband|5g/i.test(text)) return 'offer_discovery';
@@ -1144,9 +1144,9 @@ const detectIntent = ({ message, messages = [], page = {}, qualification = {}, c
   if (pagePath.includes('5g-bredband') && !isLowInformationAcknowledgement(text) && !isGreetingOnly(text)) return 'broadband';
   if (
     /familj|familje|mamma|pappa|\bfru\b|\bmake\b|partner|flera|båda|family|wife|husband/i.test(text) &&
-    (/abonnemang|mobil|telefon|operatör|operator|telia|tele2|telenor|tre|halebop|byta|erbjudande|behöver|vill|plan|subscription|offer|switch|need|want|vi är|we are/i.test(text) || hasQualification)
+    (/abonnemang|mobil|telefon|operatör|operator|telia|tele2|telenor|tre|byta|erbjudande|behöver|vill|plan|subscription|offer|switch|need|want|vi är|we are/i.test(text) || hasQualification)
   ) return 'family_offer';
-  if (/mobil|abonnemang|telefon|surf|sms|samtal|operatör|operator|telia|tele2|telenor|tre|halebop|billigare|unlimited|obegränsad|kr|sek|pris|betalar|cheaper|mobile plan|phone plan|cell plan|data plan|subscription/i.test(text)) return 'mobile_offer';
+  if (/mobil|abonnemang|telefon|surf|sms|samtal|operatör|operator|telia|tele2|telenor|tre|billigare|unlimited|obegränsad|kr|sek|pris|betalar|cheaper|mobile plan|phone plan|cell plan|data plan|subscription/i.test(text)) return 'mobile_offer';
 
   const unrelatedCount = [
     ...trimMessages(messages).filter((item) => item.role === 'user').map((item) => item.content),
@@ -1472,27 +1472,27 @@ const buildMissingInfoReply = ({ nextField, isEnglish, message, qualification })
 
   if (nextField === 'operators' && /^(starta|börja|borja|ok|okej|ja)$/i.test(text)) {
     return isEnglish
-      ? 'We are started. First I need the current operator for the subscription or subscriptions, for example Telia, Tele2, Telenor, Tre or Halebop.'
-      : 'Vi är igång. Först behöver jag nuvarande operatör för abonnemanget eller abonnemangen, till exempel Telia, Tele2, Telenor, Tre eller Halebop.';
+      ? 'We are started. First I need the current operator for the subscription or subscriptions, for example Telia, Tele2, Telenor or Tre.'
+      : 'Vi är igång. Först behöver jag nuvarande operatör för abonnemanget eller abonnemangen, till exempel Telia, Tele2, Telenor eller Tre.';
   }
 
   if (nextField === 'operators' && Number(qualification?.peopleCount) === 1 && /^(mobil|mobilabonnemang|mobile|mobile plan)$/i.test(text)) {
     return isEnglish
-      ? 'Yes, mobile subscription. Which operator do you use today: Telia, Tele2, Telenor, Tre or Halebop?'
-      : 'Ja, mobilabonnemang. Vilken operatör har du idag: Telia, Tele2, Telenor, Tre eller Halebop?';
+      ? 'Yes, mobile subscription. Which operator do you use today: Telia, Tele2, Telenor or Tre?'
+      : 'Ja, mobilabonnemang. Vilken operatör har du idag: Telia, Tele2, Telenor eller Tre?';
   }
 
   if (nextField === 'operators' && Number(qualification?.peopleCount) === 1 && /^(1 abonnemang|bara mig|bara jag|mig|jag|just me|only me|me)$/i.test(text)) {
     return isEnglish
-      ? 'Great, one subscription. Which operator do you use today: Telia, Tele2, Telenor, Tre or Halebop?'
-      : 'Toppen, ett abonnemang. Vilken operatör har du idag: Telia, Tele2, Telenor, Tre eller Halebop?';
+      ? 'Great, one subscription. Which operator do you use today: Telia, Tele2, Telenor or Tre?'
+      : 'Toppen, ett abonnemang. Vilken operatör har du idag: Telia, Tele2, Telenor eller Tre?';
   }
 
   if (nextField === 'operators' && /^(nää|nä|nej|inget|vet inte|ingen aning|no|nothing|not sure)$/i.test(text)) {
     if (/inget|nothing/i.test(text)) {
       return isEnglish
-        ? 'Then we skip preferences and use the current situation. Which operator do you use today: Telia, Tele2, Telenor, Tre or Halebop?'
-        : 'Då struntar vi i önskemål och tar nuläget. Vilken operatör har ni idag: Telia, Tele2, Telenor, Tre eller Halebop?';
+        ? 'Then we skip preferences and use the current situation. Which operator do you use today: Telia, Tele2, Telenor or Tre?'
+        : 'Då struntar vi i önskemål och tar nuläget. Vilken operatör har ni idag: Telia, Tele2, Telenor eller Tre?';
     }
     if (/vet inte|ingen aning|not sure/i.test(text)) {
       return isEnglish
@@ -1501,12 +1501,12 @@ const buildMissingInfoReply = ({ nextField, isEnglish, message, qualification })
     }
     if (Number(qualification?.peopleCount) === 1) {
       return isEnglish
-        ? 'No preference is fine. I only need the operator you use today, for example Telia, Tele2, Telenor, Tre or Halebop.'
-        : 'Du behöver inte ha någon önskad operatör. Jag behöver bara veta operatören du har idag, till exempel Telia, Tele2, Telenor, Tre eller Halebop.';
+        ? 'No preference is fine. I only need the operator you use today, for example Telia, Tele2, Telenor or Tre.'
+        : 'Du behöver inte ha någon önskad operatör. Jag behöver bara veta operatören du har idag, till exempel Telia, Tele2, Telenor eller Tre.';
     }
     return isEnglish
-      ? 'No preference is fine. I only need the operator you use today, for example Telia, Tele2, Telenor, Tre or Halebop. If all subscriptions use the same one, write "Tele2 for all".'
-      : 'Du behöver inte ha någon önskad operatör. Jag behöver bara veta operatören ni har idag, till exempel Telia, Tele2, Telenor, Tre eller Halebop. Om alla har samma kan du skriva "Tele2 på alla".';
+      ? 'No preference is fine. I only need the operator you use today, for example Telia, Tele2, Telenor or Tre. If all subscriptions use the same one, write "Tele2 for all".'
+      : 'Du behöver inte ha någon önskad operatör. Jag behöver bara veta operatören ni har idag, till exempel Telia, Tele2, Telenor eller Tre. Om alla har samma kan du skriva "Tele2 på alla".';
   }
 
   if (nextField === 'operators' && Number(qualification?.peopleCount) > 1 && !qualification?.operators?.length) {
@@ -1734,7 +1734,7 @@ const buildStyleGuidedReply = ({ isEnglish, message, conversationStyle }) => {
   }
 
   if (style === 'comparison') {
-    if (/täckning|tackning|coverage|telia|tele2|telenor|tre|halebop/i.test(text)) {
+    if (/täckning|tackning|coverage|telia|tele2|telenor|tre/i.test(text)) {
       if (/jakobsberg|barkarby/i.test(text)) {
         return isEnglish
           ? 'Direct answer: for the best chance of strong coverage around Jakobsberg/Barkarby, I would start by checking Telia’s network first, with Tele2/Telenor as alternatives. I cannot guarantee exact coverage at every address, especially indoors, but Telia’s network is the safest all-round starting point to verify.'
@@ -2188,7 +2188,7 @@ const buildResponsePlan = ({ intent, message, messages = [], qualification = {},
     const nextField = toolResult.nextField || qualification.missingFields?.[0] || null;
     const fieldGuidance = {
       peopleCount: 'ask whether it is only for the customer or several subscriptions; if they already said several, ask roughly how many',
-      operators: 'ask which operator they use today; examples may include Telia, Tele2, Telenor, Tre, Halebop, Comviq, Hallon or another operator',
+      operators: 'ask which operator they use today; examples may include Telia, Tele2, Telenor, Tre, Comviq, Hallon or another operator',
       bindingEnds: 'ask if they have binding time left or no binding; mention that this affects whether switching is worth it only if helpful',
       mobileUsage: 'ask how they mostly use mobile data, in plain behavior terms such as social media, streaming or max data',
       priceRange: 'ask roughly what they pay per month today',

@@ -130,38 +130,5 @@
     "priority": 80,
     "sourceUrl": null,
     "notes": "Placeholder partner-offer row. Activate only after verifying that Dealett can sell this plan and the reward amount is current."
-  },
-  {
-    "partnerOfferId": "partner-halebop-low",
-    "operatorId": "halebop",
-    "planId": "halebop-low",
-    "dealettRewardAmount": null,
-    "dealettRewardType": "gift_card",
-    "isActive": false,
-    "priority": 100,
-    "sourceUrl": null,
-    "notes": "Placeholder partner-offer row. Activate only after verifying that Dealett can sell this plan and the reward amount is current."
-  },
-  {
-    "partnerOfferId": "partner-halebop-high",
-    "operatorId": "halebop",
-    "planId": "halebop-high",
-    "dealettRewardAmount": null,
-    "dealettRewardType": "gift_card",
-    "isActive": false,
-    "priority": 90,
-    "sourceUrl": null,
-    "notes": "Placeholder partner-offer row. Activate only after verifying that Dealett can sell this plan and the reward amount is current."
-  },
-  {
-    "partnerOfferId": "partner-halebop-medium",
-    "operatorId": "halebop",
-    "planId": "halebop-medium",
-    "dealettRewardAmount": null,
-    "dealettRewardType": "gift_card",
-    "isActive": false,
-    "priority": 80,
-    "sourceUrl": null,
-    "notes": "Placeholder partner-offer row. Activate only after verifying that Dealett can sell this plan and the reward amount is current."
   }
 ]

@@ -238,7 +238,7 @@ const countQuestions = (text) => (String(text || '').match(/\?/g) || []).length;
     assert.match(employerPaid.reply, /arbetsgivare|undantag|egenkostnad/i);
 
     const student = await postChat(baseUrl, {
-      message: 'jag är student och har halebop',
+      message: 'jag är student och har telia',
       language: 'sv',
       qualification: {},
       messages: [],

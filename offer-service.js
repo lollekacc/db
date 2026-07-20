@@ -10,12 +10,6 @@ const mobileOperatorMeta = {
     accent: '#6E2380',
     reward: 4000,
   },
-  Halebop: {
-    provider: 'Halebop',
-    logo: 'images/halebop.webp',
-    accent: '#C8175C',
-    reward: 4000,
-  },
   Telenor: {
     provider: 'Telenor',
     logo: 'images/telenor.jpg',
@@ -41,7 +35,6 @@ const providerLogos = {
   Tele2: 'images/tele2.png',
   Tre: 'images/tre.jpg',
   Telenor: 'images/telenor.jpg',
-  Halebop: 'images/halebop.webp',
 };
 
 let plansCache = null;

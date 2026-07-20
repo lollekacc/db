@@ -8,8 +8,7 @@
     "Telia",
     "Tele2",
     "Telenor",
-    "Tre",
-    "Halebop"
+    "Tre"
   ],
   "offerRules": {
     "bindingPeriodMonths": 24,
@@ -19,7 +18,7 @@
     "customerSwitchRule": "Dealett ska bara rekommendera byte när kunden har högst 6 månader kvar på bindningstiden och erbjudandet blir billigare efter dubbelkostnad och presentkort."
   },
   "assistantMustCommunicate": [
-    "Dealett arbetar med Telia, Tele2, Telenor, Tre och Halebop.",
+    "Dealett arbetar med Telia, Tele2, Telenor och Tre.",
     "Alla abonnemang har 24 månaders bindningstid.",
     "Dealett hjälper kunden hitta ett abonnemang eller 5G-bredband som matchar behov och pris så bra som möjligt.",
     "Presentkort ingår som del av erbjudandet när kunden går vidare via Dealett."

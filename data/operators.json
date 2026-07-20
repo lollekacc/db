@@ -4,7 +4,15 @@
     "name": "Telia",
     "brandType": "main_operator",
     "networkUsed": "Telia",
-    "customerSegments": ["private", "family", "student", "senior", "youth", "child", "business"],
+    "customerSegments": [
+      "private",
+      "family",
+      "student",
+      "senior",
+      "youth",
+      "child",
+      "business"
+    ],
     "supports5G": true,
     "supportsEsim": true,
     "hasFamilyPlans": true,
@@ -24,7 +32,15 @@
     "name": "Tele2",
     "brandType": "main_operator",
     "networkUsed": "Tele2",
-    "customerSegments": ["private", "family", "student", "senior", "youth", "child", "business"],
+    "customerSegments": [
+      "private",
+      "family",
+      "student",
+      "senior",
+      "youth",
+      "child",
+      "business"
+    ],
     "supports5G": true,
     "supportsEsim": true,
     "hasFamilyPlans": true,
@@ -44,7 +60,15 @@
     "name": "Telenor",
     "brandType": "main_operator",
     "networkUsed": "Telenor",
-    "customerSegments": ["private", "family", "student", "senior", "youth", "child", "business"],
+    "customerSegments": [
+      "private",
+      "family",
+      "student",
+      "senior",
+      "youth",
+      "child",
+      "business"
+    ],
     "supports5G": true,
     "supportsEsim": true,
     "hasFamilyPlans": true,
@@ -64,7 +88,15 @@
     "name": "Tre",
     "brandType": "main_operator",
     "networkUsed": "Tre",
-    "customerSegments": ["private", "family", "student", "senior", "youth", "child", "business"],
+    "customerSegments": [
+      "private",
+      "family",
+      "student",
+      "senior",
+      "youth",
+      "child",
+      "business"
+    ],
     "supports5G": true,
     "supportsEsim": true,
     "hasFamilyPlans": true,
@@ -80,31 +112,16 @@
     "notes": "Operator reference row only. Verify current segments, 5G, eSIM and offer details before marking verified."
   },
   {
-    "operatorId": "halebop",
-    "name": "Halebop",
-    "brandType": "sub_brand",
-    "networkUsed": "Telia",
-    "customerSegments": ["private", "student", "youth"],
-    "supports5G": true,
-    "supportsEsim": true,
-    "hasFamilyPlans": false,
-    "hasStudentPlans": true,
-    "hasSeniorPlans": false,
-    "hasYouthPlans": true,
-    "hasChildPlans": false,
-    "hasBusinessPlans": false,
-    "websiteUrl": "https://www.halebop.se",
-    "sourceUrls": [],
-    "lastChecked": "2026-05-31",
-    "dataStatus": "placeholder",
-    "notes": "Sub-brand reference row. Student/youth flags are placeholders until verified from current sources."
-  },
-  {
     "operatorId": "comviq",
     "name": "Comviq",
     "brandType": "sub_brand",
     "networkUsed": "Tele2",
-    "customerSegments": ["private", "student", "youth", "child"],
+    "customerSegments": [
+      "private",
+      "student",
+      "youth",
+      "child"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -124,7 +141,14 @@
     "name": "Hallon",
     "brandType": "sub_brand",
     "networkUsed": "Tre",
-    "customerSegments": ["private", "student", "senior", "youth", "child", "business"],
+    "customerSegments": [
+      "private",
+      "student",
+      "senior",
+      "youth",
+      "child",
+      "business"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -144,7 +168,13 @@
     "name": "Vimla",
     "brandType": "sub_brand",
     "networkUsed": "Telenor",
-    "customerSegments": ["private", "student", "senior", "youth", "child"],
+    "customerSegments": [
+      "private",
+      "student",
+      "senior",
+      "youth",
+      "child"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -164,7 +194,13 @@
     "name": "Fello",
     "brandType": "sub_brand",
     "networkUsed": "Telia",
-    "customerSegments": ["private", "student", "senior", "youth", "child"],
+    "customerSegments": [
+      "private",
+      "student",
+      "senior",
+      "youth",
+      "child"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -184,7 +220,9 @@
     "name": "Chilimobil",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["private"],
+    "customerSegments": [
+      "private"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -204,7 +242,10 @@
     "name": "Fibio",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["private", "business"],
+    "customerSegments": [
+      "private",
+      "business"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -224,7 +265,9 @@
     "name": "Tellus",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["private"],
+    "customerSegments": [
+      "private"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -244,7 +287,10 @@
     "name": "MyBeat",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["private", "senior"],
+    "customerSegments": [
+      "private",
+      "senior"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,
@@ -264,7 +310,9 @@
     "name": "Telness",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["business"],
+    "customerSegments": [
+      "business"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": false,
@@ -284,7 +332,9 @@
     "name": "Lycamobile",
     "brandType": "mvno",
     "networkUsed": "unknown",
-    "customerSegments": ["private"],
+    "customerSegments": [
+      "private"
+    ],
     "supports5G": null,
     "supportsEsim": null,
     "hasFamilyPlans": null,

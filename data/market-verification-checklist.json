@@ -34,65 +34,380 @@
       "operatorId": "telia",
       "name": "Telia",
       "categories": [
-        { "categoryId": "private_mobile", "label": "Private mobile", "planCategories": ["mobile_subscription"], "segments": ["private"], "required": true },
-        { "categoryId": "family_mobile", "label": "Family mobile", "planCategories": ["mobile_subscription"], "segments": ["family"], "requiredIfAnyOperatorFlag": ["hasFamilyPlans"] },
-        { "categoryId": "student", "label": "Student", "planCategories": ["mobile_subscription"], "segments": ["student"], "requiredIfAnyOperatorFlag": ["hasStudentPlans"] },
-        { "categoryId": "senior", "label": "Senior", "planCategories": ["mobile_subscription"], "segments": ["senior"], "requiredIfAnyOperatorFlag": ["hasSeniorPlans"] },
-        { "categoryId": "youth_child", "label": "Youth/child if available", "planCategories": ["mobile_subscription"], "segments": ["youth", "child"], "requiredIfAnyOperatorFlag": ["hasYouthPlans", "hasChildPlans"] },
-        { "categoryId": "mobile_broadband_5g", "label": "Mobile broadband / 5G broadband", "planCategories": ["mobile_broadband"], "segments": ["private"], "required": true },
-        { "categoryId": "business", "label": "Business if present", "planCategories": ["business_mobile"], "segments": ["business"], "requiredIfAnyOperatorFlag": ["hasBusinessPlans"] }
+        {
+          "categoryId": "private_mobile",
+          "label": "Private mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "family_mobile",
+          "label": "Family mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "family"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasFamilyPlans"
+          ]
+        },
+        {
+          "categoryId": "student",
+          "label": "Student",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "student"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasStudentPlans"
+          ]
+        },
+        {
+          "categoryId": "senior",
+          "label": "Senior",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "senior"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasSeniorPlans"
+          ]
+        },
+        {
+          "categoryId": "youth_child",
+          "label": "Youth/child if available",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "youth",
+            "child"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasYouthPlans",
+            "hasChildPlans"
+          ]
+        },
+        {
+          "categoryId": "mobile_broadband_5g",
+          "label": "Mobile broadband / 5G broadband",
+          "planCategories": [
+            "mobile_broadband"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "business",
+          "label": "Business if present",
+          "planCategories": [
+            "business_mobile"
+          ],
+          "segments": [
+            "business"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasBusinessPlans"
+          ]
+        }
       ]
     },
     {
       "operatorId": "tele2",
       "name": "Tele2",
       "categories": [
-        { "categoryId": "private_mobile", "label": "Private mobile", "planCategories": ["mobile_subscription"], "segments": ["private"], "required": true },
-        { "categoryId": "family_mobile", "label": "Family mobile", "planCategories": ["mobile_subscription"], "segments": ["family"], "requiredIfAnyOperatorFlag": ["hasFamilyPlans"] },
-        { "categoryId": "student", "label": "Student", "planCategories": ["mobile_subscription"], "segments": ["student"], "requiredIfAnyOperatorFlag": ["hasStudentPlans"] },
-        { "categoryId": "senior", "label": "Senior", "planCategories": ["mobile_subscription"], "segments": ["senior"], "requiredIfAnyOperatorFlag": ["hasSeniorPlans"] },
-        { "categoryId": "youth_child", "label": "Youth/child if available", "planCategories": ["mobile_subscription"], "segments": ["youth", "child"], "requiredIfAnyOperatorFlag": ["hasYouthPlans", "hasChildPlans"] },
-        { "categoryId": "mobile_broadband_5g", "label": "Mobile broadband / 5G broadband", "planCategories": ["mobile_broadband"], "segments": ["private"], "required": true },
-        { "categoryId": "business", "label": "Business if present", "planCategories": ["business_mobile"], "segments": ["business"], "requiredIfAnyOperatorFlag": ["hasBusinessPlans"] }
+        {
+          "categoryId": "private_mobile",
+          "label": "Private mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "family_mobile",
+          "label": "Family mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "family"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasFamilyPlans"
+          ]
+        },
+        {
+          "categoryId": "student",
+          "label": "Student",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "student"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasStudentPlans"
+          ]
+        },
+        {
+          "categoryId": "senior",
+          "label": "Senior",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "senior"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasSeniorPlans"
+          ]
+        },
+        {
+          "categoryId": "youth_child",
+          "label": "Youth/child if available",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "youth",
+            "child"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasYouthPlans",
+            "hasChildPlans"
+          ]
+        },
+        {
+          "categoryId": "mobile_broadband_5g",
+          "label": "Mobile broadband / 5G broadband",
+          "planCategories": [
+            "mobile_broadband"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "business",
+          "label": "Business if present",
+          "planCategories": [
+            "business_mobile"
+          ],
+          "segments": [
+            "business"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasBusinessPlans"
+          ]
+        }
       ]
     },
     {
       "operatorId": "telenor",
       "name": "Telenor",
       "categories": [
-        { "categoryId": "private_mobile", "label": "Private mobile", "planCategories": ["mobile_subscription"], "segments": ["private"], "required": true },
-        { "categoryId": "family_mobile", "label": "Family mobile", "planCategories": ["mobile_subscription"], "segments": ["family"], "requiredIfAnyOperatorFlag": ["hasFamilyPlans"] },
-        { "categoryId": "student", "label": "Student", "planCategories": ["mobile_subscription"], "segments": ["student"], "requiredIfAnyOperatorFlag": ["hasStudentPlans"] },
-        { "categoryId": "senior", "label": "Senior", "planCategories": ["mobile_subscription"], "segments": ["senior"], "requiredIfAnyOperatorFlag": ["hasSeniorPlans"] },
-        { "categoryId": "youth_child", "label": "Youth/child if available", "planCategories": ["mobile_subscription"], "segments": ["youth", "child"], "requiredIfAnyOperatorFlag": ["hasYouthPlans", "hasChildPlans"] },
-        { "categoryId": "mobile_broadband_5g", "label": "Mobile broadband / 5G broadband", "planCategories": ["mobile_broadband"], "segments": ["private"], "required": true },
-        { "categoryId": "business", "label": "Business if present", "planCategories": ["business_mobile"], "segments": ["business"], "requiredIfAnyOperatorFlag": ["hasBusinessPlans"] }
+        {
+          "categoryId": "private_mobile",
+          "label": "Private mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "family_mobile",
+          "label": "Family mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "family"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasFamilyPlans"
+          ]
+        },
+        {
+          "categoryId": "student",
+          "label": "Student",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "student"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasStudentPlans"
+          ]
+        },
+        {
+          "categoryId": "senior",
+          "label": "Senior",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "senior"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasSeniorPlans"
+          ]
+        },
+        {
+          "categoryId": "youth_child",
+          "label": "Youth/child if available",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "youth",
+            "child"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasYouthPlans",
+            "hasChildPlans"
+          ]
+        },
+        {
+          "categoryId": "mobile_broadband_5g",
+          "label": "Mobile broadband / 5G broadband",
+          "planCategories": [
+            "mobile_broadband"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "business",
+          "label": "Business if present",
+          "planCategories": [
+            "business_mobile"
+          ],
+          "segments": [
+            "business"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasBusinessPlans"
+          ]
+        }
       ]
     },
     {
       "operatorId": "tre",
       "name": "Tre",
       "categories": [
-        { "categoryId": "private_mobile", "label": "Private mobile", "planCategories": ["mobile_subscription"], "segments": ["private"], "required": true },
-        { "categoryId": "family_mobile", "label": "Family mobile", "planCategories": ["mobile_subscription"], "segments": ["family"], "requiredIfAnyOperatorFlag": ["hasFamilyPlans"] },
-        { "categoryId": "student", "label": "Student", "planCategories": ["mobile_subscription"], "segments": ["student"], "requiredIfAnyOperatorFlag": ["hasStudentPlans"] },
-        { "categoryId": "senior", "label": "Senior", "planCategories": ["mobile_subscription"], "segments": ["senior"], "requiredIfAnyOperatorFlag": ["hasSeniorPlans"] },
-        { "categoryId": "youth_child", "label": "Youth/child if available", "planCategories": ["mobile_subscription"], "segments": ["youth", "child"], "requiredIfAnyOperatorFlag": ["hasYouthPlans", "hasChildPlans"] },
-        { "categoryId": "mobile_broadband_5g", "label": "Mobile broadband / 5G broadband", "planCategories": ["mobile_broadband"], "segments": ["private"], "required": true },
-        { "categoryId": "business", "label": "Business if present", "planCategories": ["business_mobile"], "segments": ["business"], "requiredIfAnyOperatorFlag": ["hasBusinessPlans"] }
-      ]
-    },
-    {
-      "operatorId": "halebop",
-      "name": "Halebop",
-      "categories": [
-        { "categoryId": "private_mobile", "label": "Private mobile", "planCategories": ["mobile_subscription"], "segments": ["private"], "required": true },
-        { "categoryId": "family_mobile", "label": "Family mobile", "planCategories": ["mobile_subscription"], "segments": ["family"], "requiredIfAnyOperatorFlag": ["hasFamilyPlans"] },
-        { "categoryId": "student", "label": "Student", "planCategories": ["mobile_subscription"], "segments": ["student"], "requiredIfAnyOperatorFlag": ["hasStudentPlans"] },
-        { "categoryId": "senior", "label": "Senior", "planCategories": ["mobile_subscription"], "segments": ["senior"], "requiredIfAnyOperatorFlag": ["hasSeniorPlans"] },
-        { "categoryId": "youth_child", "label": "Youth/child if available", "planCategories": ["mobile_subscription"], "segments": ["youth", "child"], "requiredIfAnyOperatorFlag": ["hasYouthPlans", "hasChildPlans"] },
-        { "categoryId": "mobile_broadband_5g", "label": "Mobile broadband / 5G broadband", "planCategories": ["mobile_broadband"], "segments": ["private"], "required": true },
-        { "categoryId": "business", "label": "Business if present", "planCategories": ["business_mobile"], "segments": ["business"], "requiredIfAnyOperatorFlag": ["hasBusinessPlans"] }
+        {
+          "categoryId": "private_mobile",
+          "label": "Private mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "family_mobile",
+          "label": "Family mobile",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "family"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasFamilyPlans"
+          ]
+        },
+        {
+          "categoryId": "student",
+          "label": "Student",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "student"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasStudentPlans"
+          ]
+        },
+        {
+          "categoryId": "senior",
+          "label": "Senior",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "senior"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasSeniorPlans"
+          ]
+        },
+        {
+          "categoryId": "youth_child",
+          "label": "Youth/child if available",
+          "planCategories": [
+            "mobile_subscription"
+          ],
+          "segments": [
+            "youth",
+            "child"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasYouthPlans",
+            "hasChildPlans"
+          ]
+        },
+        {
+          "categoryId": "mobile_broadband_5g",
+          "label": "Mobile broadband / 5G broadband",
+          "planCategories": [
+            "mobile_broadband"
+          ],
+          "segments": [
+            "private"
+          ],
+          "required": true
+        },
+        {
+          "categoryId": "business",
+          "label": "Business if present",
+          "planCategories": [
+            "business_mobile"
+          ],
+          "segments": [
+            "business"
+          ],
+          "requiredIfAnyOperatorFlag": [
+            "hasBusinessPlans"
+          ]
+        }
       ]
     }
   ],

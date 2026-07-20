@@ -37,7 +37,6 @@ For each operator, verify these categories from official operator pages or expli
 | Tele2 | Private mobile, family mobile, student, senior, youth/child if available, mobile broadband/5G broadband, business if present |
 | Telenor | Private mobile, family mobile, student, senior, youth/child if available, mobile broadband/5G broadband, business if present |
 | Tre | Private mobile, family mobile, student, senior, youth/child if available, mobile broadband/5G broadband, business if present |
-| Halebop | Private mobile, family mobile if available, student, senior if available, youth/child if available, mobile broadband/5G broadband, business if present |
 
 ## Manual Steps
 

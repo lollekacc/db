@@ -28,9 +28,17 @@
   "intents": [
     {
       "intentId": "greeting_unclear_start",
-      "userExamples": ["hej", "hallå", "vet inte", "kan du hjälpa mig?"],
+      "userExamples": [
+        "hej",
+        "hallå",
+        "vet inte",
+        "kan du hjälpa mig?"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "quick_replies",
@@ -38,14 +46,32 @@
       "whenToNavigatePage": "Do not navigate. Stay in chat until the customer chooses a concrete task.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Hej! Jag kan hjälpa dig med mobilabonnemang, bredband, täckning, presentkort eller varukorgen. Vad vill du kika på först?",
-      "nextBestActions": ["Mobilabonnemang", "Bredband hemma", "Täckning", "Presentkort", "Jag vet inte"],
-      "risks": ["over_questioning", "user_dropoff", "generic_answer"]
+      "nextBestActions": [
+        "Mobilabonnemang",
+        "Bredband hemma",
+        "Täckning",
+        "Presentkort",
+        "Jag vet inte"
+      ],
+      "risks": [
+        "over_questioning",
+        "user_dropoff",
+        "generic_answer"
+      ]
     },
     {
       "intentId": "browsing_from_ad",
-      "userExamples": ["såg er reklam", "jag tänkte bara kika", "vad är detta?", "har ni nåt intressant?"],
+      "userExamples": [
+        "såg er reklam",
+        "jag tänkte bara kika",
+        "vad är detta?",
+        "har ni nåt intressant?"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "quick_replies",
@@ -53,14 +79,32 @@
       "whenToNavigatePage": "Do not navigate. Offer to browse inside chat first.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Välkommen. Dealett hjälper dig se om ditt nuvarande abonnemang faktiskt går att slå efter pris, täckning, bindningstid och eventuell belöning. Du kan bara kika runt - jag börjar jämföra först när du vill.",
-      "nextBestActions": ["Visa vad Dealett gör", "Kika mobil", "Kika bredband", "Kolla täckning"],
-      "risks": ["user_dropoff", "over_questioning", "trust_loss"]
+      "nextBestActions": [
+        "Visa vad Dealett gör",
+        "Kika mobil",
+        "Kika bredband",
+        "Kolla täckning"
+      ],
+      "risks": [
+        "user_dropoff",
+        "over_questioning",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "direct_recommendation",
-      "userExamples": ["välj åt mig", "om du var jag vad hade du valt?", "ge mig bara ett svar", "säg vad jag ska ta"],
+      "userExamples": [
+        "välj åt mig",
+        "om du var jag vad hade du valt?",
+        "ge mig bara ett svar",
+        "säg vad jag ska ta"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -68,14 +112,30 @@
       "whenToNavigatePage": "Navigate only after a validated offer exists and the user chooses checkout.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Om jag måste välja utan mer info: börja med ett mellanstort 5G-abonnemang runt 20-30 GB. Det är ett tryggt allroundval för många utan att bli lika dyrt som obegränsat. Det är en kvalificerad gissning, inte en exakt personlig rekommendation.",
-      "nextBestActions": ["Gör mer träffsäkert", "Visa säkert allroundval", "Billigast möjligt"],
-      "risks": ["fake_certainty", "wrong_recommendation", "recommendation_too_early"]
+      "nextBestActions": [
+        "Gör mer träffsäkert",
+        "Visa säkert allroundval",
+        "Billigast möjligt"
+      ],
+      "risks": [
+        "fake_certainty",
+        "wrong_recommendation",
+        "recommendation_too_early"
+      ]
     },
     {
       "intentId": "mobile_subscription_recommendation",
-      "userExamples": ["jag vill byta mobilabonnemang", "hitta billigare mobil", "vilket mobilabonnemang passar mig?"],
+      "userExamples": [
+        "jag vill byta mobilabonnemang",
+        "hitta billigare mobil",
+        "vilket mobilabonnemang passar mig?"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": false,
       "maxQuestions": 2,
       "buttonStrategy": "choice_buttons",
@@ -83,14 +143,32 @@
       "whenToNavigatePage": "Navigate to checkout only after offer cards are shown and the customer clicks a buy/cart action.",
       "embeddedWidget": "offer_cards",
       "recommendedFirstReply": "Jag kan jämföra mobilabonnemang åt dig. Först behöver jag veta om det gäller bara dig eller flera personer.",
-      "nextBestActions": ["Bara mig", "Flera personer", "Jag vet inte"],
-      "risks": ["over_questioning", "wrong_recommendation", "missing_binding_context"]
+      "nextBestActions": [
+        "Bara mig",
+        "Flera personer",
+        "Jag vet inte"
+      ],
+      "risks": [
+        "over_questioning",
+        "wrong_recommendation",
+        "missing_binding_context"
+      ]
     },
     {
       "intentId": "family_mobile_subscription",
-      "userExamples": ["vi är flera hemma", "familjeabonnemang", "samla familjens abonnemang", "3 personer hemma"],
+      "userExamples": [
+        "vi är flera hemma",
+        "familjeabonnemang",
+        "samla familjens abonnemang",
+        "3 personer hemma"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -98,14 +176,32 @@
       "whenToNavigatePage": "Navigate only for checkout or if the family comparison becomes too large for chat.",
       "embeddedWidget": "family_builder",
       "recommendedFirstReply": "Familjeabonnemang kan vara riktigt bra, men totalpriset måste jämföras per person och med bindningstid. Vi börjar enkelt: hur många mobilanvändare gäller det?",
-      "nextBestActions": ["2 personer", "3 personer", "4 personer", "5+ personer"],
-      "risks": ["family_total_price_ambiguity", "wrong_recommendation", "over_questioning"]
+      "nextBestActions": [
+        "2 personer",
+        "3 personer",
+        "4 personer",
+        "5+ personer"
+      ],
+      "risks": [
+        "family_total_price_ambiguity",
+        "wrong_recommendation",
+        "over_questioning"
+      ]
     },
     {
       "intentId": "child_youth_subscription",
-      "userExamples": ["abonnemang till mitt barn", "barnabonnemang", "ungdomsabonnemang", "till min son"],
+      "userExamples": [
+        "abonnemang till mitt barn",
+        "barnabonnemang",
+        "ungdomsabonnemang",
+        "till min son"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -113,14 +209,32 @@
       "whenToNavigatePage": "Navigate only after a validated offer or if terms need full legal reading.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "För barn brukar det viktigaste vara låg kostnad, lagom surf och kontroll så det inte blir dyrt. Är det mest samtal, BankID och lite appar, eller mycket video och spel?",
-      "nextBestActions": ["Lite användning", "Video/spel", "Billigast möjligt", "Jag vet inte"],
-      "risks": ["overselling_unlimited", "wrong_recommendation", "fake_certainty"]
+      "nextBestActions": [
+        "Lite användning",
+        "Video/spel",
+        "Billigast möjligt",
+        "Jag vet inte"
+      ],
+      "risks": [
+        "overselling_unlimited",
+        "wrong_recommendation",
+        "fake_certainty"
+      ]
     },
     {
       "intentId": "senior_simple_subscription",
-      "userExamples": ["min pappa är senior", "till mamma som bara ringer", "seniorabonnemang", "enkelt abonnemang"],
+      "userExamples": [
+        "min pappa är senior",
+        "till mamma som bara ringer",
+        "seniorabonnemang",
+        "enkelt abonnemang"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -128,14 +242,31 @@
       "whenToNavigatePage": "Navigate only for checkout or full terms.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Då ska vi inte jaga obegränsad surf i onödan. För samtal, BankID och lite surf räcker ofta ett enkelt låg- eller mellansurf-abonnemang. Vet du ungefär vad personen betalar idag?",
-      "nextBestActions": ["Under 200 kr", "200-350 kr", "Vet inte", "Visa enkelt val"],
-      "risks": ["overselling_unlimited", "over_questioning", "wrong_recommendation"]
+      "nextBestActions": [
+        "Under 200 kr",
+        "200-350 kr",
+        "Vet inte",
+        "Visa enkelt val"
+      ],
+      "risks": [
+        "overselling_unlimited",
+        "over_questioning",
+        "wrong_recommendation"
+      ]
     },
     {
       "intentId": "student_subscription",
-      "userExamples": ["jag är student", "studentrabatt", "halebop student", "billigt för student"],
+      "userExamples": [
+        "jag är student",
+        "studentrabatt",
+        "billigt för student"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -143,14 +274,32 @@
       "whenToNavigatePage": "Navigate only after validated offer or to operator verification if student eligibility must be confirmed.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Studentpriser kan redan vara starka, så jag jämför försiktigt mot totalvärdet. Vad betalar du ungefär idag?",
-      "nextBestActions": ["Under 200 kr", "200-350 kr", "Över 350 kr", "Vet inte"],
-      "risks": ["missing_segment_awareness", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Under 200 kr",
+        "200-350 kr",
+        "Över 350 kr",
+        "Vet inte"
+      ],
+      "risks": [
+        "missing_segment_awareness",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "business_subscription",
-      "userExamples": ["företagsabonnemang", "till mitt företag", "jag driver bolag", "business mobile"],
+      "userExamples": [
+        "företagsabonnemang",
+        "till mitt företag",
+        "jag driver bolag",
+        "business mobile"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "action_buttons",
@@ -158,14 +307,33 @@
       "whenToNavigatePage": "Navigate to business/contact page when the user wants a quote, company-specific terms, or multiple employee subscriptions.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "För företag beror bästa valet på antal användare, surfbehov och fakturering. Jag kan ge en enkel riktning här, men offert och företagsvillkor bör tas i kontaktflödet.",
-      "nextBestActions": ["1 användare", "Flera anställda", "Kontakta Dealett", "Privat abonnemang istället"],
-      "risks": ["fake_certainty", "wrong_recommendation", "legal_terms"]
+      "nextBestActions": [
+        "1 användare",
+        "Flera anställda",
+        "Kontakta Dealett",
+        "Privat abonnemang istället"
+      ],
+      "risks": [
+        "fake_certainty",
+        "wrong_recommendation",
+        "legal_terms"
+      ]
     },
     {
       "intentId": "home_5g_broadband",
-      "userExamples": ["5G-bredband hemma", "internet hemma", "funkar 5g hos mig?", "bredband utan fiber"],
+      "userExamples": [
+        "5G-bredband hemma",
+        "internet hemma",
+        "funkar 5g hos mig?",
+        "bredband utan fiber"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "action_buttons",
@@ -173,14 +341,31 @@
       "whenToNavigatePage": "Stay in chat for address or coverage check. Navigate only if the user asks for full broadband page or checkout.",
       "embeddedWidget": "broadband_checker",
       "recommendedFirstReply": "5G-bredband kan vara ett bra alternativ om täckningen hemma är stark. Det behöver kollas på adressnivå, så vi börjar med adress eller position.",
-      "nextBestActions": ["Ange adress", "Använd min position", "Visa hur det funkar", "Jämför med mobil"],
-      "risks": ["fake_certainty", "wrong_recommendation", "user_dropoff"]
+      "nextBestActions": [
+        "Ange adress",
+        "Använd min position",
+        "Visa hur det funkar",
+        "Jämför med mobil"
+      ],
+      "risks": [
+        "fake_certainty",
+        "wrong_recommendation",
+        "user_dropoff"
+      ]
     },
     {
       "intentId": "mobile_broadband_mixed_need",
-      "userExamples": ["jag behöver internet hemma och mobil", "mobil och bredband kanske", "samma abonnemang för allt?"],
+      "userExamples": [
+        "jag behöver internet hemma och mobil",
+        "mobil och bredband kanske",
+        "samma abonnemang för allt?"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -188,14 +373,31 @@
       "whenToNavigatePage": "Do not navigate until the user chooses the first track.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Vi tar det i två delar så det inte blir rörigt: mobil handlar om abonnemanget i telefonen, bredband handlar om internet hemma.",
-      "nextBestActions": ["Börja med mobil", "Börja med bredband", "Jämför båda"],
-      "risks": ["confusion", "wrong_recommendation", "over_questioning"]
+      "nextBestActions": [
+        "Börja med mobil",
+        "Börja med bredband",
+        "Jämför båda"
+      ],
+      "risks": [
+        "confusion",
+        "wrong_recommendation",
+        "over_questioning"
+      ]
     },
     {
       "intentId": "coverage",
-      "userExamples": ["bäst täckning", "har dålig täckning", "vilken operatör funkar hemma?", "täckning i Jakobsberg"],
+      "userExamples": [
+        "bäst täckning",
+        "har dålig täckning",
+        "vilken operatör funkar hemma?",
+        "täckning i Jakobsberg"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "action_buttons",
@@ -203,14 +405,33 @@
       "whenToNavigatePage": "Navigate only if the user asks for a full-screen coverage map.",
       "embeddedWidget": "coverage_selector",
       "recommendedFirstReply": "Täckning går inte att garantera utan exakt plats, men vi kan komma nära. Inomhus, bostadens material och var du använder mobilen mest spelar stor roll.",
-      "nextBestActions": ["Använd min position", "Ange adress", "Jämför operatörer", "Jag vill bara ha råd"],
-      "risks": ["fake_certainty", "dead_end_uncertainty", "user_dropoff"]
+      "nextBestActions": [
+        "Använd min position",
+        "Ange adress",
+        "Jämför operatörer",
+        "Jag vill bara ha råd"
+      ],
+      "risks": [
+        "fake_certainty",
+        "dead_end_uncertainty",
+        "user_dropoff"
+      ]
     },
     {
       "intentId": "coverage_map_request",
-      "userExamples": ["öppna täckningskarta", "visa karta", "coverage map", "jag vill se täckningen på kartan"],
+      "userExamples": [
+        "öppna täckningskarta",
+        "visa karta",
+        "coverage map",
+        "jag vill se täckningen på kartan"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -218,14 +439,32 @@
       "whenToNavigatePage": "Navigate only if the customer chooses Full karta or asks for large/full-screen map.",
       "embeddedWidget": "coverage_selector",
       "recommendedFirstReply": "Absolut. Jag kan starta täckningskollen här i chatten. Exakt täckning behöver adress eller position och är alltid en uppskattning.",
-      "nextBestActions": ["Använd min position", "Ange adress", "Jämför operatörer", "Full karta"],
-      "risks": ["fake_certainty", "external_navigation_too_early", "privacy_concern"]
+      "nextBestActions": [
+        "Använd min position",
+        "Ange adress",
+        "Jämför operatörer",
+        "Full karta"
+      ],
+      "risks": [
+        "fake_certainty",
+        "external_navigation_too_early",
+        "privacy_concern"
+      ]
     },
     {
       "intentId": "operator_comparison",
-      "userExamples": ["Telia eller Tele2?", "jämför Halebop och Tre", "vilken operatör är bäst?", "Telenor vs Telia"],
+      "userExamples": [
+        "Telia eller Tele2?",
+        "vilken operatör är bäst?",
+        "Telenor vs Telia"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -233,14 +472,33 @@
       "whenToNavigatePage": "Navigate only for complex comparison table if the user asks for full details.",
       "embeddedWidget": "operator_comparison",
       "recommendedFirstReply": "Kort svar: det beror på täckning där du bor och priset du faktiskt får. Telia brukar upplevas starkt på täckning, medan lågprisvarumärken kan vinna på pris - men vi ska jämföra mot ditt behov.",
-      "nextBestActions": ["Jämför pris", "Jämför täckning", "Jämför presentkort", "Visa full tabell"],
-      "risks": ["fake_certainty", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Jämför pris",
+        "Jämför täckning",
+        "Jämför presentkort",
+        "Visa full tabell"
+      ],
+      "risks": [
+        "fake_certainty",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "price_comparison",
-      "userExamples": ["vad är billigast?", "jämför priser", "vem har lägst pris?", "billigaste abonnemanget"],
+      "userExamples": [
+        "vad är billigast?",
+        "jämför priser",
+        "vem har lägst pris?",
+        "billigaste abonnemanget"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "offer_cards", "embedded_widget"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards",
+        "embedded_widget"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -248,14 +506,32 @@
       "whenToNavigatePage": "Navigate only after the user wants checkout or a full detailed table.",
       "embeddedWidget": "operator_comparison",
       "recommendedFirstReply": "Billigast beror på om du vill ha mobil, bredband eller familjepaket. Jag kan börja med lägsta rimliga kostnad, men jag vill undvika att välja något som blir dåligt i täckning eller surf.",
-      "nextBestActions": ["Mobil", "Bredband", "Familj", "Billigast oavsett"],
-      "risks": ["wrong_recommendation", "reward_over_fit", "fake_certainty"]
+      "nextBestActions": [
+        "Mobil",
+        "Bredband",
+        "Familj",
+        "Billigast oavsett"
+      ],
+      "risks": [
+        "wrong_recommendation",
+        "reward_over_fit",
+        "fake_certainty"
+      ]
     },
     {
       "intentId": "current_deal_check",
-      "userExamples": ["är mitt abonnemang bra?", "kan ni slå mitt pris?", "jag betalar 299 kr", "är det värt att byta?"],
+      "userExamples": [
+        "är mitt abonnemang bra?",
+        "kan ni slå mitt pris?",
+        "jag betalar 299 kr",
+        "är det värt att byta?"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -263,14 +539,30 @@
       "whenToNavigatePage": "Navigate to checkout only if Dealett has a validated better offer and the customer wants to buy.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag kan kolla om det verkar värt att byta. Om ditt nuvarande avtal redan är starkt ska jag säga det, inte pressa dig vidare.",
-      "nextBestActions": ["Ange ungefärligt pris", "Ange surf", "Jag vet inte priset", "Jämför ändå"],
-      "risks": ["wrong_recommendation", "trust_loss", "missing_binding_context"]
+      "nextBestActions": [
+        "Ange ungefärligt pris",
+        "Ange surf",
+        "Jag vet inte priset",
+        "Jämför ändå"
+      ],
+      "risks": [
+        "wrong_recommendation",
+        "trust_loss",
+        "missing_binding_context"
+      ]
     },
     {
       "intentId": "suspiciously_low_customer_price",
-      "userExamples": ["jag betalar 99 kr obegränsat", "Telia unlimited för 99", "jag har superpris"],
+      "userExamples": [
+        "jag betalar 99 kr obegränsat",
+        "Telia unlimited för 99",
+        "jag har superpris"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -278,14 +570,32 @@
       "whenToNavigatePage": "Do not navigate. Do not show offers before clarification.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Det låter som ett ovanligt starkt pris. Jag säger inte att det är fel, men innan jag jämför behöver jag veta om det är kampanj, familjepris, student/senior-rabatt, arbetsgivare eller winback.",
-      "nextBestActions": ["Kampanjpris", "Familjepris", "Student/senior", "Winback", "Vanligt pris"],
-      "risks": ["trust_loss", "wrong_recommendation", "accusatory_tone"]
+      "nextBestActions": [
+        "Kampanjpris",
+        "Familjepris",
+        "Student/senior",
+        "Winback",
+        "Vanligt pris"
+      ],
+      "risks": [
+        "trust_loss",
+        "wrong_recommendation",
+        "accusatory_tone"
+      ]
     },
     {
       "intentId": "campaign_price_uncertainty",
-      "userExamples": ["det är kampanj", "första månaderna", "tillfälligt pris", "gäller några månader"],
+      "userExamples": [
+        "det är kampanj",
+        "första månaderna",
+        "tillfälligt pris",
+        "gäller några månader"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -293,14 +603,32 @@
       "whenToNavigatePage": "Do not navigate until campaign length and normal price are clear enough.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Då behöver vi räkna på priset efter kampanjen, annars kan ett billigt erbjudande se bättre ut än det är.",
-      "nextBestActions": ["Vet kampanjlängd", "Vet pris efter kampanj", "Vet inte", "Räkna grovt"],
-      "risks": ["fake_certainty", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Vet kampanjlängd",
+        "Vet pris efter kampanj",
+        "Vet inte",
+        "Räkna grovt"
+      ],
+      "risks": [
+        "fake_certainty",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "binding_period",
-      "userExamples": ["jag har bindningstid", "låst till oktober", "10 månader kvar", "uppsägningstid"],
+      "userExamples": [
+        "jag har bindningstid",
+        "låst till oktober",
+        "10 månader kvar",
+        "uppsägningstid"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -308,14 +636,34 @@
       "whenToNavigatePage": "Navigate only after double-cost risk is explained and a validated offer exists.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Bindningstid kan göra ett byte olönsamt även om nya priset är lägre. Vi behöver räkna på eventuell dubbelkostnad innan vi rekommenderar byte.",
-      "nextBestActions": ["Ingen bindningstid", "1-3 månader kvar", "4-6 månader kvar", "Mer än 6 månader", "Vet inte"],
-      "risks": ["missing_binding_context", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Ingen bindningstid",
+        "1-3 månader kvar",
+        "4-6 månader kvar",
+        "Mer än 6 månader",
+        "Vet inte"
+      ],
+      "risks": [
+        "missing_binding_context",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "reward_comparison",
-      "userExamples": ["presentkort", "bonus", "vad får jag om jag byter?", "reward"],
+      "userExamples": [
+        "presentkort",
+        "bonus",
+        "vad får jag om jag byter?",
+        "reward"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "choice_buttons",
@@ -323,14 +671,30 @@
       "whenToNavigatePage": "Navigate only if customer proceeds to checkout after a valid offer.",
       "embeddedWidget": "reward_comparison",
       "recommendedFirstReply": "Presentkortet är en del av värdet, men det viktigaste är totalen: månadspris, bindningstid, surf och belöning tillsammans.",
-      "nextBestActions": ["Visa totalvärde", "Visa högsta presentkort", "Jämför mot mitt pris"],
-      "risks": ["reward_over_fit", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Visa totalvärde",
+        "Visa högsta presentkort",
+        "Jämför mot mitt pris"
+      ],
+      "risks": [
+        "reward_over_fit",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "highest_reward_request",
-      "userExamples": ["högsta presentkortet", "mest bonus", "jag vill bara ha största belöningen"],
+      "userExamples": [
+        "högsta presentkortet",
+        "mest bonus",
+        "jag vill bara ha största belöningen"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "confirmation_buttons",
@@ -338,14 +702,30 @@
       "whenToNavigatePage": "Do not navigate directly to checkout. Show total-value warning first.",
       "embeddedWidget": "reward_comparison",
       "recommendedFirstReply": "Jag kan visa högsta belöningen, men jag bör inte välja abonnemang bara efter presentkort. Ett dyrt abonnemang med stor belöning kan bli sämre totalt.",
-      "nextBestActions": ["Högsta belöning", "Bästa totalvärde", "Billigast efter belöning"],
-      "risks": ["reward_over_fit", "wrong_recommendation", "trust_loss"]
+      "nextBestActions": [
+        "Högsta belöning",
+        "Bästa totalvärde",
+        "Billigast efter belöning"
+      ],
+      "risks": [
+        "reward_over_fit",
+        "wrong_recommendation",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "trust_bias_payment_question",
-      "userExamples": ["får ni betalt?", "är ni oberoende?", "varför ska jag lita på er?", "är detta reklam?"],
+      "userExamples": [
+        "får ni betalt?",
+        "är ni oberoende?",
+        "varför ska jag lita på er?",
+        "är detta reklam?"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -353,14 +733,30 @@
       "whenToNavigatePage": "Do not navigate. Answer trust question inside chat first.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Ja, Dealett kan få ersättning från partners om du väljer ett erbjudande. Men poängen är att vi också ska kunna säga när ditt nuvarande avtal verkar bättre. Annars bygger vi ingen tillit.",
-      "nextBestActions": ["Hur jämför ni?", "Kolla mitt avtal", "Visa erbjudanden"],
-      "risks": ["trust_loss", "over_selling", "generic_answer"]
+      "nextBestActions": [
+        "Hur jämför ni?",
+        "Kolla mitt avtal",
+        "Visa erbjudanden"
+      ],
+      "risks": [
+        "trust_loss",
+        "over_selling",
+        "generic_answer"
+      ]
     },
     {
       "intentId": "angry_frustrated_customer",
-      "userExamples": ["alla luras", "jag orkar inte", "ni bara säljer", "det här är skit"],
+      "userExamples": [
+        "alla luras",
+        "jag orkar inte",
+        "ni bara säljer",
+        "det här är skit"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "quick_replies",
@@ -368,14 +764,32 @@
       "whenToNavigatePage": "Do not navigate while customer is frustrated unless they explicitly ask for support/contact.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag fattar. Abonnemang blir lätt rörigt. Vi kan göra det enkelt: jag hjälper dig antingen sänka priset, förbättra täckningen eller förstå fakturan.",
-      "nextBestActions": ["Sänk pris", "Bättre täckning", "Förstå faktura", "Kontakta support"],
-      "risks": ["user_dropoff", "trust_loss", "over_questioning"]
+      "nextBestActions": [
+        "Sänk pris",
+        "Bättre täckning",
+        "Förstå faktura",
+        "Kontakta support"
+      ],
+      "risks": [
+        "user_dropoff",
+        "trust_loss",
+        "over_questioning"
+      ]
     },
     {
       "intentId": "confused_typo_heavy_customer",
-      "userExamples": ["ria", "nää", "vet inte", "fattar nt", "ingen aning"],
+      "userExamples": [
+        "ria",
+        "nää",
+        "vet inte",
+        "fattar nt",
+        "ingen aning"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons"],
+      "allowedResponseModes": [
+        "text",
+        "buttons"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "quick_replies",
@@ -383,14 +797,34 @@
       "whenToNavigatePage": "Do not navigate. Reduce effort with simple buttons.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag är inte helt säker på vad du menar. Jag kan hjälpa dig med tre saker först: mobil, bredband eller täckning.",
-      "nextBestActions": ["Mobil", "Bredband", "Täckning", "Presentkort", "Jag vet inte"],
-      "risks": ["generic_restart", "over_questioning", "user_dropoff"]
+      "nextBestActions": [
+        "Mobil",
+        "Bredband",
+        "Täckning",
+        "Presentkort",
+        "Jag vet inte"
+      ],
+      "risks": [
+        "generic_restart",
+        "over_questioning",
+        "user_dropoff"
+      ]
     },
     {
       "intentId": "checkout_buy_flow",
-      "userExamples": ["jag vill beställa", "köp nu", "gå till checkout", "jag tar den"],
+      "userExamples": [
+        "jag vill beställa",
+        "köp nu",
+        "gå till checkout",
+        "jag tar den"
+      ],
       "primaryResponseMode": "page_navigation",
-      "allowedResponseModes": ["text", "buttons", "offer_cards", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -398,14 +832,32 @@
       "whenToNavigatePage": "Navigate only when a valid offer/card exists or the cart already has the selected item.",
       "embeddedWidget": "cart_summary",
       "recommendedFirstReply": "Jag hjälper dig vidare. Om erbjudandet redan är valt fortsätter vi i varukorgen för nummerflytt, kontaktuppgifter och signering.",
-      "nextBestActions": ["Öppna varukorg", "Visa valt erbjudande", "Välj erbjudande först"],
-      "risks": ["checkout_too_early", "privacy_concern", "wrong_recommendation"]
+      "nextBestActions": [
+        "Öppna varukorg",
+        "Visa valt erbjudande",
+        "Välj erbjudande först"
+      ],
+      "risks": [
+        "checkout_too_early",
+        "privacy_concern",
+        "wrong_recommendation"
+      ]
     },
     {
       "intentId": "cart_varukorg",
-      "userExamples": ["vad finns i min varukorg?", "öppna varukorg", "ta bort från varukorgen", "cart"],
+      "userExamples": [
+        "vad finns i min varukorg?",
+        "öppna varukorg",
+        "ta bort från varukorgen",
+        "cart"
+      ],
       "primaryResponseMode": "embedded_widget",
-      "allowedResponseModes": ["text", "buttons", "embedded_widget", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "embedded_widget",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -413,14 +865,31 @@
       "whenToNavigatePage": "Navigate to cart page/drawer when user wants to edit, checkout, or inspect full cart.",
       "embeddedWidget": "cart_summary",
       "recommendedFirstReply": "Jag kan sammanfatta varukorgen här. För att ändra uppgifter eller slutföra köp öppnar vi varukorgen.",
-      "nextBestActions": ["Visa varukorg", "Öppna varukorg", "Fortsätt handla"],
-      "risks": ["privacy_concern", "stale_cart", "user_dropoff"]
+      "nextBestActions": [
+        "Visa varukorg",
+        "Öppna varukorg",
+        "Fortsätt handla"
+      ],
+      "risks": [
+        "privacy_concern",
+        "stale_cart",
+        "user_dropoff"
+      ]
     },
     {
       "intentId": "login_account",
-      "userExamples": ["logga in", "mina sidor", "mitt konto", "faktura på konto"],
+      "userExamples": [
+        "logga in",
+        "mina sidor",
+        "mitt konto",
+        "faktura på konto"
+      ],
       "primaryResponseMode": "page_navigation",
-      "allowedResponseModes": ["text", "buttons", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -428,14 +897,32 @@
       "whenToNavigatePage": "Navigate to login/account because identity-specific information must not be handled in open chat.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "För kontouppgifter, fakturor och personliga abonnemang behöver du gå via inloggning så informationen hanteras säkert.",
-      "nextBestActions": ["Öppna konto", "Kontakta support", "Tillbaka till jämförelse"],
-      "risks": ["privacy_concern", "security_risk", "trust_loss"]
+      "nextBestActions": [
+        "Öppna konto",
+        "Kontakta support",
+        "Tillbaka till jämförelse"
+      ],
+      "risks": [
+        "privacy_concern",
+        "security_risk",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "legal_terms",
-      "userExamples": ["villkor", "bindningsvillkor", "privacy", "lagligt", "ångerrätt"],
+      "userExamples": [
+        "villkor",
+        "bindningsvillkor",
+        "privacy",
+        "lagligt",
+        "ångerrätt"
+      ],
       "primaryResponseMode": "page_navigation",
-      "allowedResponseModes": ["text", "buttons", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -443,14 +930,31 @@
       "whenToNavigatePage": "Navigate to legal terms when exact legal wording is needed.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag kan förklara kort, men exakta villkor ska alltid läsas i villkorssidan eller operatörens avtal innan köp.",
-      "nextBestActions": ["Visa villkor", "Förklara kort", "Kontakta support"],
-      "risks": ["legal_risk", "fake_certainty", "trust_loss"]
+      "nextBestActions": [
+        "Visa villkor",
+        "Förklara kort",
+        "Kontakta support"
+      ],
+      "risks": [
+        "legal_risk",
+        "fake_certainty",
+        "trust_loss"
+      ]
     },
     {
       "intentId": "support_contact",
-      "userExamples": ["kontakta er", "kundservice", "support", "jag behöver hjälp av människa"],
+      "userExamples": [
+        "kontakta er",
+        "kundservice",
+        "support",
+        "jag behöver hjälp av människa"
+      ],
       "primaryResponseMode": "buttons",
-      "allowedResponseModes": ["text", "buttons", "page_navigation"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "page_navigation"
+      ],
       "answerFirst": true,
       "maxQuestions": 1,
       "buttonStrategy": "action_buttons",
@@ -458,14 +962,31 @@
       "whenToNavigatePage": "Navigate to contact page when user asks for human support, a complaint, or account-specific help.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag kan hjälpa här om det gäller jämförelse eller erbjudanden. Om du vill prata med en människa öppnar vi kontaktsidan.",
-      "nextBestActions": ["Kontakta Dealett", "Fortsätt i chatten", "Öppna konto"],
-      "risks": ["user_dropoff", "trust_loss", "wrong_route"]
+      "nextBestActions": [
+        "Kontakta Dealett",
+        "Fortsätt i chatten",
+        "Öppna konto"
+      ],
+      "risks": [
+        "user_dropoff",
+        "trust_loss",
+        "wrong_route"
+      ]
     },
     {
       "intentId": "recommendation_explanation",
-      "userExamples": ["varför rekommenderar du den?", "förklara", "hur räknade du?", "why this one?"],
+      "userExamples": [
+        "varför rekommenderar du den?",
+        "förklara",
+        "hur räknade du?",
+        "why this one?"
+      ],
       "primaryResponseMode": "text",
-      "allowedResponseModes": ["text", "buttons", "offer_cards"],
+      "allowedResponseModes": [
+        "text",
+        "buttons",
+        "offer_cards"
+      ],
       "answerFirst": true,
       "maxQuestions": 0,
       "buttonStrategy": "action_buttons",
@@ -473,8 +994,16 @@
       "whenToNavigatePage": "Do not navigate. Explain the current recommendation in chat first.",
       "embeddedWidget": "none",
       "recommendedFirstReply": "Jag rekommenderar den för att den bäst matchar uppgifterna du gav: surfbehov, nuvarande pris, bindningstid och totalvärde med eventuell belöning.",
-      "nextBestActions": ["Visa beräkning", "Jämför alternativ", "Lägg i varukorg"],
-      "risks": ["weak_explanation", "trust_loss", "lost_context"]
+      "nextBestActions": [
+        "Visa beräkning",
+        "Jämför alternativ",
+        "Lägg i varukorg"
+      ],
+      "risks": [
+        "weak_explanation",
+        "trust_loss",
+        "lost_context"
+      ]
     }
   ]
 }

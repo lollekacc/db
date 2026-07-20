@@ -34,7 +34,7 @@ const scenarios = [
   { name: 'Confused invoice', style: 'confused', turns: ['fattar inte fakturan'], expectsAnswer: /faktura|total|användare|tjänster|rader|kostnad/i },
   { name: 'Comparison coverage', style: 'comparison', turns: ['vilken operatör har bäst täckning?'], expectsGuess: true, expectsAnswer: /täckning|adress|hemma|pendling|kan inte garantera|nät/i },
   { name: 'Comparison two operators', style: 'comparison', turns: ['Telia eller Tele2?'], expectsGuess: true, expectsAnswer: /täckning|nät|pris|jämför|kan inte garantera|område/i },
-  { name: 'Comparison Halebop Tre', style: 'comparison', turns: ['jämför halebop och tre snabbt'], expectsGuess: true, expectsAnswer: /jämförelse|pris|täckning|villkor|surf|nät/i },
+  { name: 'Comparison Telia Tre', style: 'comparison', turns: ['jämför telia och tre snabbt'], expectsGuess: true, expectsAnswer: /jämförelse|pris|täckning|villkor|surf|nät/i },
   { name: 'Complaint Tele2 home', style: 'complaint_or_problem', turns: ['Tele2 suger hemma'], expectsGuess: true, expectsAnswer: /täckning|inomhus|wifi|nät|operatör|hemma/i },
   { name: 'Complaint internet lag', style: 'complaint_or_problem', turns: ['internet laggar hela tiden'], expectsGuess: true, expectsAnswer: /täckning|hastighet|router|enhet|problem|kostnad/i },
   { name: 'Complaint expensive', style: 'complaint_or_problem', turns: ['jag betalar för mycket'], expectsGuess: true, expectsAnswer: /kostnad|pris|jämför|huvudproblemet|täckning|hastighet/i },
@@ -70,7 +70,7 @@ const hasGenericRestart = (text) => (
 );
 
 const hasFakeSpecificRecommendation = (text) => (
-  /(jag rekommenderar|välj|ta)\s+(telia|tele2|telenor|tre|halebop).{0,80}\d{2,4}\s*(kr|sek)/i.test(String(text || ''))
+  /(jag rekommenderar|välj|ta)\s+(telia|tele2|telenor|tre).{0,80}\d{2,4}\s*(kr|sek)/i.test(String(text || ''))
 );
 
 const answerComesBeforeQuestion = (text) => {
