@@ -139,6 +139,26 @@ const getStreamingServicePrice = (service) => {
   return getStreamingServicePrice(service.name || service.service || service.title);
 };
 
+const getStreamingServiceKey = (service) => {
+  const source = typeof service === 'string'
+    ? service
+    : String(service?.name || service?.service || service?.title || '');
+  const value = source.trim().toLowerCase();
+
+  if (/netflix/.test(value)) return 'netflix';
+  if (/\bhbo\b|max/.test(value)) return 'hbo';
+  if (/disney/.test(value)) return 'disney';
+  if (/amazon|prime/.test(value)) return 'amazon';
+  if (/tv4/.test(value)) return 'tv4';
+  return value;
+};
+
+const getSelectedStreamingServiceKeys = (qualification = {}) => (
+  Array.isArray(qualification.streamingServices)
+    ? new Set(qualification.streamingServices.map(getStreamingServiceKey).filter(Boolean))
+    : new Set()
+);
+
 const getIncludedStreamingServices = (plan = {}) => {
   if (Array.isArray(plan.includedStreaming) && plan.includedStreaming.length) {
     return plan.includedStreaming;
@@ -157,7 +177,9 @@ const getIncludedStreamingServices = (plan = {}) => {
 const getIncludedStreamingValue = (plan = {}, qualification = {}) => {
   if (qualification.streamingCalculation !== 'include' || plan.operator !== 'Telia') return 0;
 
+  const selectedServices = getSelectedStreamingServiceKeys(qualification);
   return getIncludedStreamingServices(plan)
+    .filter((service) => !selectedServices.size || selectedServices.has(getStreamingServiceKey(service)))
     .reduce((sum, service) => sum + getStreamingServicePrice(service), 0);
 };
 

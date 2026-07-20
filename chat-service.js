@@ -254,6 +254,7 @@ const createEmptyQualification = () => ({
   bindingEnds: [],
   mobileUsage: null,
   priceRange: null,
+  streamingServices: [],
   exactMonthlyPrice: null,
   exactMonthlyPrices: [],
   readyForOffer: false,
@@ -285,6 +286,11 @@ const normalizeQualification = (qualification = {}) => {
   const streamingCalculation = ['none', 'include', 'unknown'].includes(qualification.streamingCalculation)
     ? qualification.streamingCalculation
     : null;
+  const streamingServices = Array.isArray(qualification.streamingServices)
+    ? qualification.streamingServices
+      .map((service) => String(service || '').trim().toLowerCase())
+      .filter((service) => ['netflix', 'hbo', 'disney', 'amazon', 'tv4'].includes(service))
+    : [];
   const internationalTravel = ['none', 'eu', 'outside_eu'].includes(qualification.internationalTravel)
     ? qualification.internationalTravel
     : null;
@@ -327,6 +333,7 @@ const normalizeQualification = (qualification = {}) => {
     mobileUsage,
     priceRange,
     streamingCalculation,
+    streamingServices,
     internationalTravel,
     exactMonthlyPrice,
     exactMonthlyPrices,
