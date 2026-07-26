@@ -33,6 +33,7 @@ const {
 } = require('./offer-service');
 const { createChatCompletion, loadChatRules, normalizeQualification } = require('./chat-service');
 const { appendChatFeedback } = require('./chat-feedback-service');
+const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
 const { subscribeToNewsletter } = require('./newsletter-service');
 
 const ROOT = path.resolve(__dirname, '..', 'Rdealett');
@@ -175,6 +176,27 @@ const handleApi = async (request, response, requestUrl) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 200, subscribeToNewsletter(body));
+      return true;
+    }
+
+    if (pathname === '/api/bankid/start') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      const body = await readJsonBody(request);
+      sendJson(response, 200, startBankIdSession(body));
+      return true;
+    }
+
+    if (pathname === '/api/bankid/collect') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      const body = await readJsonBody(request);
+      sendJson(response, 200, collectBankIdSession(body));
+      return true;
+    }
+
+    if (pathname === '/api/bankid/cancel') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      const body = await readJsonBody(request);
+      sendJson(response, 200, cancelBankIdSession(body));
       return true;
     }
 
