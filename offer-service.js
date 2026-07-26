@@ -333,6 +333,17 @@ const scorePlan = (plan, state, currentOperators) => {
   return score;
 };
 
+const uniqueByOperator = (items = []) => {
+  const seenOperators = new Set();
+
+  return items.filter((item) => {
+    const operatorKey = String(item?.operator || '').trim().toLowerCase();
+    if (!operatorKey || seenOperators.has(operatorKey)) return false;
+    seenOperators.add(operatorKey);
+    return true;
+  });
+};
+
 const getMobileRecommendations = (state = {}) => {
   const allPlans = getPlans();
   const basePlans = allPlans.filter((plan) => isMobilePlan(plan) && isRuntimeSellablePlan(plan) && !plan.isFamilyPlan);
@@ -342,7 +353,7 @@ const getMobileRecommendations = (state = {}) => {
       .filter((operator) => !['Other', 'Andra / Ingen'].includes(operator))
   );
 
-  return basePlans
+  const rankedPlans = basePlans
     .map((plan) => enrichPlanForRecommendation(plan, allPlans, state))
     .filter(Boolean)
     .filter((plan) => !state.data || plan.tier === state.data)
@@ -354,8 +365,9 @@ const getMobileRecommendations = (state = {}) => {
       if (right.score !== left.score) return right.score - left.score;
       if (left.finalPrice !== right.finalPrice) return left.finalPrice - right.finalPrice;
       return left.operator.localeCompare(right.operator, 'sv');
-    })
-    .slice(0, 3);
+    });
+
+  return uniqueByOperator(rankedPlans).slice(0, 4);
 };
 
 module.exports = {

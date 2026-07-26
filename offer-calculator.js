@@ -119,6 +119,17 @@ const getAddonForOperator = (operator, plans) => plans.find((plan) =>
   plan.familyPriceType === 'addon'
 ) || null;
 
+const uniqueByOperator = (items = []) => {
+  const seenOperators = new Set();
+
+  return items.filter((item) => {
+    const operatorKey = String(item?.operator || '').trim().toLowerCase();
+    if (!operatorKey || seenOperators.has(operatorKey)) return false;
+    seenOperators.add(operatorKey);
+    return true;
+  });
+};
+
 const getStreamingServicePrice = (service) => {
   if (typeof service === 'number') return Math.max(service, 0);
   if (typeof service === 'string') {
@@ -331,9 +342,9 @@ const calculateOfferOptions = (qualification = {}, options = {}) => {
 
       return left.monthlyPrice - right.monthlyPrice;
     });
-  const candidates = allCandidates
-    .filter((candidate) => candidate.eligibleForOffer)
-    .slice(0, 3);
+  const candidates = uniqueByOperator(
+    allCandidates.filter((candidate) => candidate.eligibleForOffer)
+  ).slice(0, 4);
   const rejectedOptions = allCandidates
     .filter((candidate) => !candidate.eligibleForOffer)
     .slice(0, 3);
