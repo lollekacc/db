@@ -35,6 +35,7 @@ const { createChatCompletion, loadChatRules, normalizeQualification } = require(
 const { appendChatFeedback } = require('./chat-feedback-service');
 const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
 const { subscribeToNewsletter } = require('./newsletter-service');
+const { storeCheckoutOrder } = require('./order-service');
 
 const ROOT = path.resolve(__dirname, '..', 'Rdealett');
 const PORT = Number(process.env.PORT) || 3000;
@@ -46,6 +47,7 @@ const contentTypes = {
   '.jpg': 'image/jpeg',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.pdf': 'application/pdf',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.webp': 'image/webp',
@@ -197,6 +199,13 @@ const handleApi = async (request, response, requestUrl) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 200, cancelBankIdSession(body));
+      return true;
+    }
+
+    if (pathname === '/api/orders') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      const body = await readJsonBody(request);
+      sendJson(response, 201, storeCheckoutOrder(body));
       return true;
     }
 

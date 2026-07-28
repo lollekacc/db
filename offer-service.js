@@ -160,7 +160,12 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     : null;
   const addonPrice = Number(addonPlan?.addonPrice ?? addonPlan?.price) || 0;
   const persons = addonPlan ? 2 : 1;
-  const monthlyPrice = (Number(plan.price) || 0) + addonPrice;
+  const baseCurrentPrice = Number(plan.campaignPrice ?? plan.price ?? plan.monthlyPrice) || 0;
+  const baseRegularPrice = Number(
+    plan.normalPriceAfterCampaign ?? plan.monthlyPrice ?? plan.price
+  ) || baseCurrentPrice;
+  const monthlyPrice = baseCurrentPrice + addonPrice;
+  const regularMonthlyPrice = baseRegularPrice + addonPrice;
   const rewardTotal = provider.reward || 4000;
   const normalizedRewards = normalizeRewards(rewards, rewardTotal);
 
@@ -172,6 +177,18 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     logo: plan.logo,
     data: getPlanDataLabel(plan),
     price: monthlyPrice,
+    monthlyPrice,
+    regularMonthlyPrice,
+    campaignPrice: plan.campaignPrice === null || plan.campaignPrice === undefined
+      ? null
+      : monthlyPrice,
+    campaignMonths: Number(plan.campaignMonths) || 0,
+    campaignDiscount: Math.max(regularMonthlyPrice - monthlyPrice, 0),
+    bindingMonths: Math.max(Number(plan.bindingMonths) || 0, 0),
+    noticePeriodMonths: Math.max(Number(plan.noticePeriodMonths) || 0, 0),
+    startFee: Math.max(Number(plan.startFee) || 0, 0),
+    invoiceFee: Math.max(Number(plan.invoiceFee) || 0, 0),
+    invoiceFeeOptional: plan.invoiceFeeOptional !== false,
     pricePerPerson: persons > 1 ? Math.round(monthlyPrice / persons) : 0,
     persons,
     phoneLines: persons,

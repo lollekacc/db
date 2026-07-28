@@ -7,3 +7,4 @@ node_modules/
 coverage/
 dist/
 data/chat-feedback/*.jsonl
+data/checkout-orders.json
