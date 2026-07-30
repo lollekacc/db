@@ -3,6 +3,7 @@ const path = require('node:path');
 
 const { calculateOfferOptions } = require('./offer-calculator');
 const { getBroadbandPlans, getPlans } = require('./offer-service');
+const { languageNames } = require('./translation-service');
 const { classifyCustomerClaim } = require('./src/marketIntelligence');
 const { detectConversationStyle } = require('./src/conversationStyle');
 const {
@@ -2109,7 +2110,7 @@ const buildPrompt = ({ language, intent, message, messages, qualification, toolR
   'If responsePlan.coverageSelector is true, support the in-chat selector and do not tell the user they must leave chat unless they asked for a full map.',
   'Return JSON only: {"reply":"..."}',
   '',
-  `Language: ${language === 'en' ? 'English' : 'Swedish'}`,
+  `Language: ${languageNames[language] || 'Swedish'}`,
   `Intent: ${intent}`,
   `Customer message: ${message}`,
   `Recent conversation: ${JSON.stringify(trimMessages(messages))}`,
@@ -2598,7 +2599,9 @@ const createChatCompletion = async ({
     throw error;
   }
 
-  const normalizedLanguage = language === 'en' ? 'en' : 'sv';
+  const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
+    ? String(language).toLowerCase()
+    : 'sv';
   const contextualMessage = normalizeContextualMessage(latestMessage, messages);
   const storedQualification = normalizeQualification(qualification);
   const shouldResetStoredQualification = isGreetingOnly(latestMessage) ||

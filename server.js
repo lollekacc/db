@@ -36,6 +36,7 @@ const { appendChatFeedback } = require('./chat-feedback-service');
 const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
 const { subscribeToNewsletter } = require('./newsletter-service');
 const { storeCheckoutOrder } = require('./order-service');
+const { translateTexts } = require('./translation-service');
 
 const ROOT = path.resolve(__dirname, '..', 'Rdealett');
 const PORT = Number(process.env.PORT) || 3000;
@@ -171,6 +172,13 @@ const handleApi = async (request, response, requestUrl) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 200, appendChatFeedback(body));
+      return true;
+    }
+
+    if (pathname === '/api/translate') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      const body = await readJsonBody(request);
+      sendJson(response, 200, await translateTexts(body));
       return true;
     }
 
