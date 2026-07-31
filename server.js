@@ -39,8 +39,8 @@ const { storeCheckoutOrder } = require('./order-service');
 const { translateTexts } = require('./translation-service');
 
 const ROOT = path.resolve(__dirname, '..', 'Rdealett');
-const PORT = Number(process.env.PORT) || 3000;
-const HOST = process.env.HOST || '127.0.0.1';
+const PORT = process.env.PORT || 3000;
+const HOST = '0.0.0.0';
 
 const contentTypes = {
   '.css': 'text/css; charset=utf-8',
@@ -326,7 +326,7 @@ const createServer = () => http.createServer(async (request, response) => {
 if (require.main === module) {
   const server = createServer();
   server.listen(PORT, HOST, () => {
-    console.log(`Dealett backend running at http://${HOST}:${PORT}`);
+    console.log(`Dealett backend running on port ${PORT}`);
   });
 }
 
