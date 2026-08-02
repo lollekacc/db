@@ -1,387 +1,371 @@
-const { getPlans } = require('./offer-service');
+const { getPlanCatalog } = require('./offer-service');
 
-const CONTRACT_MONTHS = 24;
-const DEFAULT_REWARD = 4000;
-const MAX_ALLOWED_BINDING_MONTHS = 6;
-
-const streamingServiceMonthlyPrices = {
-  netflix: 169,
-  'netflix standard': 169,
-  hbo: 89,
-  'hbo max': 99,
-  'hbo max basic med reklam': 89,
-  max: 89,
-  disney: 59,
-  'disney+': 59,
-  'disney+ standard med reklam': 59,
-  'amazon prime': 59,
-  'tv4 play plus': 69,
-};
-
-const priceRangeMidpoints = {
+const PRICE_RANGE_MIDPOINTS = {
   under300: 275,
   '300-400': 350,
   '400-500': 450,
 };
 
-const providerLogos = {
-  Telia: 'images/telia.png',
-  Tele2: 'images/tele2.png',
-  Tre: 'images/tre.jpg',
-  Telenor: 'images/telenor.jpg',
+const USAGE_MINIMUM_GB = {
+  low: 10,
+  medium: 20,
+  high: Infinity,
 };
-
-const tierOrder = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
-
-const isMobilePlan = (plan = {}) => ['mobil', 'mobile_subscription'].includes(plan.category);
-const isRuntimeSellablePlan = (plan = {}) => plan.runtimeSellable !== false;
 
 const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
-const monthsBetween = (fromDate, toDate) => {
-  const start = new Date(fromDate);
-  const end = new Date(toDate);
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
-    return 0;
-  }
-
-  const yearDiff = end.getFullYear() - start.getFullYear();
-  const monthDiff = end.getMonth() - start.getMonth();
-  const dayFraction = Math.max(end.getDate() - start.getDate(), 0) / 30;
-  return Math.ceil(yearDiff * 12 + monthDiff + dayFraction);
-};
-
-const getRemainingBindingMonths = (bindingEnd, today = new Date()) => {
-  const value = String(bindingEnd || '').trim();
-  if (!value || /ingen/i.test(value)) return 0;
-  if (/vet/i.test(value)) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return monthsBetween(today, value);
-
-  const monthMatch = value.match(/(\d+)\s*(mån|man|month|months)/i);
-  if (monthMatch) return Math.max(Number(monthMatch[1]) || 0, 0);
-
-  return null;
-};
-
-const getCurrentMonthlyPrice = (priceRange) => priceRangeMidpoints[priceRange] || 0;
-
-const getCurrentMonthlyPrices = (qualification, peopleCount) => {
-  const fallbackPrice = Number(qualification.exactMonthlyPrice) > 0
-    ? Number(qualification.exactMonthlyPrice)
-    : getCurrentMonthlyPrice(qualification.priceRange);
-  const exactPrices = Array.isArray(qualification.exactMonthlyPrices)
-    ? qualification.exactMonthlyPrices
-      .map((price) => Number(price))
-      .filter((price) => Number.isFinite(price) && price > 0)
-    : [];
-
-  return Array.from({ length: peopleCount }, (_, index) => exactPrices[index] || fallbackPrice);
-};
-
-const buildPersonProfiles = (qualification, peopleCount, today) => {
-  const currentMonthlyPrices = getCurrentMonthlyPrices(qualification, peopleCount);
-
-  return Array.from({ length: peopleCount }, (_, index) => {
-    const bindingEnd = qualification.bindingEnds?.[index] || '';
-    const remainingBindingMonths = getRemainingBindingMonths(bindingEnd, today);
-
-    return {
-      index: index + 1,
-      operator: qualification.operators?.[index] || null,
-      bindingEnd,
-      remainingBindingMonths,
-      currentMonthlyPrice: currentMonthlyPrices[index],
-    };
-  });
-};
-
-const getDataTier = (plan) => {
-  if (plan.tier) return plan.tier;
-  if (Number(plan.dataAmount) >= 100 || Number(plan.dataAmount) >= 999) return 'high';
-  if (Number(plan.dataAmount) >= 20) return 'medium';
-  return 'low';
-};
-
-const planMatchesUsage = (plan, usageTier) => {
-  if (!usageTier) return true;
-  return (tierOrder[getDataTier(plan)] || 0) >= (tierOrder[usageTier] || 0);
-};
-
-const getAddonForOperator = (operator, plans) => plans.find((plan) =>
-  plan.operator === operator &&
-  isRuntimeSellablePlan(plan) &&
-  plan.isFamilyPlan === true &&
-  plan.familyPriceType === 'addon'
-) || null;
-
-const uniqueByOperator = (items = []) => {
-  const seenOperators = new Set();
-
-  return items.filter((item) => {
-    const operatorKey = String(item?.operator || '').trim().toLowerCase();
-    if (!operatorKey || seenOperators.has(operatorKey)) return false;
-    seenOperators.add(operatorKey);
-    return true;
-  });
-};
-
-const getStreamingServicePrice = (service) => {
-  if (typeof service === 'number') return Math.max(service, 0);
-  if (typeof service === 'string') {
-    return streamingServiceMonthlyPrices[service.trim().toLowerCase()] || 0;
-  }
-  if (!service || typeof service !== 'object') return 0;
-
-  const explicitPrice = Number(
-    service.monthlyPrice ??
-    service.monthlyValue ??
-    service.price ??
-    service.value
-  );
-
-  if (Number.isFinite(explicitPrice) && explicitPrice > 0) return explicitPrice;
-
-  return getStreamingServicePrice(service.name || service.service || service.title);
-};
+const slugify = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '');
 
 const getStreamingServiceKey = (service) => {
-  const source = typeof service === 'string'
-    ? service
-    : String(service?.name || service?.service || service?.title || '');
-  const value = source.trim().toLowerCase();
+  const value = String(
+    typeof service === 'string'
+      ? service
+      : service?.service || service?.name || service?.title || ''
+  ).trim().toLowerCase();
 
   if (/netflix/.test(value)) return 'netflix';
   if (/\bhbo\b|max/.test(value)) return 'hbo';
   if (/disney/.test(value)) return 'disney';
   if (/amazon|prime/.test(value)) return 'amazon';
   if (/tv4/.test(value)) return 'tv4';
-  return value;
+  return slugify(value);
 };
 
-const getSelectedStreamingServiceKeys = (qualification = {}) => (
+const getStreamingCosts = (qualification = {}) => {
+  const source = qualification.streamingMonthlyCosts || qualification.streamingServiceCosts || {};
+  if (!source || typeof source !== 'object' || Array.isArray(source)) return {};
+
+  return Object.entries(source).reduce((result, [service, price]) => {
+    const key = getStreamingServiceKey(service);
+    const amount = Math.max(Number(price) || 0, 0);
+    if (key && amount > 0) result[key] = amount;
+    return result;
+  }, {});
+};
+
+const getSelectedStreamingKeys = (qualification = {}) => new Set(
   Array.isArray(qualification.streamingServices)
-    ? new Set(qualification.streamingServices.map(getStreamingServiceKey).filter(Boolean))
-    : new Set()
+    ? qualification.streamingServices.map(getStreamingServiceKey).filter(Boolean)
+    : []
 );
 
-const getIncludedStreamingServices = (plan = {}) => {
-  if (Array.isArray(plan.includedStreaming) && plan.includedStreaming.length) {
-    return plan.includedStreaming;
+const getIncludedStreaming = (plan = {}, streamingVariant = null) => {
+  if (streamingVariant?.service) return [streamingVariant.service];
+  if (plan.streaming?.mode === 'included_bundle' && Array.isArray(plan.streaming.services)) {
+    return plan.streaming.services;
+  }
+  return [];
+};
+
+const getStreamingReplacement = (includedServices, qualification) => {
+  if (qualification.streamingCalculation !== 'include') {
+    return { services: [], monthlySavings: 0 };
   }
 
-  const text = String(plan.text || '');
-  const services = [];
-  if (/netflix/i.test(text)) services.push('Netflix');
-  if (/\bhbo\b|max/i.test(text)) services.push('HBO');
-  if (/disney/i.test(text)) services.push('Disney+');
-  if (/amazon|prime/i.test(text)) services.push('Amazon Prime');
-  if (/tv4/i.test(text)) services.push('TV4 Play Plus');
-  return services;
-};
-
-const getIncludedStreamingValue = (plan = {}, qualification = {}) => {
-  if (qualification.streamingCalculation !== 'include' || plan.operator !== 'Telia') return 0;
-
-  const selectedServices = getSelectedStreamingServiceKeys(qualification);
-  return getIncludedStreamingServices(plan)
-    .filter((service) => !selectedServices.size || selectedServices.has(getStreamingServiceKey(service)))
-    .reduce((sum, service) => sum + getStreamingServicePrice(service), 0);
-};
-
-const buildCandidate = ({ basePlan, addonPlan, peopleCount, qualification, today }) => {
-  const extraCount = Math.max(peopleCount - 1, 0);
-  const addonPrice = extraCount * (Number(addonPlan?.addonPrice ?? addonPlan?.price) || 0);
-  const listedMonthlyPrice = Number(basePlan.price) + addonPrice;
-  const includedServiceMonthlyValue = getIncludedStreamingValue(basePlan, qualification);
-  const monthlyPrice = Math.max(listedMonthlyPrice - includedServiceMonthlyValue, 0);
-  const pricePerPerson = peopleCount > 0 ? Math.round(monthlyPrice / peopleCount) : monthlyPrice;
-  const personProfiles = buildPersonProfiles(qualification, peopleCount, today);
-  const currentMonthlyTotal = personProfiles.reduce((sum, person) => sum + person.currentMonthlyPrice, 0);
-  const currentMonthlyPricePerPerson = peopleCount > 0
-    ? Math.round(currentMonthlyTotal / peopleCount)
-    : currentMonthlyTotal;
-  const remainingMonths = personProfiles.map((person) => person.remainingBindingMonths);
-  const unknownBindingCount = remainingMonths.filter((months) => months === null).length;
-  const overLimitBindingCount = remainingMonths.filter((months) =>
-    months !== null && months > MAX_ALLOWED_BINDING_MONTHS
-  ).length;
-  const maxRemainingBindingMonths = remainingMonths.reduce((max, months) => (
-    months === null ? max : Math.max(max, months)
-  ), 0);
-  const knownOverlapCost = personProfiles.reduce((sum, person) => (
-    person.remainingBindingMonths === null
-      ? sum
-      : sum + person.remainingBindingMonths * person.currentMonthlyPrice
-  ), 0);
-  const dealettContractCost = monthlyPrice * CONTRACT_MONTHS;
-  const oldContractCost = currentMonthlyTotal * CONTRACT_MONTHS;
-  const effectiveCostWithOverlap = dealettContractCost + knownOverlapCost - DEFAULT_REWARD;
-  const savingsVsStaying = oldContractCost - effectiveCostWithOverlap;
-  const isWithinBindingRule = unknownBindingCount === 0 && overLimitBindingCount === 0;
-  const isBetterByCost = savingsVsStaying > 0 && isWithinBindingRule;
-  const hasExactCurrentPrices = Number(qualification.exactMonthlyPrice) > 0 ||
-    (Array.isArray(qualification.exactMonthlyPrices) && qualification.exactMonthlyPrices.length >= peopleCount);
-  const disqualificationReasons = [
-    unknownBindingCount
-      ? 'Exakt bindningstid saknas, så 6-månadersregeln kan inte kontrolleras.'
-      : '',
-    overLimitBindingCount
-      ? `Kunden har bindningstid över ${MAX_ALLOWED_BINDING_MONTHS} månader.`
-      : '',
-    savingsVsStaying <= 0
-      ? 'Dealett-erbjudandet blir inte billigare efter dubbelkostnad och presentkort.'
-      : '',
-  ].filter(Boolean);
+  const selected = getSelectedStreamingKeys(qualification);
+  const costs = getStreamingCosts(qualification);
+  const services = includedServices
+    .map((service) => ({
+      key: getStreamingServiceKey(service),
+      name: String(service),
+    }))
+    .filter((service) => selected.has(service.key) && costs[service.key] > 0)
+    .map((service) => ({ ...service, monthlyCost: costs[service.key] }));
 
   return {
-    planId: basePlan.id,
-    operator: basePlan.operator,
-    title: basePlan.title,
-    data: basePlan.data,
-    dataAmount: basePlan.dataAmount,
-    tier: getDataTier(basePlan),
-    peopleCount,
-    monthlyPrice,
-    listedMonthlyPrice,
-    includedServiceMonthlyValue,
-    includedStreamingServices: getIncludedStreamingServices(basePlan),
-    pricePerPerson,
-    addonPrice,
-    rewardTotal: DEFAULT_REWARD,
-    contractMonths: CONTRACT_MONTHS,
-    currentMonthlyPricePerPerson,
-    currentMonthlyPrices: personProfiles.map((person) => person.currentMonthlyPrice),
-    currentMonthlyPriceIsEstimate: !hasExactCurrentPrices,
-    currentMonthlyTotal,
-    personProfiles,
-    remainingBindingMonths: remainingMonths,
-    unknownBindingCount,
-    overLimitBindingCount,
-    maxRemainingBindingMonths,
-    maxAllowedBindingMonths: MAX_ALLOWED_BINDING_MONTHS,
-    overlapCostKnown: roundMoney(knownOverlapCost),
-    dealettContractCost: roundMoney(dealettContractCost),
-    currentContractCost: roundMoney(oldContractCost),
-    effectiveCostWithOverlap: roundMoney(effectiveCostWithOverlap),
-    savingsVsStaying: roundMoney(savingsVsStaying),
-    isWithinBindingRule,
-    isBetterByCost,
-    eligibleForOffer: isBetterByCost,
-    disqualificationReasons,
-    notes: [
-      unknownBindingCount
-        ? `${unknownBindingCount} bindningstidssvar är okända, så 6-månadersregeln kan inte kontrolleras.`
-        : '',
-      overLimitBindingCount
-        ? `${overLimitBindingCount} abonnemang har mer än ${MAX_ALLOWED_BINDING_MONTHS} månader kvar.`
-        : '',
-      !hasExactCurrentPrices
-        ? 'Nuvarande pris är uppskattat från valt prisintervall.'
-        : '',
-      includedServiceMonthlyValue > 0
-        ? `Telia streamingvärde ${roundMoney(includedServiceMonthlyValue)} kr/mån är avräknat från totalpriset.`
-        : '',
-      knownOverlapCost > 0
-        ? `Beräknad dubbelkostnad under kvarvarande bindningstid: ${roundMoney(knownOverlapCost)} kr.`
-        : 'Ingen beräknad dubbelkostnad från kvarvarande bindningstid.',
-    ].filter(Boolean),
+    services,
+    monthlySavings: roundMoney(services.reduce((sum, service) => sum + service.monthlyCost, 0)),
   };
 };
 
-const calculateOfferOptions = (qualification = {}, options = {}) => {
+const getRequiredDataGb = (qualification = {}) => {
+  const explicit = Number(qualification.requiredDataGb);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  return USAGE_MINIMUM_GB[qualification.mobileUsage] ?? 0;
+};
+
+const getPlanDataAmount = (plan = {}) => (
+  plan.data?.type === 'unlimited' ? Infinity : Math.max(Number(plan.data?.gb) || 0, 0)
+);
+
+const planMeetsDataNeed = ({ operator, plan, peopleCount, requiredDataGb }) => {
+  if (plan.data?.type === 'unlimited') return true;
+  if (!Number.isFinite(requiredDataGb)) return false;
+
+  const planDataGb = getPlanDataAmount(plan);
+  if (operator.familyDataModel === 'shared_on_limited_plans' && peopleCount > 1) {
+    return planDataGb >= requiredDataGb * peopleCount;
+  }
+  return planDataGb >= requiredDataGb;
+};
+
+const getInternationalCapabilities = (operator = {}, plan = {}) => {
+  const operatorRoaming = operator.internationalRoaming || {};
+  const planRoaming = plan.roaming || {};
+  return {
+    euEea: operator.euEeaRoamingCallsSmsIncluded === true,
+    outsideEuData: operatorRoaming.dataIncluded === true ||
+      Number(planRoaming.internationalDataCountries) > 0,
+    outsideEuLocalCalls: operatorRoaming.localCallsIncluded === true ||
+      planRoaming.localCallsIncludedAbroad === true,
+    worldwideFamilyCalls: plan.internationalCalls?.freeCallsWithinFamilyWorldwide === true,
+    euEeaIncludedHours: Number(plan.internationalCalls?.euEeaIncludedHours) || 0,
+    countries: Number(operatorRoaming.countries || planRoaming.internationalDataCountries) || 0,
+    internationalDataGb: Number(planRoaming.internationalDataGb) || null,
+    euEeaDataGb: Number(planRoaming.euEeaDataGb) || null,
+  };
+};
+
+const planMeetsTravelNeed = (capabilities, qualification = {}) => {
+  if (qualification.internationalTravel === 'eu') return capabilities.euEea;
+  if (qualification.internationalTravel !== 'outside_eu') return true;
+  if (qualification.internationalUsage === 'calls') {
+    return capabilities.outsideEuData && capabilities.outsideEuLocalCalls;
+  }
+  return capabilities.outsideEuData;
+};
+
+const getCurrentMonthlyTotal = (qualification, peopleCount) => {
+  if (Number(qualification.familyTotalPrice) > 0) {
+    return { amount: Number(qualification.familyTotalPrice), estimated: false };
+  }
+
+  const exactPrices = Array.isArray(qualification.exactMonthlyPrices)
+    ? qualification.exactMonthlyPrices.map(Number).filter((price) => price > 0)
+    : [];
+  if (exactPrices.length >= peopleCount) {
+    return {
+      amount: exactPrices.slice(0, peopleCount).reduce((sum, price) => sum + price, 0),
+      estimated: false,
+    };
+  }
+
+  if (Number(qualification.exactMonthlyPrice) > 0) {
+    return {
+      amount: Number(qualification.exactMonthlyPrice) * peopleCount,
+      estimated: false,
+    };
+  }
+
+  const midpoint = PRICE_RANGE_MIDPOINTS[qualification.priceRange] || 0;
+  return { amount: midpoint * peopleCount, estimated: midpoint > 0 };
+};
+
+const getPlanPrices = (plan, variant = null) => {
+  const price = variant || plan.price || {};
+  return {
+    monthly: Number(price.monthly ?? price.monthlyPrice) || 0,
+    regularMonthly: Number(price.regularMonthly ?? price.regularMonthlyPrice) || null,
+    campaignMonths: Number(price.campaignMonths ?? plan.price?.campaignMonths) || null,
+  };
+};
+
+const expandPlanVariants = (operator, plan) => {
+  if (plan.streaming?.mode !== 'choose_one') return [{ plan, streamingVariant: null }];
+  return plan.streaming.options.map((streamingVariant) => ({ plan, streamingVariant }));
+};
+
+const buildBenefits = ({ operator, plan, peopleCount, capabilities, includedStreaming }) => [
+  plan.data?.type === 'unlimited'
+    ? 'Obegränsad data'
+    : `${plan.data.gb} GB ${operator.familyDataModel === 'shared_on_limited_plans' && peopleCount > 1 ? 'delas i familjen' : 'per användare'}`,
+  peopleCount > 1 ? `${peopleCount} användare med tilläggspris` : '',
+  capabilities.euEea ? 'Samtal, sms och roaming inom EU/EES' : '',
+  capabilities.countries ? `Utlandsdata i ${capabilities.countries} länder` : '',
+  capabilities.outsideEuLocalCalls ? 'Lokala samtal ingår utomlands' : '',
+  capabilities.worldwideFamilyCalls ? 'Fria samtal inom familjen världen över' : '',
+  capabilities.euEeaIncludedHours ? `${capabilities.euEeaIncludedHours} samtalstimmar inom EU/EES` : '',
+  plan.extraSim?.included ? `Extra SIM med ${plan.extraSim.dataGb} GB ingår` : '',
+  includedStreaming.length ? `${includedStreaming.join(', ')} ingår` : '',
+].filter(Boolean);
+
+const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopleCount }) => {
+  if (peopleCount > 1 && plan.familyEligible !== true) return null;
+
+  const requiredDataGb = getRequiredDataGb(qualification);
+  if (!planMeetsDataNeed({ operator, plan, peopleCount, requiredDataGb })) return null;
+
+  const capabilities = getInternationalCapabilities(operator, plan);
+  if (!planMeetsTravelNeed(capabilities, qualification)) return null;
+
+  const prices = getPlanPrices(plan, streamingVariant);
+  if (prices.monthly <= 0) return null;
+
+  const extraUsers = Math.max(peopleCount - 1, 0);
+  const additionalUserMonthlyPrice = Number(operator.additionalUser?.monthlyPrice) || 0;
+  if (extraUsers > 0 && additionalUserMonthlyPrice <= 0) return null;
+
+  const additionalUserRegularMonthlyPrice = Number(
+    operator.additionalUser?.regularMonthlyPrice ?? operator.additionalUser?.monthlyPrice
+  ) || 0;
+  const planMonthlyPrice = prices.monthly + extraUsers * additionalUserMonthlyPrice;
+  const regularMonthlyPlanPrice = (prices.regularMonthly || prices.monthly) +
+    extraUsers * additionalUserRegularMonthlyPrice;
+  const bindingMonths = Number(operator.bindingMonths) || 0;
+  const campaignMonths = prices.campaignMonths && bindingMonths
+    ? Math.min(prices.campaignMonths, bindingMonths)
+    : 0;
+  const averageMonthlyPlanCost = campaignMonths > 0
+    ? (
+      planMonthlyPrice * campaignMonths +
+      regularMonthlyPlanPrice * Math.max(bindingMonths - campaignMonths, 0)
+    ) / bindingMonths
+    : planMonthlyPrice;
+  const includedStreaming = getIncludedStreaming(plan, streamingVariant);
+  const streamingReplacement = getStreamingReplacement(includedStreaming, qualification);
+  const effectiveMonthlyCost = Math.max(averageMonthlyPlanCost - streamingReplacement.monthlySavings, 0);
+  const current = getCurrentMonthlyTotal(qualification, peopleCount);
+  const monthlySavings = current.amount > 0
+    ? roundMoney(current.amount - effectiveMonthlyCost)
+    : null;
+  const id = streamingVariant
+    ? `${plan.id}-${slugify(streamingVariant.service)}`
+    : plan.id;
+  const dataAmount = plan.data?.type === 'unlimited' ? 999 : Number(plan.data?.gb) || 0;
+  const benefits = buildBenefits({
+    operator,
+    plan,
+    peopleCount,
+    capabilities,
+    includedStreaming,
+  });
+  if (campaignMonths > 0 && regularMonthlyPlanPrice !== planMonthlyPrice) {
+    benefits.push(`${planMonthlyPrice} kr/mån i ${campaignMonths} månader, därefter ${regularMonthlyPlanPrice} kr/mån`);
+  }
+
+  return {
+    id,
+    planId: id,
+    sourcePlanId: plan.id,
+    operatorId: operator.id,
+    operator: operator.name,
+    title: streamingVariant ? `${plan.name} – ${streamingVariant.service}` : plan.name,
+    planName: plan.name,
+    data: plan.data?.type === 'unlimited' ? 'Obegränsad' : `${dataAmount} GB`,
+    dataAmount,
+    dataType: plan.data?.type,
+    familyEligible: plan.familyEligible === true,
+    familyDataModel: operator.familyDataModel,
+    peopleCount,
+    additionalUserMonthlyPrice,
+    planMonthlyPrice: roundMoney(planMonthlyPrice),
+    monthlyPrice: roundMoney(planMonthlyPrice),
+    regularMonthlyPlanPrice: roundMoney(regularMonthlyPlanPrice),
+    campaignMonths: campaignMonths || null,
+    averageMonthlyPlanCost: roundMoney(averageMonthlyPlanCost),
+    pricePerPerson: roundMoney(planMonthlyPrice / peopleCount),
+    effectiveMonthlyCost: roundMoney(effectiveMonthlyCost),
+    effectivePricePerPerson: roundMoney(effectiveMonthlyCost / peopleCount),
+    streamingSavings: streamingReplacement.monthlySavings,
+    replacedStreamingServices: streamingReplacement.services,
+    includedStreamingServices: includedStreaming,
+    currentMonthlyTotal: roundMoney(current.amount),
+    currentMonthlyTotalIsEstimate: current.estimated,
+    monthlySavings,
+    savingsVsStaying: monthlySavings,
+    bindingMonths,
+    international: capabilities,
+    benefits,
+    reason: [
+      `${peopleCount} ${peopleCount === 1 ? 'användare' : 'användare'}`,
+      plan.data?.type === 'unlimited' ? 'obegränsad data' : `${dataAmount} GB`,
+      streamingReplacement.monthlySavings > 0
+        ? `${streamingReplacement.monthlySavings} kr/mån i ersatt streaming`
+        : '',
+      qualification.internationalTravel === 'outside_eu' ? 'matchar behov utanför EU/EES' : '',
+      qualification.internationalTravel === 'eu' ? 'EU/EES-roaming ingår' : '',
+    ].filter(Boolean).join(', '),
+    eligibleForOffer: true,
+  };
+};
+
+const compareBestValue = (left, right) => (
+  left.effectiveMonthlyCost - right.effectiveMonthlyCost ||
+  left.planMonthlyPrice - right.planMonthlyPrice ||
+  right.dataAmount - left.dataAmount ||
+  left.operator.localeCompare(right.operator, 'sv')
+);
+
+const compareLowestPrice = (left, right) => (
+  left.planMonthlyPrice - right.planMonthlyPrice ||
+  left.effectiveMonthlyCost - right.effectiveMonthlyCost ||
+  right.dataAmount - left.dataAmount ||
+  left.operator.localeCompare(right.operator, 'sv')
+);
+
+const uniqueBestByOperator = (candidates) => {
+  const byOperator = new Map();
+  [...candidates].sort(compareBestValue).forEach((candidate) => {
+    if (!byOperator.has(candidate.operatorId)) byOperator.set(candidate.operatorId, candidate);
+  });
+  return [...byOperator.values()].sort(compareBestValue);
+};
+
+const calculateOfferOptions = (qualification = {}) => {
   if (!qualification.readyForOffer) {
     return {
       readyForOffer: false,
       missingFields: qualification.missingFields || [],
+      validOfferAvailable: false,
+      bestValue: null,
+      lowestMonthlyPrice: null,
       options: [],
     };
   }
 
-  const plans = getPlans();
   const peopleCount = Math.max(Number(qualification.peopleCount) || 1, 1);
-  const currentMonthlyPrices = getCurrentMonthlyPrices(qualification, peopleCount);
-  const hasExactCurrentPrices = Number(qualification.exactMonthlyPrice) > 0 ||
-    (Array.isArray(qualification.exactMonthlyPrices) && qualification.exactMonthlyPrices.length >= peopleCount);
-  const basePlans = plans.filter((plan) =>
-    isMobilePlan(plan) &&
-    isRuntimeSellablePlan(plan) &&
-    !plan.isFamilyPlan &&
-    planMatchesUsage(plan, qualification.mobileUsage)
-  );
-  const allCandidates = basePlans
-    .map((basePlan) => {
-      const addonPlan = peopleCount > 1 ? getAddonForOperator(basePlan.operator, plans) : null;
-      if (peopleCount > 1 && !addonPlan) return null;
-
-      return buildCandidate({
-        basePlan,
-        addonPlan,
-        peopleCount,
+  const catalog = getPlanCatalog();
+  const allCandidates = catalog.operators.flatMap((operator) => operator.plans
+    .flatMap((plan) => expandPlanVariants(operator, plan)
+      .map(({ streamingVariant }) => buildCandidate({
+        operator,
+        plan,
+        streamingVariant,
         qualification,
-        today: options.today || new Date(),
-      });
-    })
-    .filter(Boolean)
-    .sort((left, right) => {
-      if (Number(right.eligibleForOffer) !== Number(left.eligibleForOffer)) {
-        return Number(right.eligibleForOffer) - Number(left.eligibleForOffer);
-      }
-
-      if (right.savingsVsStaying !== left.savingsVsStaying) {
-        return right.savingsVsStaying - left.savingsVsStaying;
-      }
-
-      if (left.effectiveCostWithOverlap !== right.effectiveCostWithOverlap) {
-        return left.effectiveCostWithOverlap - right.effectiveCostWithOverlap;
-      }
-
-      return left.monthlyPrice - right.monthlyPrice;
-    });
-  const candidates = uniqueByOperator(
-    allCandidates.filter((candidate) => candidate.eligibleForOffer)
-  ).slice(0, 4);
-  const rejectedOptions = allCandidates
-    .filter((candidate) => !candidate.eligibleForOffer)
-    .slice(0, 3);
-  const hasUnknownBinding = rejectedOptions.some((candidate) => candidate.unknownBindingCount > 0);
-  const hasOverLimitBinding = rejectedOptions.some((candidate) => candidate.overLimitBindingCount > 0);
+        peopleCount,
+      })))
+    .filter(Boolean));
+  const options = uniqueBestByOperator(allCandidates);
+  const bestValue = [...allCandidates].sort(compareBestValue)[0] || null;
+  const lowestMonthlyPrice = [...allCandidates].sort(compareLowestPrice)[0] || null;
 
   return {
     readyForOffer: true,
     missingFields: [],
-    validOfferAvailable: candidates.length > 0,
-    noOfferReason: candidates.length ? null : (
-      hasUnknownBinding
-        ? 'Kunden behöver ange exakt bindningstid för att Dealett ska kunna kontrollera 6-månadersregeln.'
-        : hasOverLimitBinding
-          ? `Kunden har mer än ${MAX_ALLOWED_BINDING_MONTHS} månader kvar i bindningstid.`
-          : 'Inget Dealett-erbjudande blir billigare efter dubbelkostnad och presentkort.'
-    ),
+    validOfferAvailable: options.length > 0,
+    noOfferReason: options.length
+      ? null
+      : 'Inget abonnemang i mobilplansdatan matchar alla angivna behov.',
+    bestValue: bestValue ? { ...bestValue, recommendationType: 'best_value' } : null,
+    lowestMonthlyPrice: lowestMonthlyPrice
+      ? { ...lowestMonthlyPrice, recommendationType: 'lowest_monthly_price' }
+      : null,
+    options: options.map((candidate) => ({
+      ...candidate,
+      recommendationTypes: [
+        candidate.id === bestValue?.id ? 'best_value' : '',
+        candidate.id === lowestMonthlyPrice?.id ? 'lowest_monthly_price' : '',
+      ].filter(Boolean),
+    })),
     assumptions: {
-      currentMonthlyPricePerPerson: peopleCount > 0
-        ? Math.round(currentMonthlyPrices.reduce((sum, price) => sum + price, 0) / peopleCount)
-        : 0,
-      currentMonthlyPrices,
-      currentMonthlyPriceIsEstimate: !hasExactCurrentPrices,
-      contractMonths: CONTRACT_MONTHS,
-      rewardTotal: DEFAULT_REWARD,
-      maxAllowedBindingMonths: MAX_ALLOWED_BINDING_MONTHS,
-      bindingEndUnknownMeans: 'No valid offer is made until exact binding time is known and no subscription has more than 6 months remaining.',
-      validOfferRule: 'A Dealett offer is valid only when remaining binding time is 6 months or less and savingsVsStaying is greater than 0 after overlap cost and gift card.',
+      planDataSource: 'data/plans.json',
+      requiredDataGb: getRequiredDataGb(qualification),
+      streamingSavingsRule: 'Only customer-supplied monthly costs for selected services included in the plan are deducted.',
+      currentMonthlyTotalIsEstimate: getCurrentMonthlyTotal(qualification, peopleCount).estimated,
     },
-    options: candidates,
-    rejectedOptions,
   };
 };
 
 const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
   const calculation = calculateOfferOptions(qualification);
-  const option = calculation.options.find((item) => item.planId === planId) || calculation.options[0];
+  const candidates = [calculation.bestValue, calculation.lowestMonthlyPrice, ...calculation.options].filter(Boolean);
+  const option = candidates.find((candidate) => candidate.planId === planId) || calculation.bestValue;
 
   if (!calculation.readyForOffer || !option) {
     const error = new Error('Qualification is not ready for an offer');
@@ -389,47 +373,42 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
     throw error;
   }
 
+  const rewardTotal = 0;
   const cartItem = {
-    cartItemId: `${option.operator}-${option.planId}-${Date.now()}`,
+    cartItemId: `${option.operatorId}-${option.planId}-${Date.now()}`,
     offerId: option.planId,
     operator: option.operator,
-    title: option.title || option.data || 'Mobilabonnemang',
-    logo: providerLogos[option.operator] || '',
+    title: option.title,
     data: option.data,
     dataAmount: option.dataAmount,
-    price: option.monthlyPrice,
+    price: option.planMonthlyPrice,
+    monthlyPrice: option.planMonthlyPrice,
+    regularMonthlyPrice: option.regularMonthlyPlanPrice,
     pricePerPerson: option.pricePerPerson,
     persons: option.peopleCount,
     phoneLines: option.peopleCount,
     productType: option.peopleCount > 1 ? 'family' : 'mobile',
     unitLabel: 'abonnemang',
-    rewardTotal: option.rewardTotal,
-    rewardMixLabel: `Presentkort ${option.rewardTotal.toLocaleString('sv-SE')} kr`,
-    rewards: { Presentkort: option.rewardTotal },
-    answers: {
-      qualification,
-      offerCalculation: option,
-    },
+    rewardTotal,
+    rewardMixLabel: '',
+    rewards: {},
+    answers: { qualification, offerCalculation: option },
     features: [
-      `${option.peopleCount} abonnemang`,
-      `${option.contractMonths} mån bindningstid`,
-      option.overlapCostKnown > 0 ? `Dubbelkostnad ca ${option.overlapCostKnown.toLocaleString('sv-SE')} kr` : 'Ingen beräknad dubbelkostnad',
-      `Presentkort ${option.rewardTotal.toLocaleString('sv-SE')} kr`,
-      `Uppskattad vinst ${option.savingsVsStaying.toLocaleString('sv-SE')} kr`,
-    ],
+      ...option.benefits,
+      `Effektiv kostnad ${option.effectiveMonthlyCost.toLocaleString('sv-SE')} kr/mån`,
+      option.streamingSavings > 0
+        ? `Ersatt streaming ${option.streamingSavings.toLocaleString('sv-SE')} kr/mån`
+        : '',
+    ].filter(Boolean),
   };
 
   return {
     cartItem,
     state: {
       persons: option.peopleCount,
-      data: option.tier,
       operator: option.operator,
-      binding: 'yes',
       wishes: [option.peopleCount > 1 ? 'Familjabonnemang' : 'Mobilabonnemang'],
       answers: cartItem.answers,
-      operatorsByPerson: qualification.operators || [],
-      bindingEndDatesByPerson: qualification.bindingEnds || [],
     },
     calculation,
   };
@@ -438,6 +417,5 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
 module.exports = {
   buildCartItemFromCalculatedOffer,
   calculateOfferOptions,
-  getRemainingBindingMonths,
-  MAX_ALLOWED_BINDING_MONTHS,
+  getStreamingServiceKey,
 };

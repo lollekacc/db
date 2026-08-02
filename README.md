@@ -7,7 +7,7 @@ Dealett AI uses a separated market-data model so it can reason about Swedish tel
 ### Data Files
 
 - `data/operators.json` is the broad Swedish telecom market reference. It contains operator-level facts such as brand type, network used, supported customer segments, 5G/eSIM support flags and verification status.
-- `data/plans.json` is public market intelligence at plan level. It supports private, family, student, senior, youth, child and business plan structures. Existing runtime rows are marked `placeholder`; they must not be treated as verified market prices.
+- `data/plans.json` is the runtime source of truth for mobile operators, plans, prices, family terms, streaming and international benefits. The normalized JSON copies must remain byte-for-byte identical to it.
 - `data/partner-offers.json` is only for Dealett sellable offers. Rows should stay inactive until the operator, plan, reward and source have been verified.
 - `data/market-rules.json` defines claim-classification rules and placeholder heuristic ranges for judging customer price claims. These ranges are not real offers.
 - `data/market-verification-checklist.json` defines the manual verification scope for Telia, Tele2, Telenor and Tre. It lists the categories and plan fields that must be checked by a human before data can be trusted in production.
@@ -18,6 +18,21 @@ Dealett AI uses a separated market-data model so it can reason about Swedish tel
 Dealett AI should use this data for judgment, not accusation. If a customer claims a very low price, the assistant should never say the customer is lying. It should ask whether the price is a campaign, family/shared plan, student discount, senior discount, employer-paid plan, old retained contract, bundled discount or temporary winback offer.
 
 If the customer already has a clearly better deal than Dealett can beat, Dealett AI should say that keeping the current deal may be the best consumer-side advice.
+
+### AI chat
+
+The chat requires `OPENAI_API_KEY` on the backend. `OPENAI_MODEL` is optional; the default is `gpt-5.6-sol`.
+
+Every assistant answer is generated through the OpenAI Responses API with Structured Outputs. The first model call updates the customer's qualification, the shared `offer-calculator.js` performs all recommendation math, and a second model call explains the exact result using the website knowledge and mobile-plan catalog. API failures return an error and never substitute a scripted assistant reply.
+
+The quiz and chat both call the same calculator. Run these checks after changing recommendation or chat behavior:
+
+```bash
+npm run test:recommendations
+npm run test:chat-dynamic
+npm run test:recommendation-parity
+npm run test:chat-ui-response
+```
 
 ### Maintenance
 

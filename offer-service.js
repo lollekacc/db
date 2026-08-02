@@ -8,25 +8,25 @@ const mobileOperatorMeta = {
     provider: 'Telia',
     logo: 'images/telia.png',
     accent: '#6E2380',
-    reward: 4000,
+    reward: 0,
   },
   Telenor: {
     provider: 'Telenor',
     logo: 'images/telenor.jpg',
     accent: '#00437E',
-    reward: 4000,
+    reward: 0,
   },
   Tre: {
     provider: 'Tre',
     logo: 'images/tre.jpg',
     accent: '#E65C00',
-    reward: 4000,
+    reward: 0,
   },
   Tele2: {
     provider: 'Tele2',
     logo: 'images/tele2.png',
     accent: '#003A6E',
-    reward: 4000,
+    reward: 0,
   },
 };
 
@@ -37,6 +37,7 @@ const providerLogos = {
   Telenor: 'images/telenor.jpg',
 };
 
+let planCatalogCache = null;
 let plansCache = null;
 let broadbandCache = null;
 
@@ -44,8 +45,108 @@ const readJson = (fileName) => JSON.parse(
   fs.readFileSync(path.join(DATA_DIR, fileName), 'utf8')
 );
 
+const slugify = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9]+/g, '-')
+  .replace(/^-|-$/g, '');
+
+const getPlanCatalog = () => {
+  if (!planCatalogCache) {
+    const catalog = readJson('plans.json');
+    if (!catalog || !Array.isArray(catalog.operators)) {
+      throw new Error('data/plans.json must contain an operators array');
+    }
+    planCatalogCache = catalog;
+  }
+  return planCatalogCache;
+};
+
+const getDataAmount = (plan = {}) => (
+  plan.data?.type === 'unlimited' ? 999 : Math.max(Number(plan.data?.gb) || 0, 0)
+);
+
+const getTier = (plan = {}) => {
+  const amount = getDataAmount(plan);
+  if (amount >= 999) return 'high';
+  if (amount >= 20) return 'medium';
+  return 'low';
+};
+
+const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStreaming = []) => ({
+  id: suffix ? `${plan.id}-${suffix}` : plan.id,
+  sourcePlanId: plan.id,
+  operatorId: operator.id,
+  operator: operator.name,
+  logo: providerLogos[operator.name] || '',
+  title: plan.name,
+  name: plan.name,
+  category: 'mobil',
+  legacyCategory: 'mobil',
+  data: plan.data?.type === 'unlimited' ? 'Obegränsad' : `${getDataAmount(plan)} GB`,
+  dataAmount: getDataAmount(plan),
+  isUnlimited: plan.data?.type === 'unlimited',
+  tier: getTier(plan),
+  price: Number(price?.monthly ?? price?.monthlyPrice) || 0,
+  monthlyPrice: Number(price?.monthly ?? price?.monthlyPrice) || 0,
+  normalPriceAfterCampaign: Number(price?.regularMonthly ?? price?.regularMonthlyPrice) || null,
+  campaignMonths: Number(price?.campaignMonths ?? plan.price?.campaignMonths) || null,
+  bindingMonths: Number(operator.bindingMonths) || 0,
+  familyEligible: plan.familyEligible === true,
+  familyDataModel: operator.familyDataModel,
+  includedStreaming,
+  streaming: plan.streaming || null,
+  roaming: plan.roaming || operator.internationalRoaming || null,
+  internationalCalls: plan.internationalCalls || null,
+  extraSim: plan.extraSim || null,
+  runtimeSellable: true,
+});
+
+const flattenPlanCatalog = (catalog) => catalog.operators.flatMap((operator) => {
+  const plans = operator.plans.flatMap((plan) => {
+    if (plan.streaming?.mode === 'choose_one') {
+      return plan.streaming.options.map((option) => normalizeCatalogPlan(
+        operator,
+        plan,
+        option,
+        slugify(option.service),
+        [option.service]
+      ));
+    }
+
+    return [normalizeCatalogPlan(
+      operator,
+      plan,
+      plan.price,
+      '',
+      plan.streaming?.mode === 'included_bundle' ? plan.streaming.services : []
+    )];
+  });
+
+  if (!operator.additionalUser) return plans;
+  return [
+    ...plans,
+    {
+      id: `${operator.id}-additional-user`,
+      operatorId: operator.id,
+      operator: operator.name,
+      title: 'Extra användare',
+      category: 'mobil',
+      isFamilyPlan: true,
+      familyPriceType: 'addon',
+      addonPrice: Number(operator.additionalUser.monthlyPrice) || 0,
+      price: Number(operator.additionalUser.monthlyPrice) || 0,
+      normalPriceAfterCampaign: Number(operator.additionalUser.regularMonthlyPrice) || null,
+      bindingMonths: Number(operator.bindingMonths) || 0,
+      runtimeSellable: true,
+    },
+  ];
+});
+
 const getPlans = () => {
-  if (!plansCache) plansCache = readJson('plans.json');
+  if (!plansCache) plansCache = flattenPlanCatalog(getPlanCatalog());
   return plansCache;
 };
 
@@ -148,7 +249,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     throw error;
   }
 
-  const provider = mobileOperatorMeta[plan.operator] || { reward: 4000, accent: 'var(--accent)' };
+  const provider = mobileOperatorMeta[plan.operator] || { reward: 0, accent: 'var(--accent)' };
   const addonPlan = addonPlanId
     ? plans.find((item) =>
       item.id === addonPlanId &&
@@ -166,7 +267,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
   ) || baseCurrentPrice;
   const monthlyPrice = baseCurrentPrice + addonPrice;
   const regularMonthlyPrice = baseRegularPrice + addonPrice;
-  const rewardTotal = provider.reward || 4000;
+  const rewardTotal = Number(provider.reward) || 0;
   const normalizedRewards = normalizeRewards(rewards, rewardTotal);
 
   const cartItem = {
@@ -306,93 +407,12 @@ const buildBroadbandCartItem = ({ planId, address }) => {
   };
 };
 
-const matchesPriceExpectation = (priceExpectation, pricePerPerson) => {
-  if (!priceExpectation) return true;
-  if (priceExpectation === 'under300') return pricePerPerson < 300;
-  if (priceExpectation === '300-400') return pricePerPerson >= 300 && pricePerPerson < 400;
-  if (priceExpectation === '400-500') return pricePerPerson >= 400;
-  return true;
-};
-
-const enrichPlanForRecommendation = (plan, allPlans, state) => {
-  const persons = state.persons || 1;
-  let finalPrice = plan.price;
-  let pricePerPerson = plan.price;
-
-  if (persons > 1) {
-    const addon = allPlans.find((candidate) =>
-      candidate.operator === plan.operator &&
-      isRuntimeSellablePlan(candidate) &&
-      candidate.isFamilyPlan === true &&
-      candidate.familyPriceType === 'addon'
-    );
-
-    if (!addon) return null;
-    finalPrice = plan.price + (persons - 1) * addon.addonPrice;
-    pricePerPerson = Math.round(finalPrice / persons);
-  }
-
-  return {
-    ...plan,
-    finalPrice,
-    pricePerPerson,
-  };
-};
-
-const scorePlan = (plan, state, currentOperators) => {
-  let score = 0;
-
-  if (matchesPriceExpectation(state.price, plan.pricePerPerson)) score += 4;
-  if (currentOperators.has(plan.operator)) score += 2;
-  if (state.binding === 'yes' && currentOperators.has(plan.operator)) score += 1;
-  if (state.binding === 'no' && !currentOperators.has(plan.operator)) score += 1;
-
-  return score;
-};
-
-const uniqueByOperator = (items = []) => {
-  const seenOperators = new Set();
-
-  return items.filter((item) => {
-    const operatorKey = String(item?.operator || '').trim().toLowerCase();
-    if (!operatorKey || seenOperators.has(operatorKey)) return false;
-    seenOperators.add(operatorKey);
-    return true;
-  });
-};
-
-const getMobileRecommendations = (state = {}) => {
-  const allPlans = getPlans();
-  const basePlans = allPlans.filter((plan) => isMobilePlan(plan) && isRuntimeSellablePlan(plan) && !plan.isFamilyPlan);
-  const currentOperators = new Set(
-    (state.operators || [])
-      .filter(Boolean)
-      .filter((operator) => !['Other', 'Andra / Ingen'].includes(operator))
-  );
-
-  const rankedPlans = basePlans
-    .map((plan) => enrichPlanForRecommendation(plan, allPlans, state))
-    .filter(Boolean)
-    .filter((plan) => !state.data || plan.tier === state.data)
-    .map((plan) => ({
-      ...plan,
-      score: scorePlan(plan, state, currentOperators),
-    }))
-    .sort((left, right) => {
-      if (right.score !== left.score) return right.score - left.score;
-      if (left.finalPrice !== right.finalPrice) return left.finalPrice - right.finalPrice;
-      return left.operator.localeCompare(right.operator, 'sv');
-    });
-
-  return uniqueByOperator(rankedPlans).slice(0, 4);
-};
-
 module.exports = {
   buildBroadbandCartItem,
   buildMobileCartItem,
   getBroadbandOffers,
   getBroadbandPlans,
   getMobileOperatorOffers,
-  getMobileRecommendations,
+  getPlanCatalog,
   getPlans,
 };

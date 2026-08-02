@@ -136,10 +136,14 @@ const main = async () => {
   }
 
   const normalizedData = normalizeSnapshots(rawSnapshots);
-  const normalizedPath = path.join(NORMALIZED_DIR, `${runId}-normalized-plans.json`);
-  const latestNormalizedPath = path.join(NORMALIZED_DIR, 'latest-normalized-plans.json');
-  writeJson(normalizedPath, normalizedData);
-  writeJson(latestNormalizedPath, normalizedData);
+  const runtimeCatalog = JSON.parse(fs.readFileSync(path.join(ROOT_DIR, 'data', 'plans.json'), 'utf8'));
+  const sourceProtected = !Array.isArray(runtimeCatalog) && Array.isArray(runtimeCatalog?.operators);
+  const normalizedPath = sourceProtected ? null : path.join(NORMALIZED_DIR, `${runId}-normalized-plans.json`);
+  const latestNormalizedPath = sourceProtected ? null : path.join(NORMALIZED_DIR, 'latest-normalized-plans.json');
+  if (!sourceProtected) {
+    writeJson(normalizedPath, normalizedData);
+    writeJson(latestNormalizedPath, normalizedData);
+  }
 
   const mergeReport = mergeMarketData({
     normalizedData,
@@ -152,6 +156,7 @@ const main = async () => {
     generatedAt: new Date().toISOString(),
     fetchedAt,
     applyMode,
+    sourceProtected,
     rawSnapshotPaths: rawSnapshots.map((snapshot) => path.join(RAW_DIR, `${runId}-${snapshot.operatorId}.json`)),
     normalizedPath,
     latestNormalizedPath,
@@ -186,7 +191,7 @@ const main = async () => {
   console.log('Market update pipeline complete');
   console.log(`Apply mode: ${applyMode ? 'enabled' : 'disabled'}`);
   console.log(`Raw snapshots: ${RAW_DIR}`);
-  console.log(`Normalized JSON: ${normalizedPath}`);
+  console.log(`Normalized JSON: ${normalizedPath || 'skipped (runtime catalog protected)'}`);
   console.log(`Report JSON: ${reportPath}`);
   console.log(`Report Markdown: ${reportMarkdownPath}`);
   console.log('');

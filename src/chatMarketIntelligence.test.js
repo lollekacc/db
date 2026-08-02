@@ -102,7 +102,7 @@ const countQuestions = (text) => (String(text || '').match(/\?/g) || []).length;
     });
     assert.equal(realistic.marketClassification?.status, 'realistic');
     assert.equal(realistic.offerCalculation.validOfferAvailable, true);
-    assert.match(realistic.reply, /giltigt alternativ|hittade|valid option/i);
+    assert.match(realistic.reply, /bäst värde|lägst månadspris|best value|lowest monthly price/i);
 
     const highCurrentPrice = await postChat(baseUrl, {
       message: 'I have Tele2, mostly Wi-Fi, no contract and pay 299 SEK.',
@@ -119,7 +119,7 @@ const countQuestions = (text) => (String(text || '').match(/\?/g) || []).length;
     });
     assert.equal(highCurrentPrice.marketClassification?.status, 'realistic');
     assert.equal(highCurrentPrice.offerCalculation.validOfferAvailable, true);
-    assert.match(highCurrentPrice.reply, /valid option|found/i);
+    assert.match(highCurrentPrice.reply, /best value|lowest monthly price|valid option|found/i);
 
     const explanation = await postChat(baseUrl, {
       message: 'Can you explain the recommendation?',
@@ -138,7 +138,7 @@ const countQuestions = (text) => (String(text || '').match(/\?/g) || []).length;
       page: {},
     });
     assert.equal(explanation.offerCalculation.validOfferAvailable, true);
-    assert.match(explanation.reply, /calculation|compares|gift card|savings/i);
+    assert.match(explanation.reply, /best value|lowest monthly price|effective cost|saved|calculation|compares|gift card|savings/i);
 
     const cheapestStart = await postChat(baseUrl, {
       message: 'bara ge mig bästa',

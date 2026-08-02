@@ -65,6 +65,41 @@ const mergeMarketData = ({
   apply = false,
 } = {}) => {
   const normalizedPlans = normalizePlansInput(normalizedData);
+  if (!Array.isArray(currentPlans) && Array.isArray(currentPlans?.operators)) {
+    const catalogPlanCount = currentPlans.operators.reduce((sum, operator) => (
+      sum + (Array.isArray(operator.plans) ? operator.plans.length : 0)
+    ), 0);
+    return {
+      generatedAt: new Date().toISOString(),
+      applyMode: Boolean(apply),
+      sourceProtected: true,
+      warning: 'The operator-centric data/plans.json catalog is the runtime source of truth and is not overwritten by the legacy market merge pipeline.',
+      scopedOperatorIds: currentPlans.operators.map((operator) => operator.id),
+      counts: {
+        normalizedPlans: normalizedPlans.length,
+        currentPlans: catalogPlanCount,
+        newPlans: 0,
+        changedPlans: 0,
+        removedOrMissingPlans: 0,
+        blockedVerifiedOverwrites: normalizedPlans.length,
+      },
+      newPlans: [],
+      changedPlans: [],
+      removedOrMissingPlans: [],
+      blockedVerifiedOverwrites: normalizedPlans.map((plan) => ({
+        operatorId: plan.operatorId || null,
+        planId: plan.planId || null,
+        reason: 'Legacy normalized market data cannot overwrite the runtime mobile-plan catalog.',
+      })),
+      appliedChanges: {
+        enabled: Boolean(apply),
+        wrotePlansJson: false,
+        addedPlans: 0,
+        updatedPlans: 0,
+        removedPlans: 0,
+      },
+    };
+  }
   const normalizedByKey = new Map(normalizedPlans.map((plan) => [planKey(plan), plan]));
   const currentByKey = new Map(currentPlans.map((plan) => [planKey(plan), plan]));
   const scopedOperatorIds = new Set(operatorIds.length

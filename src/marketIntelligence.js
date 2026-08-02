@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { getPlans } = require('../offer-service');
 
 const DATA_DIR = path.join(__dirname, '..', 'data');
 
@@ -8,7 +9,6 @@ const readJson = (fileName) => JSON.parse(
 );
 
 const operators = readJson('operators.json');
-const plans = readJson('plans.json');
 const marketRules = readJson('market-rules.json');
 
 const normalizeId = (value) => String(value || '').trim().toLowerCase();
@@ -22,13 +22,16 @@ const getOperatorById = (operatorId) => {
 const getPlansByOperator = (operatorId) => {
   const normalized = normalizeId(operatorId);
   if (!normalized) return [];
-  return plans.filter((plan) => normalizeId(plan.operatorId) === normalized);
+  return getPlans().filter((plan) => normalizeId(plan.operatorId) === normalized && !plan.isFamilyPlan);
 };
 
 const getPlansBySegment = (segment) => {
   const normalized = normalizeId(segment);
   if (!normalized) return [];
-  return plans.filter((plan) => normalizeId(plan.segment) === normalized);
+  const plans = getPlans().filter((plan) => !plan.isFamilyPlan);
+  if (normalized === 'family') return plans.filter((plan) => plan.familyEligible === true);
+  if (normalized === 'private') return plans;
+  return [];
 };
 
 const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;

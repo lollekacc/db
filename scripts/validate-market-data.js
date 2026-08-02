@@ -15,6 +15,51 @@ const partnerOffers = readJson('partner-offers.json');
 
 const errors = [];
 
+const validatePlanCatalog = (catalog) => {
+  const operatorIds = new Set();
+  const planIds = new Set();
+
+  catalog.operators.forEach((operator, operatorIndex) => {
+    const prefix = `plans.operators[${operatorIndex}]`;
+    ['id', 'name', 'bindingMonths', 'euEeaRoamingCallsSmsIncluded', 'familyDataModel', 'additionalUser', 'plans']
+      .forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(operator, field)) errors.push(`${prefix} missing ${field}`);
+      });
+    if (operatorIds.has(operator.id)) errors.push(`duplicate operator id ${operator.id}`);
+    operatorIds.add(operator.id);
+    if (!Array.isArray(operator.plans) || !operator.plans.length) errors.push(`${prefix}.plans must be a non-empty array`);
+    if (!(Number(operator.additionalUser?.monthlyPrice) > 0)) errors.push(`${prefix}.additionalUser.monthlyPrice must be positive`);
+
+    (operator.plans || []).forEach((plan, planIndex) => {
+      const planPrefix = `${prefix}.plans[${planIndex}]`;
+      ['id', 'name', 'data', 'familyEligible'].forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(plan, field)) errors.push(`${planPrefix} missing ${field}`);
+      });
+      if (planIds.has(plan.id)) errors.push(`duplicate plan id ${plan.id}`);
+      planIds.add(plan.id);
+      if (!['limited', 'unlimited'].includes(plan.data?.type)) errors.push(`${planPrefix}.data.type is invalid`);
+      if (plan.data?.type === 'limited' && !(Number(plan.data.gb) > 0)) errors.push(`${planPrefix}.data.gb must be positive`);
+      const hasPrice = Number(plan.price?.monthly) > 0;
+      const hasStreamingPrices = plan.streaming?.mode === 'choose_one' &&
+        Array.isArray(plan.streaming.options) &&
+        plan.streaming.options.every((option) => option.service && Number(option.monthlyPrice) > 0);
+      if (!hasPrice && !hasStreamingPrices) errors.push(`${planPrefix} must define a monthly price`);
+    });
+  });
+};
+
+if (plans && !Array.isArray(plans) && Array.isArray(plans.operators)) {
+  validatePlanCatalog(plans);
+  if (errors.length) {
+    console.error('Mobile plan catalog validation failed:');
+    errors.forEach((error) => console.error(`- ${error}`));
+    process.exitCode = 1;
+  } else {
+    console.log('Mobile plan catalog validation passed');
+  }
+  return;
+}
+
 const operatorRequiredFields = [
   'operatorId',
   'name',

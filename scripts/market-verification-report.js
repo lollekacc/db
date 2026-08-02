@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { getPlans } = require('../offer-service');
 
 const ROOT_DIR = path.join(__dirname, '..');
 const DATA_DIR = path.join(ROOT_DIR, 'data');
@@ -14,7 +15,7 @@ const readJson = (fileName) => JSON.parse(
 );
 
 const operators = readJson('operators.json');
-const plans = readJson('plans.json');
+const plans = getPlans();
 const checklist = readJson('market-verification-checklist.json');
 
 const hasOwn = (object, field) => Object.prototype.hasOwnProperty.call(object, field);
