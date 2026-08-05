@@ -54,6 +54,7 @@ const cards = buildOfferCardsFromOfferCalculation({
 assert.equal(cards.length, 2);
 assert.deepEqual(cards.map((card) => card.resultLabel), ['Best value', 'Lowest monthly price']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
+assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
 assert.deepEqual(cards[0].benefits, ['Streaming replacement']);
 
 console.log('chat UI response tests passed');

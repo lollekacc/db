@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "sourceOfTruth": "mobile-recommendation-rules",
+  "calculation": {
+    "termMonths": 24,
+    "formula": "24-month new cost + remaining old costs + fees - gift card - matching streaming savings",
+    "useNormalMonthlyPricesOnly": true,
+    "includeStartAndOneTimeFees": true
+  },
+  "giftCard": {
+    "placeholderValue": "XXX",
+    "displayLabel": "Presentkort: XXX kr",
+    "operatorChangeRequiredForMaximum": true,
+    "eligibleWhenChangingOperator": true,
+    "sameOperatorEligible": false,
+    "numericValueUntilFinalized": 0
+  },
+  "binding": {
+    "readyToSwitchRemainingMonthsMax": 3,
+    "includeRemainingOldSubscriptionCosts": true,
+    "includeNoticePeriodMonths": true,
+    "includeDevicePayments": true,
+    "offerSwitchNowOnlyWhenTotalResultBeneficial": true,
+    "longBindingActions": [
+      "calculate_overlap",
+      "delay_switch",
+      "exclude_member"
+    ]
+  },
+  "numberPorting": {
+    "neverStateNumberLocked": true,
+    "allowedPreferences": [
+      "port_number",
+      "scheduled_port",
+      "temporary_number",
+      "new_number",
+      "exclude"
+    ],
+    "requiredChecks": [
+      "number_ownership",
+      "existing_addons",
+      "device_payments",
+      "notice_periods"
+    ]
+  },
+  "family": {
+    "allowPartialSwitching": true,
+    "excludeUnswitchableMembers": true,
+    "allowMixedBindingPeriods": true
+  },
+  "streaming": {
+    "deductOnlyCustomerSelectedServices": true,
+    "deductOnlyMatchedIncludedServices": true,
+    "effectiveMonthlyCostFormula": "planMonthlyPrice - matchingStreamingSavings"
+  },
+  "results": {
+    "featured": [
+      {
+        "key": "bestValue",
+        "label": "Best total value"
+      },
+      {
+        "key": "lowestMonthlyPrice",
+        "label": "Lowest monthly price"
+      },
+      {
+        "key": "allOperators",
+        "label": "Visa alla operatörer"
+      }
+    ],
+    "distinctFeaturedAlternatives": true,
+    "ifFeaturedWinnersAreIdenticalShowNextBestDistinctAlternative": true
+  }
+}

@@ -99,11 +99,48 @@ const extractOutputText = (response) => {
 const nullableNumber = { type: ['number', 'null'] };
 const nullableString = { type: ['string', 'null'] };
 
+const personQualificationSchema = {
+  type: 'object',
+  additionalProperties: false,
+  properties: {
+    id: nullableString,
+    label: nullableString,
+    currentOperator: nullableString,
+    currentMonthlyCost: nullableNumber,
+    bindingEnd: nullableString,
+    remainingBindingMonths: nullableNumber,
+    noticePeriodMonths: nullableNumber,
+    dataNeed: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
+    requiredDataGb: nullableNumber,
+    keepNumberPreference: {
+      type: ['string', 'null'],
+      enum: ['port_number', 'scheduled_port', 'temporary_number', 'new_number', 'exclude', null],
+    },
+    mustKeepNumber: { type: ['boolean', 'null'] },
+    numberOwnerConfirmed: { type: ['boolean', 'null'] },
+    hasAddOns: { type: ['boolean', 'null'] },
+    addOnMonthlyCost: nullableNumber,
+    devicePaymentMonthlyCost: nullableNumber,
+    devicePaymentRemainingMonths: nullableNumber,
+    coverageLocations: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    existingCustomer: { type: ['boolean', 'null'] },
+    excluded: { type: ['boolean', 'null'] },
+  },
+  required: [
+    'id', 'label', 'currentOperator', 'currentMonthlyCost', 'bindingEnd',
+    'remainingBindingMonths', 'noticePeriodMonths', 'dataNeed', 'requiredDataGb',
+    'keepNumberPreference', 'mustKeepNumber', 'numberOwnerConfirmed', 'hasAddOns',
+    'addOnMonthlyCost', 'devicePaymentMonthlyCost', 'devicePaymentRemainingMonths',
+    'coverageLocations', 'existingCustomer', 'excluded',
+  ],
+};
+
 const qualificationSchema = {
   type: 'object',
   additionalProperties: false,
   properties: {
     peopleCount: { type: ['integer', 'null'], minimum: 1, maximum: 10 },
+    people: { type: 'array', items: personQualificationSchema, maxItems: 10 },
     operators: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     bindingEnds: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     mobileUsage: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
@@ -141,7 +178,7 @@ const qualificationSchema = {
     priceAppliesToAll: { type: 'boolean' },
   },
   required: [
-    'peopleCount', 'operators', 'bindingEnds', 'mobileUsage', 'requiredDataGb', 'priceRange',
+    'peopleCount', 'people', 'operators', 'bindingEnds', 'mobileUsage', 'requiredDataGb', 'priceRange',
     'streamingCalculation', 'streamingServices', 'streamingMonthlyCosts', 'internationalTravel',
     'internationalUsage', 'exactMonthlyPrice', 'exactMonthlyPrices', 'customerSegment',
     'familyTotalPrice', 'operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll',
@@ -252,7 +289,9 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
         'Extract the customer need for Dealett without answering it.',
         'Preserve known qualification values unless the customer clearly changes them.',
         'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
+        'If context.quizHandoff is true, continue from the supplied quiz state. Do not restart the quiz and do not ask again for information already present in currentQualification or context.answers.',
         'recommendationRequested is true when the customer asks for, continues, or questions a mobile-plan comparison.',
+        'When context.quizHandoff is true, recommendationRequested should be true unless the message is unrelated to mobile recommendations.',
         'Use low/medium/high only when the wording supports it; exact GB is preferred when stated.',
       ].join(' '),
     },
@@ -280,6 +319,7 @@ const generateAnswer = ({
   qualification,
   offerCalculation,
   websiteKnowledge,
+  context,
 }) => callOpenAi({
   schemaName: 'dealett_adviser_reply',
   schema: answerSchema,
@@ -292,8 +332,10 @@ const generateAnswer = ({
         'Use only the supplied website knowledge, mobile-plan catalog, cart context, and exact calculation.',
         'For mobile facts the catalog and calculation override other text. Never invent prices, benefits, savings, coverage, or account details.',
         'Ask one useful question when essential recommendation details are missing.',
-        'When a calculation exists, explain both best value and lowest monthly price, including plan price, effective cost, savings, and relevant tradeoffs.',
+        'If the customer came from a quiz handoff, act like an expert in-store salesperson who has the filled form in front of them: continue from the current stage, ask only the next missing question, and never repeat provided answers.',
+        'When a calculation exists, explain both best total value and lowest monthly price, including the 24-month formula: new cost + remaining old costs + fees - gift card - matching streaming savings.',
         'Treat all four operators fairly. A higher price can be better value when its included streaming, roaming, calls, shared data, or family terms fit the customer.',
+        'Never say a number is locked. Mention number porting, scheduled porting, temporary/new number, or exclusion based on the customer preference and remind them to verify number ownership, add-ons, device payments, and notice periods.',
         'When a calculation exists, include a quick reply in the reply language that lets the customer ask to see all four operators.',
         'Keep the answer concise and conversational. Quick replies must be relevant continuations, not canned defaults.',
       ].join(' '),
@@ -304,6 +346,7 @@ const generateAnswer = ({
       content: JSON.stringify({
         latestMessage: message,
         page,
+        context,
         topic,
         qualification,
         missingQualificationFields: qualification.missingFields,
@@ -345,7 +388,8 @@ const createChatCompletion = async ({
     context,
   });
   const nextQualification = normalizeQualification(cleanAiQualification(analysis.qualification));
-  const offerCalculation = analysis.recommendationRequested
+  const quizHandoff = context?.quizHandoff === true;
+  const offerCalculation = (analysis.recommendationRequested || quizHandoff)
     ? calculateOfferOptions(nextQualification)
     : null;
   const websiteKnowledge = retrieveWebsiteKnowledge({
@@ -358,6 +402,7 @@ const createChatCompletion = async ({
     language: normalizedLanguage,
     page,
     cart,
+    context,
     topic: analysis.topic,
     qualification: nextQualification,
     offerCalculation,

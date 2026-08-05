@@ -7,8 +7,11 @@
       "euEeaRoamingCallsSmsIncluded": true,
       "familyDataModel": "per_user",
       "additionalUser": {
-        "monthlyPrice": 199,
-        "regularMonthlyPrice": 239
+        "minUsers": 2,
+        "maxUsers": 10,
+        "price": {
+          "monthly": 239
+        }
       },
       "plans": [
         {
@@ -16,14 +19,36 @@
           "name": "10 GB",
           "data": {
             "type": "limited",
-            "gb": 10
+            "gb": 10,
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 249,
-            "regularMonthly": 299,
-            "campaignMonths": 12
+            "monthly": 299
           },
-          "familyEligible": false
+          "familyEligible": false,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 1,
+          "extraUserPrice": {
+            "monthly": 0
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telia-20gb",
@@ -31,88 +56,178 @@
           "data": {
             "type": "limited",
             "gb": 20,
-            "campaignGb": 40,
-            "campaignMonths": 12
+            "sharing": "per_user"
           },
           "price": {
             "monthly": 399
           },
-          "familyEligible": false
+          "familyEligible": false,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 1,
+          "extraUserPrice": {
+            "monthly": 0
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telia-unlimited",
           "name": "Obegränsad",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 449,
-            "regularMonthly": 499,
-            "campaignMonths": 12
+            "monthly": 499
           },
-          "familyEligible": false
+          "familyEligible": false,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 1,
+          "extraUserPrice": {
+            "monthly": 0
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telia-unlimited-plus",
           "name": "Obegränsad Plus",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 469,
-            "regularMonthly": 569,
-            "campaignMonths": 12
+            "monthly": 569
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 239
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telia-unlimited-plus-one-streaming",
           "name": "Obegränsad Plus med valfri streamingtjänst",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "familyEligible": true,
           "streaming": {
             "mode": "choose_one",
+            "services": [],
             "options": [
               {
                 "service": "Netflix",
-                "monthlyPrice": 469,
-                "regularMonthlyPrice": 629
+                "price": {
+                  "monthly": 629
+                }
               },
               {
                 "service": "Disney+",
-                "monthlyPrice": 469,
-                "regularMonthlyPrice": 599
+                "price": {
+                  "monthly": 599
+                }
               },
               {
                 "service": "Amazon Prime",
-                "monthlyPrice": 469,
-                "regularMonthlyPrice": 599
+                "price": {
+                  "monthly": 599
+                }
               },
               {
                 "service": "TV4 Play Plus",
-                "monthlyPrice": 469,
-                "regularMonthlyPrice": 599
+                "price": {
+                  "monthly": 599
+                }
               },
               {
                 "service": "HBO Max",
-                "monthlyPrice": 469,
-                "regularMonthlyPrice": 609
+                "price": {
+                  "monthly": 609
+                }
               }
             ]
+          },
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 239
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
           }
         },
         {
           "id": "telia-unlimited-plus-streaming-bundle",
           "name": "Obegränsad Plus med tre streamingtjänster",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 599,
-            "regularMonthly": 699,
-            "campaignMonths": 12
+            "monthly": 699
           },
           "familyEligible": true,
           "streaming": {
@@ -121,10 +236,34 @@
               "Netflix Standard",
               "HBO Max Basic",
               "Disney+ Standard"
-            ]
+            ],
+            "options": []
+          },
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 239
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
           }
         }
-      ]
+      ],
+      "internationalRoaming": {
+        "countries": 0,
+        "dataIncluded": false,
+        "localCallsIncluded": false
+      }
     },
     {
       "id": "telenor",
@@ -133,8 +272,11 @@
       "euEeaRoamingCallsSmsIncluded": true,
       "familyDataModel": "shared_on_limited_plans",
       "additionalUser": {
-        "monthlyPrice": 229,
-        "regularMonthlyPrice": 349
+        "minUsers": 2,
+        "maxUsers": 10,
+        "price": {
+          "monthly": 349
+        }
       },
       "plans": [
         {
@@ -143,12 +285,36 @@
           "data": {
             "type": "limited",
             "gb": 10,
-            "sharedWhenFamily": true
+            "sharedWhenFamily": true,
+            "sharing": "shared"
           },
           "price": {
             "monthly": 299
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 349
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telenor-25gb",
@@ -156,43 +322,113 @@
           "data": {
             "type": "limited",
             "gb": 25,
-            "sharedWhenFamily": true
+            "sharedWhenFamily": true,
+            "sharing": "shared"
           },
           "price": {
-            "monthly": 349,
-            "regularMonthly": 399
+            "monthly": 399
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 349
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telenor-unlimited",
           "name": "Obegränsat",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 449,
-            "regularMonthly": 499
+            "monthly": 499
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 349
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "telenor-unlimited-plus",
           "name": "Obegränsat Plus",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 529,
-            "regularMonthly": 629
+            "monthly": 629
           },
           "familyEligible": true,
           "internationalCalls": {
             "freeCallsWithinFamilyWorldwide": true,
             "euEeaIncludedHours": 10
+          },
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 349
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
           }
         }
-      ]
+      ],
+      "internationalRoaming": {
+        "countries": 0,
+        "dataIncluded": false,
+        "localCallsIncluded": false
+      }
     },
     {
       "id": "tele2",
@@ -201,7 +437,11 @@
       "euEeaRoamingCallsSmsIncluded": true,
       "familyDataModel": "per_user",
       "additionalUser": {
-        "monthlyPrice": 169
+        "minUsers": 2,
+        "maxUsers": 10,
+        "price": {
+          "monthly": 169
+        }
       },
       "plans": [
         {
@@ -210,52 +450,116 @@
           "data": {
             "type": "limited",
             "gb": 30,
-            "campaignGb": 50
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 249,
-            "regularMonthly": 329
+            "monthly": 329
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 169
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "tele2-unlimited",
           "name": "Obegränsad",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 399,
-            "regularMonthly": 479
+            "monthly": 479
           },
           "familyEligible": true,
           "roaming": {
-            "euEeaDataGb": 60
+            "euEeaIncluded": true,
+            "euEeaDataGb": 60,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": false,
+            "localCallsIncludedAbroad": false
+          },
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 169
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
           }
         },
         {
           "id": "tele2-unlimited-plus",
           "name": "Obegränsad Max",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
-            "monthly": 399,
-            "regularMonthly": 519
+            "monthly": 519
           },
           "familyEligible": true,
           "roaming": {
+            "euEeaIncluded": true,
             "euEeaDataGb": 60,
             "internationalDataCountries": 170,
             "internationalDataGb": 60,
+            "outsideEuDataIncluded": true,
             "localCallsIncludedAbroad": false
           },
           "extraSim": {
             "included": true,
             "dataGb": 50
+          },
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 169
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
           }
         }
-      ]
+      ],
+      "internationalRoaming": {
+        "countries": 0,
+        "dataIncluded": false,
+        "localCallsIncluded": false
+      }
     },
     {
       "id": "tre",
@@ -264,7 +568,11 @@
       "euEeaRoamingCallsSmsIncluded": true,
       "familyDataModel": "shared_on_limited_plans",
       "additionalUser": {
-        "monthlyPrice": 149
+        "minUsers": 2,
+        "maxUsers": 10,
+        "price": {
+          "monthly": 149
+        }
       },
       "internationalRoaming": {
         "countries": 100,
@@ -278,12 +586,36 @@
           "data": {
             "type": "limited",
             "gb": 6,
-            "sharedWhenFamily": true
+            "sharedWhenFamily": true,
+            "sharing": "shared"
           },
           "price": {
             "monthly": 229
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 149
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": true,
+            "localCallsIncludedAbroad": true
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "tre-25gb",
@@ -291,25 +623,74 @@
           "data": {
             "type": "limited",
             "gb": 25,
-            "sharedWhenFamily": true
+            "sharedWhenFamily": true,
+            "sharing": "shared"
           },
           "price": {
             "monthly": 329
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 149
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": true,
+            "localCallsIncludedAbroad": true
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         },
         {
           "id": "tre-unlimited",
           "name": "Obegränsad surf",
           "data": {
-            "type": "unlimited"
+            "type": "unlimited",
+            "sharing": "per_user"
           },
           "price": {
             "monthly": 429
           },
-          "familyEligible": true
+          "familyEligible": true,
+          "giftCard": "XXX",
+          "minUsers": 1,
+          "maxUsers": 10,
+          "extraUserPrice": {
+            "monthly": 149
+          },
+          "roaming": {
+            "euEeaIncluded": true,
+            "euEeaDataGb": null,
+            "internationalDataCountries": 0,
+            "internationalDataGb": null,
+            "outsideEuDataIncluded": true,
+            "localCallsIncludedAbroad": true
+          },
+          "internationalCalls": {
+            "freeCallsWithinFamilyWorldwide": false,
+            "euEeaIncludedHours": 0
+          },
+          "streaming": {
+            "mode": "none",
+            "services": [],
+            "options": []
+          }
         }
       ]
     }
-  ]
+  ],
+  "schemaVersion": 1
 }

@@ -33,6 +33,74 @@ const normalizeBindingEnd = (value) => {
   return normalized.slice(0, 40);
 };
 
+const normalizePositiveMoney = (value) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null;
+};
+
+const normalizeNonNegativeInteger = (value, fallback = 0) => {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount < 0) return fallback;
+  return Math.min(Math.round(amount), 120);
+};
+
+const normalizeKeepNumber = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (/scheduled|schemalagd|senare|planerad/i.test(normalized)) return 'scheduled_port';
+  if (/temporary|tillf|tempor/i.test(normalized)) return 'temporary_number';
+  if (/new|nytt|ny/i.test(normalized)) return 'new_number';
+  if (/exclude|exklud/i.test(normalized)) return 'exclude';
+  if (/no|nej/i.test(normalized)) return 'new_number';
+  return 'port_number';
+};
+
+const normalizeCoverageLocations = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || '').trim()).filter(Boolean).slice(0, 5);
+  }
+  const normalized = String(value || '').trim();
+  return normalized ? [normalized.slice(0, 120)] : [];
+};
+
+const normalizePerson = (person = {}, index = 0, fallback = {}) => {
+  const currentOperator = normalizeOperator(
+    person.currentOperator || person.operator || fallback.currentOperator
+  ) || 'Annan / ingen';
+  const bindingEnd = normalizeBindingEnd(
+    person.bindingEnd || person.bindingEnds || person.binding || fallback.bindingEnd
+  ) || 'Vet inte';
+  const dataNeed = ['low', 'medium', 'high'].includes(person.dataNeed || person.mobileUsage)
+    ? (person.dataNeed || person.mobileUsage)
+    : fallback.dataNeed || null;
+  const requiredDataGb = Number(person.requiredDataGb) > 0
+    ? Math.round(Number(person.requiredDataGb))
+    : null;
+
+  return {
+    id: String(person.id || `person-${index + 1}`).slice(0, 40),
+    label: String(person.label || `Person ${index + 1}`).slice(0, 80),
+    currentOperator,
+    currentMonthlyCost: normalizePositiveMoney(
+      person.currentMonthlyCost ?? person.monthlyCost ?? person.exactMonthlyPrice ?? fallback.currentMonthlyCost
+    ),
+    bindingEnd,
+    remainingBindingMonths: normalizeNonNegativeInteger(person.remainingBindingMonths, null),
+    noticePeriodMonths: normalizeNonNegativeInteger(person.noticePeriodMonths, 0),
+    dataNeed,
+    requiredDataGb,
+    keepNumberPreference: normalizeKeepNumber(person.keepNumberPreference || person.keepNumber),
+    mustKeepNumber: person.mustKeepNumber !== false && ['port_number', 'scheduled_port'].includes(normalizeKeepNumber(person.keepNumberPreference || person.keepNumber)),
+    numberOwnerConfirmed: person.numberOwnerConfirmed === true,
+    hasAddOns: Boolean(person.hasAddOns),
+    addOnMonthlyCost: normalizePositiveMoney(person.addOnMonthlyCost ?? person.addonMonthlyCost) || 0,
+    devicePaymentMonthlyCost: normalizePositiveMoney(person.devicePaymentMonthlyCost) || 0,
+    devicePaymentRemainingMonths: normalizeNonNegativeInteger(person.devicePaymentRemainingMonths, 0),
+    coverageLocations: normalizeCoverageLocations(person.coverageLocations),
+    existingCustomer: person.existingCustomer !== false && currentOperator !== 'Annan / ingen',
+    excluded: normalizeKeepNumber(person.keepNumberPreference || person.keepNumber) === 'exclude' || person.excluded === true,
+  };
+};
+
 const createEmptyQualification = () => ({
   peopleCount: null,
   operators: [],
@@ -47,6 +115,7 @@ const createEmptyQualification = () => ({
   internationalUsage: null,
   exactMonthlyPrice: null,
   exactMonthlyPrices: [],
+  people: [],
   customerSegment: null,
   familyTotalPrice: null,
   readyForOffer: false,
@@ -122,15 +191,35 @@ const normalizeQualification = (qualification = {}) => {
   const familyTotalPrice = Number(qualification.familyTotalPrice) > 0
     ? Math.round(Number(qualification.familyTotalPrice))
     : null;
+  const rawPeople = Array.isArray(qualification.people) ? qualification.people : [];
+  const people = (rawPeople.length ? rawPeople : Array.from({ length: peopleCount || 0 }, (_, index) => ({
+    currentOperator: operators[index] || 'Annan / ingen',
+    bindingEnd: bindingEnds[index] || 'Ingen bindningstid',
+    currentMonthlyCost: exactMonthlyPrices[index] || exactMonthlyPrice || null,
+    dataNeed: mobileUsage,
+    requiredDataGb,
+    existingCustomer: !(qualification.customerStatus === 'none' || operators[index] === 'Annan / ingen'),
+  })))
+    .map((person, index) => normalizePerson(person, index, {
+      currentOperator: operators[index] || 'Annan / ingen',
+      bindingEnd: bindingEnds[index] || 'Ingen bindningstid',
+      currentMonthlyCost: exactMonthlyPrices[index] || exactMonthlyPrice || null,
+      dataNeed: mobileUsage,
+    }))
+    .slice(0, peopleCount || 10);
 
   const missingFields = [];
   if (!peopleCount) missingFields.push('peopleCount');
   if (!peopleCount || operators.length < peopleCount) missingFields.push('operators');
   if (!peopleCount || bindingEnds.length < peopleCount) missingFields.push('bindingEnds');
   if (!mobileUsage && !requiredDataGb) missingFields.push('mobileUsage');
-  if (!priceRange && !exactMonthlyPrice && !familyTotalPrice && (!peopleCount || exactMonthlyPrices.length < peopleCount)) {
+  const hasAllPersonMonthlyCosts = peopleCount && people
+    .slice(0, peopleCount)
+    .every((person) => Number(person.currentMonthlyCost) > 0);
+  if (!priceRange && !exactMonthlyPrice && !familyTotalPrice && (!peopleCount || exactMonthlyPrices.length < peopleCount) && !hasAllPersonMonthlyCosts) {
     missingFields.push('priceRange');
   }
+  if (peopleCount && people.length < peopleCount) missingFields.push('people');
 
   return {
     peopleCount,
@@ -146,6 +235,7 @@ const normalizeQualification = (qualification = {}) => {
     internationalUsage,
     exactMonthlyPrice,
     exactMonthlyPrices,
+    people,
     customerSegment,
     familyTotalPrice,
     operatorAppliesToAll: Boolean(qualification.operatorAppliesToAll),

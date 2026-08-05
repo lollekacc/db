@@ -45,6 +45,7 @@ const normalizeOfferCard = (card, index) => {
     resultLabel: String(card.resultLabel || '').trim().slice(0, 80),
     effectiveCostLabel: String(card.effectiveCostLabel || '').trim().slice(0, 80),
     savingsLabel: String(card.savingsLabel || '').trim().slice(0, 100),
+    rewardLabel: String(card.rewardLabel || '').trim().slice(0, 80),
     benefits: Array.isArray(card.benefits)
       ? card.benefits.map((benefit) => String(benefit || '').trim()).filter(Boolean).slice(0, 5)
       : [],
@@ -84,7 +85,7 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
   ].filter((entry) => entry.option);
 
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
-    const savingsAmount = Number(option.monthlySavings);
+    const savingsAmount = Number(option.total24MonthResult);
     const hasSavings = Number.isFinite(savingsAmount);
     return {
       id: option.planId,
@@ -94,10 +95,13 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       dataLabel: option.data,
       resultLabel,
       monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}/${isEnglish ? 'month' : 'mån'}`,
-      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
+      effectiveCostLabel: option.total24MonthCost
+        ? `${formatMoney(option.total24MonthCost, language)}/24 ${isEnglish ? 'months' : 'mån'}`
+        : `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
       savingsLabel: hasSavings
-        ? `${savingsAmount >= 0 ? (isEnglish ? 'Save' : 'Spara') : (isEnglish ? 'Costs extra' : 'Kostar mer')} ${formatMoney(Math.abs(savingsAmount), language)}/${isEnglish ? 'month' : 'mån'}`
+        ? `${savingsAmount >= 0 ? (isEnglish ? '24-month gain' : '24 mån resultat') : (isEnglish ? '24-month cost increase' : '24 mån merkostnad')} ${formatMoney(Math.abs(savingsAmount), language)}`
         : '',
+      rewardLabel: isEnglish ? 'Gift card: XXX SEK' : 'Presentkort: XXX kr',
       bindingLabel: Number(option.bindingMonths) > 0
         ? `${option.bindingMonths} ${isEnglish ? 'months binding' : 'mån bindningstid'}`
         : '',

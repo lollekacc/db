@@ -40,6 +40,8 @@ const providerLogos = {
 let planCatalogCache = null;
 let plansCache = null;
 let broadbandCache = null;
+let partnerOffersCache = null;
+let recommendationRulesCache = null;
 
 const readJson = (fileName) => JSON.parse(
   fs.readFileSync(path.join(DATA_DIR, fileName), 'utf8')
@@ -75,6 +77,8 @@ const getTier = (plan = {}) => {
   return 'low';
 };
 
+const getMonthlyPrice = (price = {}) => Number(price?.monthly ?? price?.monthlyPrice) || 0;
+
 const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStreaming = []) => ({
   id: suffix ? `${plan.id}-${suffix}` : plan.id,
   sourcePlanId: plan.id,
@@ -89,17 +93,20 @@ const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStream
   dataAmount: getDataAmount(plan),
   isUnlimited: plan.data?.type === 'unlimited',
   tier: getTier(plan),
-  price: Number(price?.monthly ?? price?.monthlyPrice) || 0,
-  monthlyPrice: Number(price?.monthly ?? price?.monthlyPrice) || 0,
-  normalPriceAfterCampaign: Number(price?.regularMonthly ?? price?.regularMonthlyPrice) || null,
-  campaignMonths: Number(price?.campaignMonths ?? plan.price?.campaignMonths) || null,
+  price: getMonthlyPrice(price),
+  monthlyPrice: getMonthlyPrice(price),
   bindingMonths: Number(operator.bindingMonths) || 0,
+  giftCard: plan.giftCard || 'XXX',
+  minUsers: Number(plan.minUsers) || 1,
+  maxUsers: Number(plan.maxUsers) || (plan.familyEligible === true ? 10 : 1),
   familyEligible: plan.familyEligible === true,
   familyDataModel: operator.familyDataModel,
+  dataSharing: plan.data?.sharing || null,
   includedStreaming,
   streaming: plan.streaming || null,
   roaming: plan.roaming || operator.internationalRoaming || null,
   internationalCalls: plan.internationalCalls || null,
+  extraUserPrice: plan.extraUserPrice || operator.additionalUser?.price || null,
   extraSim: plan.extraSim || null,
   runtimeSellable: true,
 });
@@ -110,7 +117,7 @@ const flattenPlanCatalog = (catalog) => catalog.operators.flatMap((operator) => 
       return plan.streaming.options.map((option) => normalizeCatalogPlan(
         operator,
         plan,
-        option,
+        option.price || option,
         slugify(option.service),
         [option.service]
       ));
@@ -136,9 +143,8 @@ const flattenPlanCatalog = (catalog) => catalog.operators.flatMap((operator) => 
       category: 'mobil',
       isFamilyPlan: true,
       familyPriceType: 'addon',
-      addonPrice: Number(operator.additionalUser.monthlyPrice) || 0,
-      price: Number(operator.additionalUser.monthlyPrice) || 0,
-      normalPriceAfterCampaign: Number(operator.additionalUser.regularMonthlyPrice) || null,
+      addonPrice: getMonthlyPrice(operator.additionalUser.price || operator.additionalUser),
+      price: getMonthlyPrice(operator.additionalUser.price || operator.additionalUser),
       bindingMonths: Number(operator.bindingMonths) || 0,
       runtimeSellable: true,
     },
@@ -153,6 +159,21 @@ const getPlans = () => {
 const getBroadbandPlans = () => {
   if (!broadbandCache) broadbandCache = readJson('5Gbredband.json');
   return broadbandCache;
+};
+
+const getPartnerOffers = () => {
+  if (!partnerOffersCache) {
+    partnerOffersCache = readJson('partner-offers.json');
+    if (!Array.isArray(partnerOffersCache)) partnerOffersCache = [];
+  }
+  return partnerOffersCache;
+};
+
+const getRecommendationRules = () => {
+  if (!recommendationRulesCache) {
+    recommendationRulesCache = readJson('recommendation-rules.json');
+  }
+  return recommendationRulesCache;
 };
 
 const formatCurrency = (value) => new Intl.NumberFormat('sv-SE').format(Math.max(Number(value) || 0, 0));
@@ -196,6 +217,7 @@ const getMobileOperatorOffers = (operator) => {
       ...plan,
       data: getPlanDataLabel(plan),
       reward: provider.reward,
+      giftCard: plan.giftCard || 'XXX',
       accent: provider.accent,
     }));
 
@@ -261,12 +283,9 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     : null;
   const addonPrice = Number(addonPlan?.addonPrice ?? addonPlan?.price) || 0;
   const persons = addonPlan ? 2 : 1;
-  const baseCurrentPrice = Number(plan.campaignPrice ?? plan.price ?? plan.monthlyPrice) || 0;
-  const baseRegularPrice = Number(
-    plan.normalPriceAfterCampaign ?? plan.monthlyPrice ?? plan.price
-  ) || baseCurrentPrice;
-  const monthlyPrice = baseCurrentPrice + addonPrice;
-  const regularMonthlyPrice = baseRegularPrice + addonPrice;
+  const basePrice = Number(plan.price ?? plan.monthlyPrice) || 0;
+  const monthlyPrice = basePrice + addonPrice;
+  const regularMonthlyPrice = monthlyPrice;
   const rewardTotal = Number(provider.reward) || 0;
   const normalizedRewards = normalizeRewards(rewards, rewardTotal);
 
@@ -280,11 +299,6 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     price: monthlyPrice,
     monthlyPrice,
     regularMonthlyPrice,
-    campaignPrice: plan.campaignPrice === null || plan.campaignPrice === undefined
-      ? null
-      : monthlyPrice,
-    campaignMonths: Number(plan.campaignMonths) || 0,
-    campaignDiscount: Math.max(regularMonthlyPrice - monthlyPrice, 0),
     bindingMonths: Math.max(Number(plan.bindingMonths) || 0, 0),
     noticePeriodMonths: Math.max(Number(plan.noticePeriodMonths) || 0, 0),
     startFee: Math.max(Number(plan.startFee) || 0, 0),
@@ -296,7 +310,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     productType: 'mobile',
     unitLabel: 'abonnemang',
     rewardTotal,
-    rewardMixLabel: `Presentkort ${formatCurrency(rewardTotal)} kr`,
+    rewardMixLabel: rewardTotal ? 'Presentkort: XXX kr' : '',
     rewards: normalizedRewards,
     addon: addonPlan ? {
       id: addonPlan.id,
@@ -381,7 +395,7 @@ const buildBroadbandCartItem = ({ planId, address }) => {
     productType: 'broadband',
     unitLabel: 'bredband',
     rewardTotal: reward,
-    rewardMixLabel: `Presentkort ${formatCurrency(reward)} kr`,
+    rewardMixLabel: reward ? 'Presentkort: XXX kr' : '',
     rewards: { Presentkort: reward },
     answers: {
       broadbandAddress: normalizedAddress || null,
@@ -413,6 +427,8 @@ module.exports = {
   getBroadbandOffers,
   getBroadbandPlans,
   getMobileOperatorOffers,
+  getPartnerOffers,
   getPlanCatalog,
+  getRecommendationRules,
   getPlans,
 };
