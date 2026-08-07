@@ -95,11 +95,9 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       dataLabel: option.data,
       resultLabel,
       monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}/${isEnglish ? 'month' : 'mån'}`,
-      effectiveCostLabel: option.total24MonthCost
-        ? `${formatMoney(option.total24MonthCost, language)}/24 ${isEnglish ? 'months' : 'mån'}`
-        : `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
+      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
       savingsLabel: hasSavings
-        ? `${savingsAmount >= 0 ? (isEnglish ? '24-month gain' : '24 mån resultat') : (isEnglish ? '24-month cost increase' : '24 mån merkostnad')} ${formatMoney(Math.abs(savingsAmount), language)}`
+        ? `${savingsAmount >= 0 ? (isEnglish ? 'Better over time' : 'Bättre över tid') : (isEnglish ? 'Higher over time' : 'Högre över tid')} ${formatMoney(Math.abs(savingsAmount), language)}`
         : '',
       rewardLabel: isEnglish ? 'Gift card: XXX SEK' : 'Presentkort: XXX kr',
       bindingLabel: Number(option.bindingMonths) > 0

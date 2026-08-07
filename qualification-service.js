@@ -123,6 +123,9 @@ const createEmptyQualification = () => ({
 });
 
 const normalizeQualification = (qualification = {}) => {
+  const recommendationMode = ['initial', 'refined'].includes(qualification.recommendationMode)
+    ? qualification.recommendationMode
+    : (qualification.initialRecommendation === true || qualification.allowInitialRecommendation === true ? 'initial' : 'refined');
   const peopleCount = Number.isFinite(Number(qualification.peopleCount)) && Number(qualification.peopleCount) > 0
     ? Math.min(Math.round(Number(qualification.peopleCount)), 10)
     : null;
@@ -212,7 +215,7 @@ const normalizeQualification = (qualification = {}) => {
   if (!peopleCount) missingFields.push('peopleCount');
   if (!peopleCount || operators.length < peopleCount) missingFields.push('operators');
   if (!peopleCount || bindingEnds.length < peopleCount) missingFields.push('bindingEnds');
-  if (!mobileUsage && !requiredDataGb) missingFields.push('mobileUsage');
+  if (recommendationMode !== 'initial' && !mobileUsage && !requiredDataGb) missingFields.push('mobileUsage');
   const hasAllPersonMonthlyCosts = peopleCount && people
     .slice(0, peopleCount)
     .every((person) => Number(person.currentMonthlyCost) > 0);
@@ -236,6 +239,7 @@ const normalizeQualification = (qualification = {}) => {
     exactMonthlyPrice,
     exactMonthlyPrices,
     people,
+    recommendationMode,
     customerSegment,
     familyTotalPrice,
     operatorAppliesToAll: Boolean(qualification.operatorAppliesToAll),

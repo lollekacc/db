@@ -692,6 +692,5 @@
       ]
     }
   ],
-  "schemaVersion": 1,
-  "sourceOfTruth": "mobile-subscription-plans"
+  "schemaVersion": 1
 }

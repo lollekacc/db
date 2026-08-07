@@ -704,7 +704,10 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
         `${scenario.peopleCount} ${scenario.peopleCount === 1 ? 'användare' : 'användare'}`,
         plan.data?.type === 'unlimited' ? 'obegränsad data' : `${dataAmount} GB`,
       ].join(', '),
-      `${getCalculationTermMonths()} mån: nytt abonnemang ${scenario.new24MonthPlanCost} kr + kvarvarande gamla kostnader ${scenario.oldCostsDuringOverlap} kr + avgifter ${scenario.fees} kr - presentkort ${scenario.giftCardLabel || `${scenario.giftCardValue} kr`} - streaming ${scenario.streamingSavings24} kr = ${scenario.total24MonthCost} kr`,
+      `På ${getCalculationTermMonths()} månader blir helheten cirka ${scenario.total24MonthCost.toLocaleString('sv-SE')} kr när abonnemanget, presentkortet och valda behov räknas ihop`,
+      scenario.oldCostsDuringOverlap > 0
+        ? 'Det kan finnas en gammal kostnad kvar en period, och den är med i bedömningen.'
+        : '',
       streamingEvaluation.summary || '',
       travelEvaluation.summary || '',
       ...streamingEvaluation.tradeoffs,
