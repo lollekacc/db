@@ -278,6 +278,264 @@ const cleanAiQualification = (qualification = {}) => ({
     .filter(([, value]) => Number(value) > 0)),
 });
 
+const mergeArrays = (current = [], next = []) => {
+  const values = [...(Array.isArray(current) ? current : []), ...(Array.isArray(next) ? next : [])]
+    .map((item) => String(item || '').trim())
+    .filter(Boolean);
+  return [...new Set(values)].slice(0, 10);
+};
+
+const detectOfflineOperators = (text) => {
+  const operators = [];
+  [
+    ['Tele2', /\btele\s*2\b|\btele2\b/i],
+    ['Telia', /\btelia\b/i],
+    ['Telenor', /\btelenor\b/i],
+    ['Tre', /\btre\b|\b3\b/i],
+  ].forEach(([operator, pattern]) => {
+    if (pattern.test(text)) operators.push(operator);
+  });
+  return operators;
+};
+
+const detectOfflinePeopleCount = (text) => {
+  const direct = text.match(/\b(?:vi\s+är|we\s+are|for)\s*(\d{1,2})\b/i) ||
+    text.match(/\b(\d{1,2})\s*(?:personer|person|abonnemang|users?|lines?)\b/i);
+  if (direct) return Math.min(Math.max(Number(direct[1]) || 1, 1), 10);
+  if (/familj|family|hushåll|household/i.test(text)) return 2;
+  if (/bara mig|just me|only me|ensam/i.test(text)) return 1;
+  return null;
+};
+
+const detectOfflineMonthlyPrice = (text) => {
+  const match = text.match(/\b(\d{2,5})\s*(?:kr|sek|kronor)\b/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+};
+
+const detectOfflineUsage = (text) => {
+  const gb = text.match(/\b(\d{1,3})\s*gb\b/i);
+  if (gb) {
+    const amount = Number(gb[1]);
+    if (amount >= 50) return { mobileUsage: 'high', requiredDataGb: amount };
+    if (amount >= 20) return { mobileUsage: 'medium', requiredDataGb: amount };
+    return { mobileUsage: 'low', requiredDataGb: amount };
+  }
+  if (/obegränsad|unlimited|mycket surf|lots of data|max surf/i.test(text)) {
+    return { mobileUsage: 'high', requiredDataGb: null };
+  }
+  if (/stream|video|youtube|netflix|pendlar|commute/i.test(text)) {
+    return { mobileUsage: 'medium', requiredDataGb: null };
+  }
+  if (/wifi|wi-fi|lite surf|mostly wi|social|mail/i.test(text)) {
+    return { mobileUsage: 'low', requiredDataGb: null };
+  }
+  return {};
+};
+
+const detectOfflineBindingEnds = (text, peopleCount) => {
+  if (/ingen bindning|utan bindning|no contract|no binding/i.test(text)) return ['Ingen bindningstid'];
+  const months = text.match(/\b(\d{1,2})\s*(?:mån|månader|months?)\b/i);
+  if (months && /bindning|contract/i.test(text)) return [`${Number(months[1])} månader kvar`];
+  if (/vet inte.*bindning|don't know.*contract|dont know.*contract/i.test(text)) return ['Vet inte'];
+  if (peopleCount && /bindning/i.test(text)) return ['Vet inte'];
+  return [];
+};
+
+const getOfflinePriceRange = (price) => {
+  if (!price) return null;
+  if (price < 300) return 'under300';
+  if (price <= 400) return '300-400';
+  if (price <= 500) return '400-500';
+  return null;
+};
+
+const improveOfflineQualification = ({ message, qualification }) => {
+  const text = String(message || '');
+  const current = normalizeQualification(qualification);
+  const peopleCount = detectOfflinePeopleCount(text) || current.peopleCount;
+  const operators = mergeArrays(current.operators, detectOfflineOperators(text));
+  const price = detectOfflineMonthlyPrice(text) || current.exactMonthlyPrice;
+  const usage = detectOfflineUsage(text);
+  const bindingEnds = mergeArrays(
+    current.bindingEnds,
+    detectOfflineBindingEnds(text, peopleCount)
+  );
+  const customerSegment = /student/i.test(text)
+    ? 'student'
+    : (/senior|pension/i.test(text)
+      ? 'senior'
+      : (/företag|jobb|arbetsgivare|business|employer/i.test(text)
+        ? 'business'
+        : (peopleCount > 1 ? 'family' : current.customerSegment)));
+
+  return normalizeQualification({
+    ...current,
+    peopleCount,
+    operators,
+    bindingEnds,
+    people: [],
+    mobileUsage: usage.mobileUsage || current.mobileUsage,
+    requiredDataGb: usage.requiredDataGb || current.requiredDataGb,
+    exactMonthlyPrice: price,
+    priceRange: current.priceRange || getOfflinePriceRange(price),
+    customerSegment,
+  });
+};
+
+const getOfflineTopic = (message) => {
+  if (/bredband|5g|fiber|internet|täckning|coverage/i.test(message)) return 'broadband_or_coverage';
+  if (/faktura|autogiro|esim|sim|pin|order|beställning|kundservice|support|mina sidor/i.test(message)) return 'support';
+  if (/partisk|betalt|provision|biased|trust/i.test(message)) return 'dealett_trust';
+  return 'mobile_plan_comparison';
+};
+
+const wantsOfflineRecommendation = (message, context = {}) => (
+  context?.quizHandoff === true ||
+  /abonnemang|billigare|bästa|rekommendera|jämför|mobil|surf|operator|plan|cheaper|best|recommend|compare/i.test(message)
+);
+
+const getOfflineQuestion = (qualification, language) => {
+  const missing = qualification.missingFields || [];
+  const isEnglish = language === 'en';
+  if (missing.includes('peopleCount')) {
+    return {
+      reply: isEnglish
+        ? 'I can help. Is it just for you or for several people?'
+        : 'Jag hjälper dig. Är det bara till dig eller flera personer?',
+      quickReplies: isEnglish ? ['Just me', '2 people', '3 people', 'Family'] : ['Bara mig', '2 personer', '3 personer', 'Familj'],
+    };
+  }
+  if (missing.includes('operators')) {
+    return {
+      reply: isEnglish
+        ? 'Which operator do you have today?'
+        : 'Vilken operatör har du idag?',
+      quickReplies: ['Telia', 'Tele2', 'Telenor', 'Tre'],
+    };
+  }
+  if (missing.includes('bindingEnds')) {
+    return {
+      reply: isEnglish
+        ? 'Do you have any contract time left?'
+        : 'Har du bindningstid kvar?',
+      quickReplies: isEnglish ? ['No contract', "Don't know", '3 months left'] : ['Ingen bindningstid', 'Vet inte', '3 månader kvar'],
+    };
+  }
+  if (missing.includes('mobileUsage')) {
+    return {
+      reply: isEnglish
+        ? 'How much data do you usually need?'
+        : 'Hur mycket surf brukar du behöva?',
+      quickReplies: isEnglish ? ['Mostly Wi-Fi', 'Streaming/video', 'Unlimited'] : ['Mest wifi', 'Streaming/video', 'Obegränsat'],
+    };
+  }
+  return {
+    reply: isEnglish
+      ? 'What do you pay per month today? An approximate amount is enough.'
+      : 'Vad betalar du per månad idag? Ungefär räcker.',
+    quickReplies: isEnglish ? ['Under 300 SEK', '300-400 SEK', '400-500 SEK'] : ['Under 300 kr', '300-400 kr', '400-500 kr'],
+  };
+};
+
+const createOfflineAnswer = ({ message, language, topic, qualification, offerCalculation }) => {
+  const isEnglish = language === 'en';
+  if (topic === 'dealett_trust') {
+    return {
+      reply: isEnglish
+        ? 'Dealett may receive compensation from partners, but the recommendation should still be based on your current deal, contract time, usage and total cost. If your current deal is stronger, I should say so.'
+        : 'Dealett kan få ersättning från partners, men rekommendationen ska ändå styras av ditt nuvarande avtal, bindningstid, surfbehov och total kostnad. Är ditt avtal bättre ska jag säga det.',
+      quickReplies: isEnglish ? ['Compare my deal', 'How do you calculate?'] : ['Jämför mitt avtal', 'Hur räknar ni?'],
+    };
+  }
+  if (topic === 'support') {
+    return {
+      reply: isEnglish
+        ? 'I can guide you, but I cannot change account details in the chat. For invoices, SIM, orders or autogiro, use your operator account page and verify with customer service if money or ownership is involved.'
+        : 'Jag kan guida dig, men jag kan inte ändra kontouppgifter i chatten. För faktura, SIM, beställning eller autogiro: använd operatörens Mina sidor och kontrollera med kundservice om pengar eller ägarskap påverkas.',
+      quickReplies: isEnglish ? ['Compare subscriptions', 'Contact support'] : ['Jämför abonnemang', 'Kontakta support'],
+    };
+  }
+  if (topic === 'broadband_or_coverage') {
+    return {
+      reply: isEnglish
+        ? 'For coverage and 5G broadband, address-level availability matters more than the headline price. Check the address or area first, then compare monthly cost, binding time and equipment fees.'
+        : 'För täckning och 5G-bredband avgör adressen mer än rubrikpriset. Kolla adress eller område först, jämför sedan månadskostnad, bindningstid och utrustningsavgifter.',
+      quickReplies: isEnglish ? ['Open coverage map', 'Compare 5G broadband'] : ['Öppna täckningskarta', 'Jämför 5G-bredband'],
+    };
+  }
+  if (offerCalculation?.validOfferAvailable) {
+    const best = offerCalculation.bestValue;
+    const low = offerCalculation.lowestMonthlyPrice;
+    return {
+      reply: isEnglish
+        ? `I found options from the plan data. Best value: ${best.operator} ${best.title} at ${best.planMonthlyPrice} SEK/month. Lowest monthly price: ${low.operator} ${low.title} at ${low.planMonthlyPrice} SEK/month. The 24-month view includes new subscription cost, any remaining old costs, fees, gift card value and matched streaming savings.`
+        : `Jag hittade alternativ i plandatan. Bäst värde: ${best.operator} ${best.title} för ${best.planMonthlyPrice} kr/mån. Lägst månadspris: ${low.operator} ${low.title} för ${low.planMonthlyPrice} kr/mån. 24-månadersbilden räknar in nytt abonnemang, eventuell kvarvarande gammal kostnad, avgifter, presentkort och matchad streamingbesparing.`,
+      quickReplies: isEnglish ? ['Show all operators', 'Explain the calculation'] : ['Visa alla operatörer', 'Förklara kalkylen'],
+      bestValueReason: isEnglish
+        ? 'Best total fit over 24 months based on the supplied details.'
+        : 'Bäst helhet över 24 månader utifrån uppgifterna du gav.',
+      lowestPriceReason: isEnglish
+        ? 'Lowest monthly plan price that still matches the stated needs.'
+        : 'Lägst månadspris som fortfarande matchar behoven.',
+      bestValueBenefits: best.benefits || [],
+      lowestPriceBenefits: low.benefits || [],
+    };
+  }
+  return getOfflineQuestion(qualification, language);
+};
+
+const createOfflineChatCompletion = ({
+  message,
+  language = 'sv',
+  qualification = {},
+  context = {},
+}) => {
+  const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
+    ? String(language).toLowerCase()
+    : 'sv';
+  const topic = getOfflineTopic(message);
+  const nextQualification = improveOfflineQualification({ message, qualification });
+  const recommendationRequested = wantsOfflineRecommendation(message, context) || nextQualification.readyForOffer;
+  const offerCalculation = recommendationRequested
+    ? calculateOfferOptions(nextQualification)
+    : null;
+  const answer = createOfflineAnswer({
+    message,
+    language: normalizedLanguage,
+    topic,
+    qualification: nextQualification,
+    offerCalculation,
+  });
+  const offerCards = offerCalculation
+    ? buildOfferCardsFromOfferCalculation(offerCalculation, {
+      language: normalizedLanguage,
+      copy: answer,
+    })
+    : [];
+  const ui = buildChatResponse({
+    message: answer.reply,
+    quickReplies: answer.quickReplies,
+    offerCards,
+  });
+
+  return {
+    reply: ui.message,
+    message: ui.message,
+    language: normalizedLanguage,
+    topic,
+    qualification: nextQualification,
+    offerCalculation,
+    quickReplies: ui.quickReplies,
+    suggestions: ui.quickReplies.map((reply) => reply.label),
+    offerCards: ui.offerCards,
+    embeddedWidget: null,
+    source: 'offline',
+    model: 'local-rules',
+  };
+};
+
 const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
@@ -378,62 +636,81 @@ const createChatCompletion = async ({
   const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
     ? String(language).toLowerCase()
     : 'sv';
-  const currentQualification = normalizeQualification(qualification);
-  const analysis = await analyzeCustomerMessage({
-    message: latestMessage,
-    messages,
-    qualification: currentQualification,
-    language: normalizedLanguage,
-    page,
-    context,
-  });
-  const nextQualification = normalizeQualification(cleanAiQualification(analysis.qualification));
-  const quizHandoff = context?.quizHandoff === true;
-  const offerCalculation = (analysis.recommendationRequested || quizHandoff)
-    ? calculateOfferOptions(nextQualification)
-    : null;
-  const websiteKnowledge = retrieveWebsiteKnowledge({
-    query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
-    page,
-  });
-  const answer = await generateAnswer({
-    message: latestMessage,
-    messages,
-    language: normalizedLanguage,
-    page,
-    cart,
-    context,
-    topic: analysis.topic,
-    qualification: nextQualification,
-    offerCalculation,
-    websiteKnowledge,
-  });
-  const offerCards = offerCalculation
-    ? buildOfferCardsFromOfferCalculation(offerCalculation, {
+  if (!process.env.OPENAI_API_KEY) {
+    return createOfflineChatCompletion({
+      message: latestMessage,
       language: normalizedLanguage,
-      copy: answer,
-    })
-    : [];
-  const ui = buildChatResponse({
-    message: answer.reply,
-    quickReplies: answer.quickReplies,
-    offerCards,
-  });
+      qualification,
+      context,
+    });
+  }
 
-  return {
-    reply: ui.message,
-    message: ui.message,
-    language: normalizedLanguage,
-    topic: analysis.topic,
-    qualification: nextQualification,
-    offerCalculation,
-    quickReplies: ui.quickReplies,
-    suggestions: ui.quickReplies.map((reply) => reply.label),
-    offerCards: ui.offerCards,
-    embeddedWidget: null,
-    source: 'openai',
-    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-  };
+  const currentQualification = normalizeQualification(qualification);
+  try {
+    const analysis = await analyzeCustomerMessage({
+      message: latestMessage,
+      messages,
+      qualification: currentQualification,
+      language: normalizedLanguage,
+      page,
+      context,
+    });
+    const nextQualification = normalizeQualification(cleanAiQualification(analysis.qualification));
+    const quizHandoff = context?.quizHandoff === true;
+    const offerCalculation = (analysis.recommendationRequested || quizHandoff)
+      ? calculateOfferOptions(nextQualification)
+      : null;
+    const websiteKnowledge = retrieveWebsiteKnowledge({
+      query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
+      page,
+    });
+    const answer = await generateAnswer({
+      message: latestMessage,
+      messages,
+      language: normalizedLanguage,
+      page,
+      cart,
+      context,
+      topic: analysis.topic,
+      qualification: nextQualification,
+      offerCalculation,
+      websiteKnowledge,
+    });
+    const offerCards = offerCalculation
+      ? buildOfferCardsFromOfferCalculation(offerCalculation, {
+        language: normalizedLanguage,
+        copy: answer,
+      })
+      : [];
+    const ui = buildChatResponse({
+      message: answer.reply,
+      quickReplies: answer.quickReplies,
+      offerCards,
+    });
+
+    return {
+      reply: ui.message,
+      message: ui.message,
+      language: normalizedLanguage,
+      topic: analysis.topic,
+      qualification: nextQualification,
+      offerCalculation,
+      quickReplies: ui.quickReplies,
+      suggestions: ui.quickReplies.map((reply) => reply.label),
+      offerCards: ui.offerCards,
+      embeddedWidget: null,
+      source: 'openai',
+      model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+    };
+  } catch (error) {
+    if (error.statusCode && error.statusCode < 500) throw error;
+    return createOfflineChatCompletion({
+      message: latestMessage,
+      language: normalizedLanguage,
+      qualification,
+      context,
+    });
+  }
 };
 
 const setOpenAiTransportForTests = (transport) => {
