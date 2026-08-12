@@ -68,12 +68,18 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(calls.length, 2);
   assert.equal(calls[0].text.format.type, 'json_schema');
   assert.equal(calls[1].text.format.type, 'json_schema');
-  assert.equal(calls[0].model, 'gpt-5.6-sol');
+  assert.equal(calls[0].model, 'gpt-5.6-luna');
+  assert.equal(calls[0].reasoning.effort, 'none');
+  assert.equal(calls[1].model, 'gpt-5.6-terra');
+  assert.equal(calls[1].reasoning.effort, 'low');
   assert.equal(result.source, 'openai');
   assert.match(result.reply, /Tele2 is the best value/);
   assert.equal(result.offerCards.length, 2);
-  assert.equal(result.offerCalculation.options.length, 2);
-  assert.deepEqual(new Set(result.offerCalculation.options.map((option) => option.operator)), new Set(['Tele2', 'Tre']));
+  assert.equal(result.offerCalculation.options.length, 4);
+  assert.deepEqual(
+    new Set(result.offerCalculation.options.map((option) => option.operator)),
+    new Set(['Telia', 'Tele2', 'Telenor', 'Tre'])
+  );
   assert.equal(result.qualification.streamingMonthlyCosts.netflix, 179);
 
   const source = fs.readFileSync(require.resolve('./chat-service'), 'utf8');

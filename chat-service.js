@@ -11,7 +11,8 @@ const {
 } = require('./src/chat-ui-response');
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
-const DEFAULT_MODEL = 'gpt-5.6-sol';
+const DEFAULT_MODEL = 'gpt-5.6-terra';
+const DEFAULT_ANALYSIS_MODEL = 'gpt-5.6-luna';
 const MAX_KNOWLEDGE_CHARACTERS = 18_000;
 const WEBSITE_SOURCES = {
   siteContent: path.join(__dirname, 'chat', 'site-content.json'),
@@ -145,7 +146,7 @@ const qualificationSchema = {
     bindingEnds: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     mobileUsage: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
     requiredDataGb: nullableNumber,
-    priceRange: { type: ['string', 'null'], enum: ['under300', '300-400', '400-500', null] },
+    priceRange: { type: ['string', 'null'], enum: ['under300', '300-400', '400-500', 'no_limit', null] },
     streamingCalculation: { type: ['string', 'null'], enum: ['none', 'include', 'unknown', null] },
     streamingServices: {
       type: 'array',
@@ -201,7 +202,7 @@ const answerSchema = {
   additionalProperties: false,
   properties: {
     reply: { type: 'string', minLength: 1 },
-    quickReplies: { type: 'array', items: { type: 'string' }, maxItems: 4 },
+    quickReplies: { type: 'array', items: { type: 'string' }, maxItems: 5 },
     bestValueReason: { type: 'string' },
     lowestPriceReason: { type: 'string' },
     bestValueBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
@@ -213,7 +214,7 @@ const answerSchema = {
   ],
 };
 
-const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens }) => {
+const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, reasoningEffort = 'low' }) => {
   if (!process.env.OPENAI_API_KEY) {
     const error = new Error('AI chat is unavailable because OPENAI_API_KEY is not configured');
     error.statusCode = 503;
@@ -231,11 +232,13 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens }) => {
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+        model: model || process.env.OPENAI_MODEL || DEFAULT_MODEL,
         input,
         max_output_tokens: maxOutputTokens,
         store: false,
+        reasoning: { effort: reasoningEffort },
         text: {
+          verbosity: 'low',
           format: {
             type: 'json_schema',
             name: schemaName,
@@ -282,6 +285,8 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
   maxOutputTokens: 900,
+  model: process.env.OPENAI_ANALYSIS_MODEL || DEFAULT_ANALYSIS_MODEL,
+  reasoningEffort: 'none',
   input: [
     {
       role: 'system',
@@ -289,6 +294,7 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
         'Extract the customer need for Dealett without answering it.',
         'Preserve known qualification values unless the customer clearly changes them.',
         'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
+        'When the customer asks to start over, clear prior qualification values and build a fresh qualification only from messages after that request.',
         'If context.quizHandoff is true, continue from the supplied quiz state. Do not restart the quiz and do not ask again for information already present in currentQualification or context.answers.',
         'recommendationRequested is true when the customer asks for, continues, or questions a mobile-plan comparison.',
         'When context.quizHandoff is true, recommendationRequested should be true unless the message is unrelated to mobile recommendations.',
@@ -329,15 +335,18 @@ const generateAnswer = ({
       role: 'system',
       content: [
         `You are Dealett's expert human adviser. Reply naturally in ${languageNames[language]}.`,
-        'Use only the supplied website knowledge, mobile-plan catalog, cart context, and exact calculation.',
+        'Use only the supplied website knowledge, mobile-plan catalog, prior site selection, and exact calculation.',
+        'Build every recommendation independently from qualification and exactMobileRecommendationCalculation. A cart or quiz selection is prior context only: never reuse it as the recommendation, never let it restrict candidates, and never present it as best or cheapest unless the fresh calculation proves that. After the fresh result, briefly say whether the prior selection is still best or whether a calculated alternative is better.',
         'For mobile facts the catalog and calculation override other text. Never invent prices, benefits, savings, coverage, or account details.',
         'Ask one useful question when essential recommendation details are missing.',
+        'Never present an offer while missingQualificationFields is non-empty. In particular, ask about binding time for every person before giving a final offer when bindingEnds is missing.',
         'If the customer came from a quiz handoff, act like an expert in-store salesperson who has the filled form in front of them: continue from the current stage, ask only the next missing question, and never repeat provided answers.',
         'When a calculation exists, explain both best total value and lowest monthly price, including the 24-month formula: new cost + remaining old costs + fees - gift card - matching streaming savings.',
         'Treat all four operators fairly. A higher price can be better value when its included streaming, roaming, calls, shared data, or family terms fit the customer.',
         'Never say a number is locked. Mention number porting, scheduled porting, temporary/new number, or exclusion based on the customer preference and remind them to verify number ownership, add-ons, device payments, and notice periods.',
         'When a calculation exists, include a quick reply in the reply language that lets the customer ask to see all four operators.',
-        'Keep the answer concise and conversational. Quick replies must be relevant continuations, not canned defaults.',
+        'Keep the answer concise and conversational. Quick replies must directly answer the single question you just asked, not offer generic next actions.',
+        'When asking how many subscriptions, provide numeric quick replies such as 1, 2, 3, and 4 or more. When asking an operator, provide the actual operator names. When asking binding time, provide no binding time, binding time remains, and do not know. When asking data use, budget, streaming, or travel, provide the concrete common choices in the reply language. Budget choices must include a no-limit or no-preference option. Use up to five buttons and cover the normal answers.',
       ].join(' '),
     },
     ...trimMessages(messages),
@@ -350,7 +359,7 @@ const generateAnswer = ({
         topic,
         qualification,
         missingQualificationFields: qualification.missingFields,
-        cart,
+        priorSiteSelection: cart,
         websiteKnowledge,
         mobilePlanCatalog: getPlanCatalog(),
         exactMobileRecommendationCalculation: offerCalculation,

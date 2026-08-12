@@ -6,10 +6,12 @@ const {
   normalizeQuickReplies,
 } = require('./chat-ui-response');
 
-assert.deepEqual(normalizeQuickReplies(['Compare', 'Compare', '', 'Show all']), [
-  { id: 'compare', label: 'Compare' },
-  { id: 'compare', label: 'Compare' },
-  { id: 'show-all', label: 'Show all' },
+assert.deepEqual(normalizeQuickReplies(['1', '2', '3', '4', '5+', 'Ignored']), [
+  { id: '1', label: '1' },
+  { id: '2', label: '2' },
+  { id: '3', label: '3' },
+  { id: '4', label: '4' },
+  { id: '5', label: '5+' },
 ]);
 
 assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {

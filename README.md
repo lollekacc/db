@@ -21,7 +21,7 @@ If the customer already has a clearly better deal than Dealett can beat, Dealett
 
 ### AI chat
 
-The chat requires `OPENAI_API_KEY` on the backend. `OPENAI_MODEL` is optional; the default is `gpt-5.6-sol`.
+The chat requires `OPENAI_API_KEY` on the backend. `OPENAI_MODEL` is optional; the default response model is `gpt-5.6-terra`. Qualification extraction uses `gpt-5.6-luna` by default and can be overridden with `OPENAI_ANALYSIS_MODEL`.
 
 Every assistant answer is generated through the OpenAI Responses API with Structured Outputs. The first model call updates the customer's qualification, the shared `offer-calculator.js` performs all recommendation math, and a second model call explains the exact result using the website knowledge and mobile-plan catalog. API failures return an error and never substitute a scripted assistant reply.
 

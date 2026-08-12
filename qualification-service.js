@@ -68,7 +68,7 @@ const normalizePerson = (person = {}, index = 0, fallback = {}) => {
   ) || 'Annan / ingen';
   const bindingEnd = normalizeBindingEnd(
     person.bindingEnd || person.bindingEnds || person.binding || fallback.bindingEnd
-  ) || 'Vet inte';
+  );
   const dataNeed = ['low', 'medium', 'high'].includes(person.dataNeed || person.mobileUsage)
     ? (person.dataNeed || person.mobileUsage)
     : fallback.dataNeed || null;
@@ -129,12 +129,27 @@ const normalizeQualification = (qualification = {}) => {
   const peopleCount = Number.isFinite(Number(qualification.peopleCount)) && Number(qualification.peopleCount) > 0
     ? Math.min(Math.round(Number(qualification.peopleCount)), 10)
     : null;
-  const rawOperators = Array.isArray(qualification.operators)
+  const rawPeopleInput = Array.isArray(qualification.people) ? qualification.people : [];
+  const listedOperators = Array.isArray(qualification.operators)
     ? qualification.operators.map(normalizeOperator).filter(Boolean).slice(0, peopleCount || 10)
     : [];
-  const rawBindingEnds = Array.isArray(qualification.bindingEnds)
+  const peopleOperators = rawPeopleInput
+    .map((person) => normalizeOperator(person?.currentOperator || person?.operator))
+    .filter(Boolean)
+    .slice(0, peopleCount || 10);
+  const rawOperators = peopleCount && listedOperators.length < peopleCount && peopleOperators.length >= peopleCount
+    ? peopleOperators
+    : listedOperators;
+  const listedBindingEnds = Array.isArray(qualification.bindingEnds)
     ? qualification.bindingEnds.map(normalizeBindingEnd).filter(Boolean).slice(0, peopleCount || 10)
     : [];
+  const peopleBindingEnds = rawPeopleInput
+    .map((person) => normalizeBindingEnd(person?.bindingEnd || person?.bindingEnds || person?.binding))
+    .filter(Boolean)
+    .slice(0, peopleCount || 10);
+  const rawBindingEnds = peopleCount && listedBindingEnds.length < peopleCount && peopleBindingEnds.length >= peopleCount
+    ? peopleBindingEnds
+    : listedBindingEnds;
   const operators = peopleCount && qualification.operatorAppliesToAll && rawOperators.length === 1
     ? Array.from({ length: peopleCount }, () => rawOperators[0])
     : rawOperators;
@@ -147,7 +162,7 @@ const normalizeQualification = (qualification = {}) => {
   const requiredDataGb = Number(qualification.requiredDataGb) > 0
     ? Math.round(Number(qualification.requiredDataGb))
     : null;
-  const priceRange = ['under300', '300-400', '400-500'].includes(qualification.priceRange)
+  const priceRange = ['under300', '300-400', '400-500', 'no_limit'].includes(qualification.priceRange)
     ? qualification.priceRange
     : null;
   const streamingCalculation = ['none', 'include', 'unknown'].includes(qualification.streamingCalculation)
@@ -194,10 +209,10 @@ const normalizeQualification = (qualification = {}) => {
   const familyTotalPrice = Number(qualification.familyTotalPrice) > 0
     ? Math.round(Number(qualification.familyTotalPrice))
     : null;
-  const rawPeople = Array.isArray(qualification.people) ? qualification.people : [];
+  const rawPeople = rawPeopleInput;
   const people = (rawPeople.length ? rawPeople : Array.from({ length: peopleCount || 0 }, (_, index) => ({
     currentOperator: operators[index] || 'Annan / ingen',
-    bindingEnd: bindingEnds[index] || 'Ingen bindningstid',
+    bindingEnd: bindingEnds[index] || null,
     currentMonthlyCost: exactMonthlyPrices[index] || exactMonthlyPrice || null,
     dataNeed: mobileUsage,
     requiredDataGb,
@@ -205,7 +220,7 @@ const normalizeQualification = (qualification = {}) => {
   })))
     .map((person, index) => normalizePerson(person, index, {
       currentOperator: operators[index] || 'Annan / ingen',
-      bindingEnd: bindingEnds[index] || 'Ingen bindningstid',
+      bindingEnd: bindingEnds[index] || null,
       currentMonthlyCost: exactMonthlyPrices[index] || exactMonthlyPrice || null,
       dataNeed: mobileUsage,
     }))
