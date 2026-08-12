@@ -150,7 +150,6 @@ const qualificationSchema = {
     streamingServices: {
       type: 'array',
       items: { type: 'string', enum: ['netflix', 'hbo', 'disney', 'amazon', 'tv4'] },
-      uniqueItems: true,
     },
     streamingMonthlyCosts: {
       type: 'object',
@@ -250,6 +249,7 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens }) => {
     if (!response.ok) {
       const error = new Error(`OpenAI request failed with status ${response.status}`);
       error.statusCode = 502;
+      error.openAiMessage = String(body?.error?.message || 'Unknown OpenAI API error');
       throw error;
     }
     const outputText = extractOutputText(body);
