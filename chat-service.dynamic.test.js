@@ -72,6 +72,14 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(calls[0].reasoning.effort, 'none');
   assert.equal(calls[1].model, 'gpt-5.6-terra');
   assert.equal(calls[1].reasoning.effort, 'low');
+  assert.equal(calls[1].text.verbosity, 'low');
+  assert.equal(calls[1].max_output_tokens, 700);
+  const answerPrompt = calls[1].input.find((item) => item.role === 'system')?.content || '';
+  assert.match(answerPrompt, /question must be one short sentence and contain exactly one question/i);
+  assert.match(answerPrompt, /recommendation must be no more than 100 words/i);
+  assert.match(answerPrompt, /offer cards carry the detail/i);
+  assert.match(answerPrompt, /only when the customer explicitly asks/i);
+  assert.doesNotMatch(answerPrompt, /explain both best total value and lowest monthly price, including the 24-month formula/i);
   assert.equal(result.source, 'openai');
   assert.match(result.reply, /Tele2 is the best value/);
   assert.equal(result.offerCards.length, 2);
