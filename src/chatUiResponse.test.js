@@ -14,9 +14,54 @@ assert.deepEqual(normalizeQuickReplies(['1', '2', '3', '4', '5+', 'Ignored']), [
   { id: '5', label: '5+' },
 ]);
 
+assert.deepEqual(normalizeQuickReplies([{
+  label: 'Nej, ingen av oss',
+  qualificationPatch: {
+    bindingEnds: Array(4).fill('Ingen bindningstid'),
+    bindingAppliesToAll: true,
+    unsafeField: 'ignored',
+  },
+}]), [{
+  id: 'nej-ingen-av-oss',
+  label: 'Nej, ingen av oss',
+  qualificationPatch: {
+    bindingEnds: Array(4).fill('Ingen bindningstid'),
+    bindingAppliesToAll: true,
+  },
+}]);
+
 assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
   message: 'Dynamic answer',
   quickReplies: [],
+  quickReplyMode: 'single',
+  quickReplySubmitLabel: '',
+  offerCards: [],
+  embeddedWidget: null,
+});
+
+assert.deepEqual(buildChatResponse({
+  message: 'Vilka streamingtjänster betalar du för?',
+  quickReplyMode: 'multiple',
+  quickReplySubmitLabel: 'Skicka val',
+  quickReplies: [{
+    label: 'Netflix',
+    qualificationPatch: {
+      streamingCalculation: 'include',
+      streamingServices: ['netflix'],
+    },
+  }],
+}), {
+  message: 'Vilka streamingtjänster betalar du för?',
+  quickReplies: [{
+    id: 'netflix',
+    label: 'Netflix',
+    qualificationPatch: {
+      streamingCalculation: 'include',
+      streamingServices: ['netflix'],
+    },
+  }],
+  quickReplyMode: 'multiple',
+  quickReplySubmitLabel: 'Skicka val',
   offerCards: [],
   embeddedWidget: null,
 });

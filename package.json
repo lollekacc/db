@@ -3,7 +3,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check translation-service.js && node --check bankid-service.js && node --check order-service.js && node --check chat-service.js && node --check qualification-service.js && node --check chat-feedback-service.js && node --check offer-service.js && node --check offer-calculator.js && node --check offer-calculator.test.js && node --check chat-service.dynamic.test.js && node --check recommendation-parity.test.js && node --check src/chat-ui-response.js && node --check src/chatUiResponse.test.js && node --check src/chatFeedback.test.js && node --check scripts/validate-market-data.js && node --check scripts/market-verification-report.js && node --check scripts/analyze-chat-feedback.js && node --check scripts/market-data/normalize-market-data.js && node --check scripts/market-data/merge-market-data.js && node --check scripts/market-data/run-market-update.js && node --check scripts/market-data/collectors/telia.collector.js && node --check scripts/market-data/collectors/tele2.collector.js && node --check scripts/market-data/collectors/telenor.collector.js && node --check scripts/market-data/collectors/tre.collector.js",
+    "check": "node --check server.js && node --check translation-service.js && node --check bankid-service.js && node --check order-service.js && node --check chat-service.js && node --check qualification-service.js && node --check chat-feedback-service.js && node --check offer-service.js && node --check offer-calculator.js && node --check offer-calculator.test.js && node --check chat-service.dynamic.test.js && node --check recommendation-parity.test.js && node --check src/chat-ui-response.js && node --check src/chatUiResponse.test.js && node --check src/chatFeedback.test.js && node --check src/conversation-state.js && node --check src/conversationState.test.js && node --check src/customerServiceBehavior.test.js && node --check scripts/validate-market-data.js && node --check scripts/market-verification-report.js && node --check scripts/analyze-chat-feedback.js && node --check scripts/market-data/normalize-market-data.js && node --check scripts/market-data/merge-market-data.js && node --check scripts/market-data/run-market-update.js && node --check scripts/market-data/collectors/telia.collector.js && node --check scripts/market-data/collectors/tele2.collector.js && node --check scripts/market-data/collectors/telenor.collector.js && node --check scripts/market-data/collectors/tre.collector.js",
     "eval:chatbot": "node tests/chatbot-evaluations/run-chatbot-evals.js",
     "eval:chatbot:live": "node tests/chatbot-evaluations/live-customer-simulator.js",
     "eval:chatbot:soft": "node tests/chatbot-evaluations/soft-values-live-simulator.js",
@@ -16,6 +16,8 @@
     "test:translation": "node translation-service.test.js",
     "test:recommendations": "node offer-calculator.test.js",
     "test:chat-dynamic": "node chat-service.dynamic.test.js",
+    "test:customer-service": "node src/customerServiceBehavior.test.js",
+    "test:conversation-state": "node src/conversationState.test.js",
     "test:recommendation-parity": "node recommendation-parity.test.js",
     "test:market": "node src/marketIntelligence.test.js",
     "test:chat-market": "node src/chatMarketIntelligence.test.js",

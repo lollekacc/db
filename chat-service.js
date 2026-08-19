@@ -9,6 +9,12 @@ const {
   buildChatResponse,
   buildOfferCardsFromOfferCalculation,
 } = require('./src/chat-ui-response');
+const {
+  applyConversationAnswer,
+  buildQualificationStep,
+  isQualificationContinuation,
+  mergeQualificationState,
+} = require('./src/conversation-state');
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5.6-terra';
@@ -147,6 +153,10 @@ const qualificationSchema = {
     mobileUsage: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
     requiredDataGb: nullableNumber,
     priceRange: { type: ['string', 'null'], enum: ['under300', '300-400', '400-500', 'no_limit', null] },
+    familyPriceRange: {
+      type: ['string', 'null'],
+      enum: ['under1000', '1000-1500', '1500-2000', 'over2000', 'unknown', null],
+    },
     streamingCalculation: { type: ['string', 'null'], enum: ['none', 'include', 'unknown', null] },
     streamingServices: {
       type: 'array',
@@ -178,7 +188,7 @@ const qualificationSchema = {
     priceAppliesToAll: { type: 'boolean' },
   },
   required: [
-    'peopleCount', 'people', 'operators', 'bindingEnds', 'mobileUsage', 'requiredDataGb', 'priceRange',
+    'peopleCount', 'people', 'operators', 'bindingEnds', 'mobileUsage', 'requiredDataGb', 'priceRange', 'familyPriceRange',
     'streamingCalculation', 'streamingServices', 'streamingMonthlyCosts', 'internationalTravel',
     'internationalUsage', 'exactMonthlyPrice', 'exactMonthlyPrices', 'customerSegment',
     'familyTotalPrice', 'operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll',
@@ -190,11 +200,23 @@ const analysisSchema = {
   additionalProperties: false,
   properties: {
     topic: { type: 'string' },
+    interactionStage: {
+      type: 'string',
+      enum: ['greeting', 'understand', 'solve', 'confirm', 'dissatisfied', 'close'],
+    },
+    desiredOutcome: nullableString,
+    customerEmotion: {
+      type: 'string',
+      enum: ['neutral', 'confused', 'frustrated', 'angry', 'anxious'],
+    },
     recommendationRequested: { type: 'boolean' },
     knowledgeQuery: { type: 'string' },
     qualification: qualificationSchema,
   },
-  required: ['topic', 'recommendationRequested', 'knowledgeQuery', 'qualification'],
+  required: [
+    'topic', 'interactionStage', 'desiredOutcome', 'customerEmotion',
+    'recommendationRequested', 'knowledgeQuery', 'qualification',
+  ],
 };
 
 const answerSchema = {
@@ -281,6 +303,30 @@ const cleanAiQualification = (qualification = {}) => ({
     .filter(([, value]) => Number(value) > 0)),
 });
 
+const streamingServiceFromLabel = (label) => {
+  const normalized = String(label || '').toLowerCase();
+  if (normalized.includes('netflix')) return 'netflix';
+  if (/hbo|max/.test(normalized)) return 'hbo';
+  if (normalized.includes('disney')) return 'disney';
+  if (/amazon|prime/.test(normalized)) return 'amazon';
+  if (normalized.includes('tv4')) return 'tv4';
+  return null;
+};
+
+const isStreamingServiceQuestion = (answer = {}) => {
+  const reply = String(answer.reply || '');
+  const services = (answer.quickReplies || []).map(streamingServiceFromLabel).filter(Boolean);
+  return services.length >= 2 && /streaming|streamingtjanst|streamingtjänst/i.test(reply);
+};
+
+const addStreamingQualificationPatches = (quickReplies = []) => quickReplies.map((reply) => {
+  const label = typeof reply === 'string' ? reply : reply?.label;
+  const service = streamingServiceFromLabel(label);
+  return service
+    ? { label, qualificationPatch: { streamingCalculation: 'include', streamingServices: [service] } }
+    : reply;
+});
+
 const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
@@ -292,7 +338,15 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
       role: 'system',
       content: [
         'Extract the customer need for Dealett without answering it.',
+        'Classify the conversation before extracting sales details: greeting, understand, solve, confirm, dissatisfied, or close.',
+        'desiredOutcome is what the customer wants to happen now, not merely the event or symptom they described. Use null when it is not yet clear.',
+        'A greeting by itself is interactionStage greeting, has desiredOutcome null, and is not a recommendation request. Never infer a sales goal from the current page, cart, or a previous assistant question alone.',
+        'Use dissatisfied when the customer says prior help did not solve the need. Use confirm when they report that the help worked or explicitly accept the outcome.',
+        'Detect confused, frustrated, angry, or anxious language without treating disagreement as abuse.',
         'Preserve known qualification values unless the customer clearly changes them.',
+        'Interpret short answers such as yes, no, none, and do not know in the scope of the immediately preceding assistant question.',
+        'When a group customer says everyone has the same operator, unlimited data, or no binding time, apply that fact to every person and set the matching applies-to-all flag.',
+        'priceRange, exactMonthlyPrice, exactMonthlyPrices, familyPriceRange, and familyTotalPrice describe what the customer pays today, never a desired future budget. familyPriceRange is the approximate current total for a multi-person group.',
         'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
         'When the customer asks to start over, clear prior qualification values and build a fresh qualification only from messages after that request.',
         'If context.quizHandoff is true, continue from the supplied quiz state. Do not restart the quiz and do not ask again for information already present in currentQualification or context.answers.',
@@ -322,6 +376,9 @@ const generateAnswer = ({
   page,
   cart,
   topic,
+  interactionStage,
+  desiredOutcome,
+  customerEmotion,
   qualification,
   offerCalculation,
   websiteKnowledge,
@@ -335,6 +392,14 @@ const generateAnswer = ({
       role: 'system',
       content: [
         `You are Dealett's expert human adviser. Reply naturally in ${languageNames[language]}.`,
+        'Use this customer-service sequence: understand the desired outcome, solve or route it, verify the outcome when appropriate, and close respectfully.',
+        'For a greeting with no stated need, greet warmly and ask an open question about what the customer wants help with. Do not begin mobile-plan qualification, infer a goal from the page, or repeat an earlier sales question. For the initial greeting, offer concise quick replies for the main help categories plus an open other-question choice.',
+        'Before proposing a solution, distinguish what happened, its impact, and what the customer wants now. If the desired outcome is unclear, summarize only the known issue and ask one neutral clarifying question instead of guessing.',
+        'When the desired outcome is clear, answer it directly or take the next useful step. Ask only for information that materially changes the answer, and never ask again for information already supplied.',
+        'After a final answer, completed guidance, referral, or refusal, briefly check whether it resolves the customer\'s need when that is useful. Do not ask this during every intermediate qualification step or when the customer has already confirmed satisfaction.',
+        'When Dealett cannot do what the customer asks, acknowledge the impact, state the limit plainly, give a brief truthful reason, and offer the closest realistic alternative or support route. Do not blame the system, invent an exception, promise a result another team controls, or keep transferring the customer without purpose.',
+        'If the customer is confused, frustrated, angry, or anxious, acknowledge the specific concern in one calm sentence and then focus on the practical next step. Never argue about their feelings or use generic empathy as a substitute for help.',
+        'Never claim to have accessed an account, changed a subscription, issued a refund, contacted another team, or completed any action unless the supplied context proves it. Protect personal information and direct account-specific cases to the supported account or contact route.',
         'Use only the supplied website knowledge, mobile-plan catalog, prior site selection, and exact calculation.',
         'Build every recommendation independently from qualification and exactMobileRecommendationCalculation. A cart or quiz selection is prior context only: never reuse it as the recommendation, never let it restrict candidates, and never present it as best or cheapest unless the fresh calculation proves that. After the fresh result, briefly say whether the prior selection is still best or whether a calculated alternative is better.',
         'For mobile facts the catalog and calculation override other text. Never invent prices, benefits, savings, coverage, or account details.',
@@ -349,7 +414,7 @@ const generateAnswer = ({
         'Never say a number is locked. Discuss number porting and verification details only when they are relevant to the customer question or materially affect the recommendation.',
         'When a calculation exists, include a quick reply in the reply language that lets the customer ask to see all four operators.',
         'Keep the answer concise and conversational. Omit introductions, repetition, generic reassurance, optional background, and unnecessary sign-offs. Quick replies must directly answer the single question you just asked, not offer generic next actions.',
-        'When asking how many subscriptions, provide numeric quick replies such as 1, 2, 3, and 4 or more. When asking an operator, provide the actual operator names. When asking binding time, provide no binding time, binding time remains, and do not know. When asking data use, budget, streaming, or travel, provide the concrete common choices in the reply language. Budget choices must include a no-limit or no-preference option. Use up to five buttons and cover the normal answers.',
+        'When asking how many subscriptions, provide numeric quick replies such as 1, 2, 3, and 4 or more. When asking an operator, provide the actual operator names. When asking binding time, make the scope explicit. When asking about price, ask what the customer pays today rather than their desired budget. Use up to five buttons and cover the normal answers.',
       ].join(' '),
     },
     ...trimMessages(messages),
@@ -360,6 +425,9 @@ const generateAnswer = ({
         page,
         context,
         topic,
+        interactionStage,
+        desiredOutcome,
+        customerEmotion,
         qualification,
         missingQualificationFields: qualification.missingFields,
         priorSiteSelection: cart,
@@ -390,7 +458,8 @@ const createChatCompletion = async ({
   const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
     ? String(language).toLowerCase()
     : 'sv';
-  const currentQualification = normalizeQualification(qualification);
+  const startsOver = /\b(starta om|börja om|börja från början|start over|start again|restart)\b/i.test(latestMessage);
+  const currentQualification = normalizeQualification(startsOver ? createEmptyQualification() : qualification);
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
     messages,
@@ -399,28 +468,59 @@ const createChatCompletion = async ({
     page,
     context,
   });
-  const nextQualification = normalizeQualification(cleanAiQualification(analysis.qualification));
+  const mergedQualification = mergeQualificationState(
+    currentQualification,
+    cleanAiQualification(analysis.qualification)
+  );
+  const nextQualification = normalizeQualification(applyConversationAnswer({
+    message: latestMessage,
+    messages,
+    qualification: mergedQualification,
+  }));
   const quizHandoff = context?.quizHandoff === true;
-  const offerCalculation = (analysis.recommendationRequested || quizHandoff)
+  const recommendationInProgress = analysis.recommendationRequested || quizHandoff || isQualificationContinuation(messages);
+  const qualificationStep = recommendationInProgress
+    ? buildQualificationStep({
+      qualification: nextQualification,
+      message: latestMessage,
+      messages,
+      language: normalizedLanguage,
+    })
+    : null;
+  const offerCalculation = recommendationInProgress && !qualificationStep
     ? calculateOfferOptions(nextQualification)
     : null;
   const websiteKnowledge = retrieveWebsiteKnowledge({
     query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
     page,
   });
-  const answer = await generateAnswer({
-    message: latestMessage,
-    messages,
-    language: normalizedLanguage,
-    page,
-    cart,
-    context,
-    topic: analysis.topic,
-    qualification: nextQualification,
-    offerCalculation,
-    websiteKnowledge,
-  });
-  const offerCards = offerCalculation
+  const answer = qualificationStep
+    ? {
+      reply: qualificationStep.reply,
+      quickReplies: qualificationStep.quickReplies,
+      bestValueReason: '',
+      lowestPriceReason: '',
+      bestValueBenefits: [],
+      lowestPriceBenefits: [],
+    }
+    : await generateAnswer({
+      message: latestMessage,
+      messages,
+      language: normalizedLanguage,
+      page,
+      cart,
+      context,
+      topic: analysis.topic,
+      interactionStage: analysis.interactionStage,
+      desiredOutcome: analysis.desiredOutcome,
+      customerEmotion: analysis.customerEmotion,
+      qualification: nextQualification,
+      offerCalculation,
+      websiteKnowledge,
+    });
+  const streamingMultiSelect = isStreamingServiceQuestion(answer);
+  const isInformationQuestion = /\?\s*$/.test(String(answer.reply || '').trim());
+  const offerCards = offerCalculation && !isInformationQuestion
     ? buildOfferCardsFromOfferCalculation(offerCalculation, {
       language: normalizedLanguage,
       copy: answer,
@@ -428,7 +528,13 @@ const createChatCompletion = async ({
     : [];
   const ui = buildChatResponse({
     message: answer.reply,
-    quickReplies: answer.quickReplies,
+    quickReplies: streamingMultiSelect
+      ? addStreamingQualificationPatches(answer.quickReplies)
+      : answer.quickReplies,
+    quickReplyMode: streamingMultiSelect ? 'multiple' : 'single',
+    quickReplySubmitLabel: streamingMultiSelect
+      ? (normalizedLanguage === 'en' ? 'Send choices' : 'Skicka val')
+      : '',
     offerCards,
   });
 
@@ -440,6 +546,8 @@ const createChatCompletion = async ({
     qualification: nextQualification,
     offerCalculation,
     quickReplies: ui.quickReplies,
+    quickReplyMode: ui.quickReplyMode,
+    quickReplySubmitLabel: ui.quickReplySubmitLabel,
     suggestions: ui.quickReplies.map((reply) => reply.label),
     offerCards: ui.offerCards,
     embeddedWidget: null,

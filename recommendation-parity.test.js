@@ -12,6 +12,7 @@ const schemaQualification = (qualification) => ({
   mobileUsage: qualification.mobileUsage,
   requiredDataGb: qualification.requiredDataGb,
   priceRange: qualification.priceRange,
+  familyPriceRange: qualification.familyPriceRange || null,
   streamingCalculation: qualification.streamingCalculation,
   streamingServices: qualification.streamingServices,
   streamingMonthlyCosts: {
@@ -40,6 +41,9 @@ setOpenAiTransportForTests(async (_url, options) => {
     const payload = JSON.parse(request.input.at(-1).content);
     output = {
       topic: 'mobile recommendation',
+      interactionStage: 'solve',
+      desiredOutcome: 'Find a suitable mobile recommendation',
+      customerEmotion: 'neutral',
       recommendationRequested: true,
       knowledgeQuery: 'mobile plans',
       qualification: schemaQualification(payload.currentQualification),

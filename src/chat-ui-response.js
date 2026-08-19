@@ -13,12 +13,41 @@ const slugify = (value, fallback) => {
   return slug || fallback;
 };
 
+const normalizeQualificationPatch = (patch) => {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return null;
+  const result = {};
+  const peopleCount = Number(patch.peopleCount);
+  if (Number.isInteger(peopleCount) && peopleCount >= 1 && peopleCount <= 10) result.peopleCount = peopleCount;
+  if (Array.isArray(patch.operators)) result.operators = patch.operators.map(String).slice(0, 10);
+  if (Array.isArray(patch.bindingEnds)) result.bindingEnds = patch.bindingEnds.map(String).slice(0, 10);
+  if (['low', 'medium', 'high'].includes(patch.mobileUsage)) result.mobileUsage = patch.mobileUsage;
+  if (['under300', '300-400', '400-500', 'no_limit'].includes(patch.priceRange)) result.priceRange = patch.priceRange;
+  if (['under1000', '1000-1500', '1500-2000', 'over2000', 'unknown'].includes(patch.familyPriceRange)) {
+    result.familyPriceRange = patch.familyPriceRange;
+  }
+  if (['none', 'include', 'unknown'].includes(patch.streamingCalculation)) {
+    result.streamingCalculation = patch.streamingCalculation;
+  }
+  if (Array.isArray(patch.streamingServices)) {
+    const allowedStreamingServices = ['netflix', 'hbo', 'disney', 'amazon', 'tv4'];
+    result.streamingServices = [...new Set(patch.streamingServices
+      .map((service) => String(service || '').trim().toLowerCase())
+      .filter((service) => allowedStreamingServices.includes(service)))];
+  }
+  ['operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll'].forEach((field) => {
+    if (typeof patch[field] === 'boolean') result[field] = patch[field];
+  });
+  return Object.keys(result).length ? result : null;
+};
+
 const normalizeQuickReply = (reply, index) => {
   const label = typeof reply === 'string' ? reply.trim() : String(reply?.label || '').trim();
   if (!label) return null;
+  const qualificationPatch = normalizeQualificationPatch(reply?.qualificationPatch);
   return {
-    id: slugify(typeof reply === 'object' ? reply?.id : label, `reply-${index + 1}`),
+    id: slugify(typeof reply === 'object' ? (reply?.id || label) : label, `reply-${index + 1}`),
     label: label.slice(0, 80),
+    ...(qualificationPatch ? { qualificationPatch } : {}),
   };
 };
 
@@ -111,9 +140,17 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
   }));
 };
 
-const buildChatResponse = ({ message, quickReplies = [], offerCards = [] }) => ({
+const buildChatResponse = ({
+  message,
+  quickReplies = [],
+  quickReplyMode = 'single',
+  quickReplySubmitLabel = '',
+  offerCards = [],
+}) => ({
   message: String(message || ''),
   quickReplies: normalizeQuickReplies(quickReplies),
+  quickReplyMode: quickReplyMode === 'multiple' ? 'multiple' : 'single',
+  quickReplySubmitLabel: String(quickReplySubmitLabel || '').trim().slice(0, 40),
   offerCards: normalizeOfferCards(offerCards),
   embeddedWidget: null,
 });

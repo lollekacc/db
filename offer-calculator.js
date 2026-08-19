@@ -6,6 +6,13 @@ const PRICE_RANGE_MIDPOINTS = {
   '400-500': 450,
 };
 
+const FAMILY_PRICE_RANGE_MIDPOINTS = {
+  under1000: 850,
+  '1000-1500': 1250,
+  '1500-2000': 1750,
+  over2000: 2250,
+};
+
 const USAGE_MINIMUM_GB = {
   low: 10,
   medium: 20,
@@ -268,6 +275,11 @@ const getStreamingEvaluation = ({ qualification = {}, streamingReplacement }) =>
 const getCurrentMonthlyTotal = (qualification, peopleCount) => {
   if (Number(qualification.familyTotalPrice) > 0) {
     return { amount: Number(qualification.familyTotalPrice), estimated: false };
+  }
+
+  const familyRangeMidpoint = FAMILY_PRICE_RANGE_MIDPOINTS[qualification.familyPriceRange] || 0;
+  if (familyRangeMidpoint > 0) {
+    return { amount: familyRangeMidpoint, estimated: true };
   }
 
   const exactPrices = Array.isArray(qualification.exactMonthlyPrices)

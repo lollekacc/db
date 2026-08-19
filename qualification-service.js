@@ -30,7 +30,7 @@ const normalizeBindingEnd = (value) => {
   if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
   if (/ingen|no contract|no binding/i.test(normalized)) return 'Ingen bindningstid';
   if (/vet|don't know|dont know/i.test(normalized)) return 'Vet inte';
-  return normalized.slice(0, 40);
+  return null;
 };
 
 const normalizePositiveMoney = (value) => {
@@ -108,6 +108,7 @@ const createEmptyQualification = () => ({
   mobileUsage: null,
   requiredDataGb: null,
   priceRange: null,
+  familyPriceRange: null,
   streamingCalculation: null,
   streamingServices: [],
   streamingMonthlyCosts: {},
@@ -164,6 +165,10 @@ const normalizeQualification = (qualification = {}) => {
     : null;
   const priceRange = ['under300', '300-400', '400-500', 'no_limit'].includes(qualification.priceRange)
     ? qualification.priceRange
+    : null;
+  const familyPriceRange = ['under1000', '1000-1500', '1500-2000', 'over2000', 'unknown']
+    .includes(qualification.familyPriceRange)
+    ? qualification.familyPriceRange
     : null;
   const streamingCalculation = ['none', 'include', 'unknown'].includes(qualification.streamingCalculation)
     ? qualification.streamingCalculation
@@ -234,7 +239,7 @@ const normalizeQualification = (qualification = {}) => {
   const hasAllPersonMonthlyCosts = peopleCount && people
     .slice(0, peopleCount)
     .every((person) => Number(person.currentMonthlyCost) > 0);
-  if (!priceRange && !exactMonthlyPrice && !familyTotalPrice && (!peopleCount || exactMonthlyPrices.length < peopleCount) && !hasAllPersonMonthlyCosts) {
+  if (!priceRange && !familyPriceRange && !exactMonthlyPrice && !familyTotalPrice && (!peopleCount || exactMonthlyPrices.length < peopleCount) && !hasAllPersonMonthlyCosts) {
     missingFields.push('priceRange');
   }
   if (peopleCount && people.length < peopleCount) missingFields.push('people');
@@ -246,6 +251,7 @@ const normalizeQualification = (qualification = {}) => {
     mobileUsage,
     requiredDataGb,
     priceRange,
+    familyPriceRange,
     streamingCalculation,
     streamingServices,
     streamingMonthlyCosts,
