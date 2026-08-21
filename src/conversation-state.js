@@ -229,8 +229,31 @@ const buildQualificationStep = ({ qualification = {}, message = '', messages = [
   return null;
 };
 
-const isQualificationContinuation = (messages = []) => /abonnemang|operator|bindningstid|surf|betalar.*idag|current.*pay/i
-  .test(getLastAssistantMessage(messages));
+const isQualificationPrompt = (messages = []) => /hur manga abonnemang|how many subscriptions|operator|operatör|bindningstid|binding time|end date|slutdatum|hur mycket surf|mobile data|data do you need|betalar.*(?:idag|manad)|kostar.*(?:totalt|idag)|pay.*(?:today|month|total)/
+  .test(normalizeText(getLastAssistantMessage(messages)));
+
+const isQualificationContinuation = (messages = [], message = '') => {
+  const previousQuestion = normalizeText(getLastAssistantMessage(messages));
+  const answer = normalizeText(message);
+  if (!previousQuestion || !answer) return false;
+
+  if (/hur manga abonnemang|how many subscriptions/.test(previousQuestion)) {
+    return /^(?:[1-9]|10)(?:\+)?(?:\s|$)|\b(?:ett|en|tva|två|tre|fyra|fem|sex|sju|atta|åtta|nio|tio)\b|\babonnemang\b/.test(answer);
+  }
+  if (/operator|operatör/.test(previousQuestion)) {
+    return /\b(telia|tele2|telenor|tre|samma|olika|same|different)\b/.test(answer);
+  }
+  if (/bindningstid|binding time|end date|slutdatum/.test(previousQuestion)) {
+    return /^(ja|nej|yes|no|ingen|vet inte|i do not know|don't know)\b|\b\d{4}-\d{2}-\d{2}\b/.test(answer);
+  }
+  if (/hur mycket surf|mobile data|data do you need/.test(previousQuestion)) {
+    return /\b(wifi|normal|mycket|obegransat|obegränsat|unlimited|\d+\s*gb)\b/.test(answer);
+  }
+  if (/betalar.*(?:idag|manad)|kostar.*(?:totalt|idag)|pay.*(?:today|month|total)/.test(previousQuestion)) {
+    return /\d|under|over|över|vet inte|do not know|don't know/.test(answer);
+  }
+  return false;
+};
 
 module.exports = {
   applyConversationAnswer,
@@ -238,5 +261,6 @@ module.exports = {
   getFamilyPriceRange,
   getLastAssistantMessage,
   isQualificationContinuation,
+  isQualificationPrompt,
   mergeQualificationState,
 };

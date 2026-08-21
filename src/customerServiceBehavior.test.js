@@ -55,6 +55,22 @@ const scenarios = [
       quickReplies: ['Öppna kontaktsidan', 'Nej tack'],
     },
   },
+  {
+    input: 'hur mår du?',
+    messages: [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }],
+    analysis: {
+      topic: 'small talk',
+      interactionStage: 'understand',
+      desiredOutcome: 'Have a normal conversation',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: '',
+    },
+    answer: {
+      reply: 'Jag mår bra, tack! Vad vill du prata om?',
+      quickReplies: [],
+    },
+  },
 ];
 
 let activeScenario = null;
@@ -118,7 +134,7 @@ setOpenAiTransportForTests(async (_url, options) => {
     const result = await createChatCompletion({
       message: scenario.input,
       language: 'sv',
-      messages: [],
+      messages: scenario.messages || [],
       qualification: createEmptyQualification(),
       context: scenario.context || {},
       page: { path: 'mobilabonnemang.html' },
@@ -147,6 +163,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(scenarios[1].answer.reply, /supportärende/i);
   assert.match(scenarios[2].answer.reply, /kan inte genomföra en återbetalning/i);
   assert.match(scenarios[2].answer.reply, /kontaktsidan/i);
+  assert.doesNotMatch(scenarios[3].answer.reply, /Hur många abonnemang/i);
+  assert.match(scenarios[3].answer.reply, /mår bra/i);
 
   console.log('customer service behavior tests passed');
 })().catch((error) => {

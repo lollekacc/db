@@ -4,6 +4,8 @@ const { normalizeQualification } = require('../qualification-service');
 const {
   applyConversationAnswer,
   buildQualificationStep,
+  isQualificationContinuation,
+  isQualificationPrompt,
   mergeQualificationState,
 } = require('./conversation-state');
 const { normalizeQuickReplies } = require('./chat-ui-response');
@@ -107,5 +109,17 @@ const exactFamilyTotal = normalizeQualification(applyConversationAnswer({
 }));
 assert.equal(exactFamilyTotal.familyTotalPrice, 1250);
 assert.ok(!exactFamilyTotal.missingFields.includes('priceRange'));
+
+const countQuestionMessages = [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }];
+assert.equal(isQualificationContinuation(countQuestionMessages, '4'), true);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'fyra abonnemang'), true);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'hur mår du?'), false);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'hej'), false);
+assert.equal(isQualificationPrompt(countQuestionMessages), true);
+assert.equal(isQualificationPrompt([{ role: 'assistant', content: 'Jag mår bra, tack!' }]), false);
+
+const bindingQuestionMessages = [{ role: 'assistant', content: 'Har du bindningstid kvar?' }];
+assert.equal(isQualificationContinuation(bindingQuestionMessages, 'nej'), true);
+assert.equal(isQualificationContinuation(bindingQuestionMessages, 'vad kan du hjälpa mig med?'), false);
 
 console.log('conversation state tests passed');

@@ -13,6 +13,7 @@ const {
   applyConversationAnswer,
   buildQualificationStep,
   isQualificationContinuation,
+  isQualificationPrompt,
   mergeQualificationState,
 } = require('./src/conversation-state');
 
@@ -562,8 +563,14 @@ const createChatCompletion = async ({
     messages,
     qualification: mergedQualification,
   }));
-  const quizHandoff = context?.quizHandoff === true;
-  const recommendationInProgress = analysis.recommendationRequested || quizHandoff || isQualificationContinuation(messages);
+  const answersQualificationQuestion = isQualificationContinuation(messages, latestMessage);
+  const hasPendingQualificationQuestion = isQualificationPrompt(messages);
+  const explicitlyRequestsRecommendation = /\b(jamfor|jämför|abonnemang|mobilabonnemang|familjeabonnemang|rekommendera|hitta ratt|hitta rätt|compare|subscription|mobile plan|recommend|continue|fortsatt|fortsätt)\b/i
+    .test(latestMessage);
+  const recommendationInProgress = answersQualificationQuestion || (
+    analysis.recommendationRequested &&
+    (!hasPendingQualificationQuestion || explicitlyRequestsRecommendation)
+  );
   const qualificationStep = recommendationInProgress
     ? buildQualificationStep({
       qualification: nextQualification,
