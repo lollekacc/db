@@ -476,7 +476,7 @@ const scenarios = [
     language: 'sv',
     profile: [
       'Customer demands exact cheapest offer without all facts.',
-      'Bot should not invent exact cheapest market-wide answer.',
+      'Bot should not invent an exact cheapest answer across every available offer.',
     ],
     expectations: {
       shouldAskMinimalQuestion: true,
@@ -682,7 +682,6 @@ const getKnownMoneyAmounts = (turn, transcript = [], turnIndex = 0) => {
   const calculation = response.offerCalculation || {};
   const options = Array.isArray(calculation.options) ? calculation.options : [];
   const rejectedOptions = Array.isArray(calculation.rejectedOptions) ? calculation.rejectedOptions : [];
-  const marketClaim = response.marketClaim || {};
   const qualification = response.qualification || {};
   const assumptionPrices = Array.isArray(calculation.assumptions?.currentMonthlyPrices)
     ? calculation.assumptions.currentMonthlyPrices
@@ -707,7 +706,6 @@ const getKnownMoneyAmounts = (turn, transcript = [], turnIndex = 0) => {
     ...qualificationPrices,
     ...assumptionPrices,
     calculation.assumptions?.rewardTotal,
-    marketClaim.claimedPrice,
     ...optionAmounts,
   ].map(Number));
 };
@@ -790,24 +788,11 @@ const detectAutomaticIssues = (scenario, transcript) => {
       }
     });
 
-    const marketStatus = turn.response?.marketClassification?.status;
-    if (
-      marketStatus === 'probably_not_sellable' &&
-      (turn.response?.offerCalculation?.validOfferAvailable || hasOfferRecommendation(reply))
-    ) {
-      issues.push(buildIssue(
-        'recommends_despite_probably_not_sellable',
-        'critical',
-        'Bot recommended switching even though market intelligence marked the current deal as probably not sellable.',
-        index
-      ));
-    }
   });
 
   const fullBotText = transcript.map((turn) => turn.botReply || '').join('\n');
   const fullUserText = transcript.map((turn) => turn.userMessage || '').join('\n');
   const offerTurns = transcript.filter((turn) => turn.response?.offerCalculation?.validOfferAvailable || hasOfferRecommendation(turn.botReply));
-  const marketStatuses = transcript.map((turn) => turn.response?.marketClassification?.status).filter(Boolean);
   const validOfferBeforeReady = transcript.some((turn) => (
     turn.response?.offerCalculation?.validOfferAvailable &&
     Array.isArray(turn.response?.qualification?.missingFields) &&
@@ -937,7 +922,7 @@ const detectAutomaticIssues = (scenario, transcript) => {
   }
 
   if (scenario.expectations.shouldNotInventExactCheapest && /billigaste.*sverige.*\d+|exakt.*\d+\s*kr/i.test(fullBotText)) {
-    issues.push(buildIssue('invented_exact_cheapest', 'critical', 'Bot invented an exact market-wide cheapest offer.'));
+    issues.push(buildIssue('invented_exact_cheapest', 'critical', 'Bot invented an exact cheapest offer across every available option.'));
   }
 
   if (scenario.expectations.shouldExplainCalculationOrNeedFacts && !explainsCalculationOrNeedsFacts(fullBotText)) {
@@ -972,13 +957,6 @@ const detectAutomaticIssues = (scenario, transcript) => {
     issues.push(buildIssue('forced_switch', 'critical', 'Bot pushed a switch too hard.'));
   }
 
-  if (
-    scenario.name.startsWith('A ') &&
-    !marketStatuses.some((status) => ['suspicious_low', 'possible_needs_clarification', 'probably_not_sellable'].includes(status))
-  ) {
-    issues.push(buildIssue('market_gate_not_triggered', 'major', 'Suspicious price did not trigger market-intelligence status.'));
-  }
-
   return issues;
 };
 
@@ -1000,10 +978,9 @@ const recommendedFixesForIssues = (issues) => {
     generic_restart: 'Preserve conversation state for follow-up questions and avoid restarting the funnel.',
     too_generic: 'Replace generic fallback text with context-aware replies once the customer has given telecom details.',
     too_generic_for_messy_customer: 'Improve messy/slang intent handling so the bot uses the customer context instead of generic help text.',
-    invented_exact_price_without_source: 'Only mention exact prices that come from the customer, offer engine, cart, or verified market data.',
+    invented_exact_price_without_source: 'Only mention exact prices that come from the customer, offer engine, or cart.',
     offer_before_enough_info: 'Keep offer calculation blocked until required operator, price, usage, people count and binding information are complete.',
-    recommends_despite_probably_not_sellable: 'Block offer recommendations when market intelligence returns probably_not_sellable.',
-    blind_offer_recommendation: 'Do not expose valid offers while market intelligence needs clarification.',
+    blind_offer_recommendation: 'Do not expose valid offers while required customer details are missing.',
     missing_exception_clarification: 'For very low prices, ask if it is campaign, family/shared, student/senior/youth, employer-paid, retained or winback.',
     missing_strong_deal_signal: 'Tell customers with very low prices that their current deal may already be unusually strong.',
     missing_family_per_person_reasoning: 'When a family total is given, calculate or explain the approximate per-subscription price before selling.',
@@ -1018,7 +995,6 @@ const recommendedFixesForIssues = (issues) => {
     restart_after_offer_followup: 'Keep the last valid offer in context for explanation and checkout follow-ups.',
     bad_aggressive_customer_tone: 'Keep aggressive-customer replies calm and terms-focused.',
     forced_switch: 'Keep Dealett positioned as an advisor; never pressure customers to switch.',
-    market_gate_not_triggered: 'Ensure suspicious low-price claims trigger market intelligence before offer calculation.',
     ignored_total_price_ambiguity: 'When a household total is given without people count, ask how many subscriptions before doing per-person math.',
     missing_operator_followup: 'Ask for the current operator before recommending or calculating.',
     ignored_unknowns: 'When customers say vet inte, explain which facts are needed for exact calculations and offer a rough next step.',
@@ -1029,7 +1005,7 @@ const recommendedFixesForIssues = (issues) => {
     mobile_broadband_confusion: 'Separate mobile plans from 5G broadband and route broadband availability to address/map checks.',
     missing_coverage_map_route: 'Coverage guarantee traps should always route to map or address check.',
     invented_account_facts: 'Never invent account facts; route existing-customer facts to Mina sidor/support.',
-    invented_exact_cheapest: 'Avoid claiming exact market-wide cheapest without verified market data and full customer requirements.',
+    invented_exact_cheapest: 'Avoid claiming an exact cheapest option without complete offer data and customer requirements.',
     missing_calculation_explanation: 'Explain overlap cost, current cost, gift card and missing facts when customers challenge the math.',
   };
 
@@ -1051,8 +1027,6 @@ const compactResponse = (response) => ({
   intent: response.intent,
   suggestions: response.suggestions,
   qualification: response.qualification,
-  marketClaim: response.marketClaim,
-  marketClassification: response.marketClassification,
   offerCalculation: response.offerCalculation
     ? {
       readyForOffer: response.offerCalculation.readyForOffer,
@@ -1132,7 +1106,6 @@ const renderTranscriptMarkdown = ({ scenario, sessionId, transcript, evaluation,
     '**API Signals:**',
     '',
     `- intent: ${turn.response.intent || 'unknown'}`,
-    `- market status: ${turn.response.marketClassification?.status || 'none'}`,
     `- valid offer: ${turn.response.offerCalculation?.validOfferAvailable === true ? 'yes' : 'no'}`,
   ].join('\n')).join('\n\n');
 

@@ -40,7 +40,6 @@ const providerLogos = {
 let planCatalogCache = null;
 let plansCache = null;
 let broadbandCache = null;
-let partnerOffersCache = null;
 let recommendationRulesCache = null;
 
 const readJson = (fileName) => JSON.parse(
@@ -159,14 +158,6 @@ const getPlans = () => {
 const getBroadbandPlans = () => {
   if (!broadbandCache) broadbandCache = readJson('5Gbredband.json');
   return broadbandCache;
-};
-
-const getPartnerOffers = () => {
-  if (!partnerOffersCache) {
-    partnerOffersCache = readJson('partner-offers.json');
-    if (!Array.isArray(partnerOffersCache)) partnerOffersCache = [];
-  }
-  return partnerOffersCache;
 };
 
 const getRecommendationRules = () => {
@@ -427,7 +418,6 @@ module.exports = {
   getBroadbandOffers,
   getBroadbandPlans,
   getMobileOperatorOffers,
-  getPartnerOffers,
   getPlanCatalog,
   getRecommendationRules,
   getPlans,

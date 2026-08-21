@@ -226,8 +226,6 @@ const compactResponse = (response) => ({
   intent: response.intent,
   suggestions: response.suggestions,
   qualification: response.qualification,
-  marketClaim: response.marketClaim,
-  marketClassification: response.marketClassification,
   offerCalculation: response.offerCalculation
     ? {
       readyForOffer: response.offerCalculation.readyForOffer,
@@ -441,7 +439,6 @@ const renderTranscriptMarkdown = ({ scenario, sessionId, transcript, evaluation,
     '**API Signals:**',
     '',
     `- intent: ${turn.response.intent || 'unknown'}`,
-    `- market status: ${turn.response.marketClassification?.status || 'none'}`,
     `- valid offer: ${turn.response.offerCalculation?.validOfferAvailable === true ? 'yes' : 'no'}`,
   ].join('\n')).join('\n\n');
 

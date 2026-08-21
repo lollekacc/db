@@ -195,7 +195,6 @@ const runScenario = async (scenario, runStamp) => {
         intent: response.intent,
         qualification: response.qualification,
         conversationStyle: response.conversationStyle,
-        marketClassification: response.marketClassification,
         offerCalculation: response.offerCalculation
           ? {
             readyForOffer: response.offerCalculation.readyForOffer,
@@ -239,7 +238,6 @@ const renderTranscriptMarkdown = ({ scenario, sessionId, transcript, evaluation,
     '',
     `- intent: ${turn.response.intent || 'unknown'}`,
     `- style: ${turn.response.conversationStyle?.style || 'unknown'}`,
-    `- market status: ${turn.response.marketClassification?.status || 'none'}`,
     `- valid offer: ${turn.response.offerCalculation?.validOfferAvailable === true ? 'yes' : 'no'}`,
   ].join('\n')).join('\n\n');
 
