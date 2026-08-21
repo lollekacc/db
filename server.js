@@ -30,7 +30,7 @@ const {
   getMobileOperatorOffers,
   getPlans,
 } = require('./offer-service');
-const { createChatCompletion, loadWebsiteData } = require('./chat-service');
+const { createChatCompletion } = require('./chat-service');
 const { normalizeQualification } = require('./qualification-service');
 const { appendChatFeedback } = require('./chat-feedback-service');
 const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
@@ -38,7 +38,7 @@ const { subscribeToNewsletter } = require('./newsletter-service');
 const { storeCheckoutOrder } = require('./order-service');
 const { translateTexts } = require('./translation-service');
 
-const ROOT = path.resolve(__dirname, '..', 'Rdealett');
+const ROOT = path.resolve(__dirname, '..', 'df');
 const PORT = process.env.PORT || 3000;
 const HOST = '0.0.0.0';
 
@@ -118,7 +118,7 @@ const handleApi = async (request, response, requestUrl) => {
       return true;
     }
 
-    if (pathname === '/api/plans' || pathname === '/api/mobile/plans') {
+    if (pathname === '/api/mobile/plans') {
       if (!requireMethod(request, response, 'GET')) return true;
       sendJson(response, 200, getPlans());
       return true;
@@ -151,27 +151,6 @@ const handleApi = async (request, response, requestUrl) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 200, buildBroadbandCartItem(body));
-      return true;
-    }
-
-    if (pathname === '/api/recommendations/mobile') {
-      if (!requireMethod(request, response, 'POST')) return true;
-      const body = await readJsonBody(request);
-      const state = body.state || body;
-      const peopleCount = Number(state.peopleCount ?? state.persons) || 1;
-      const qualification = normalizeQualification(body.qualification || {
-        ...state,
-        peopleCount,
-        mobileUsage: state.mobileUsage ?? state.data,
-        priceRange: state.priceRange ?? state.price,
-        operators: state.operators?.length
-          ? state.operators
-          : Array.from({ length: peopleCount }, () => 'Annan / ingen'),
-        bindingEnds: state.bindingEnds?.length
-          ? state.bindingEnds
-          : Array.from({ length: peopleCount }, () => 'Ingen bindningstid'),
-      });
-      sendJson(response, 200, calculateOfferOptions(qualification));
       return true;
     }
 
@@ -228,19 +207,6 @@ const handleApi = async (request, response, requestUrl) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 201, storeCheckoutOrder(body));
-      return true;
-    }
-
-    if (pathname === '/api/chat/knowledge') {
-      if (!requireMethod(request, response, 'GET')) return true;
-      sendJson(response, 200, loadWebsiteData());
-      return true;
-    }
-
-    if (pathname === '/api/chat/qualification') {
-      if (!requireMethod(request, response, 'POST')) return true;
-      const body = await readJsonBody(request);
-      sendJson(response, 200, normalizeQualification(body.qualification || body));
       return true;
     }
 

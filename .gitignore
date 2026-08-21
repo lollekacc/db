@@ -8,3 +8,5 @@ coverage/
 dist/
 data/chat-feedback/*.jsonl
 data/checkout-orders.json
+data/newsletter-subscribers.json
+data/*.tmp

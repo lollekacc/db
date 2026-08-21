@@ -1,15 +1,15 @@
 const fs = require('node:fs');
-const path = require('node:path');
+const { getDataFilePath, writeJsonAtomic } = require('./data-storage');
 
-const DATA_DIR = path.join(__dirname, 'data');
-const ORDER_FILE = path.join(DATA_DIR, 'checkout-orders.json');
+const getOrderFile = () => getDataFilePath('checkout-orders.json');
 const MAX_STORED_ORDERS = 500;
 
 const readOrders = () => {
-  if (!fs.existsSync(ORDER_FILE)) return [];
+  const orderFile = getOrderFile();
+  if (!fs.existsSync(orderFile)) return [];
 
   try {
-    const parsed = JSON.parse(fs.readFileSync(ORDER_FILE, 'utf8'));
+    const parsed = JSON.parse(fs.readFileSync(orderFile, 'utf8'));
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];
@@ -17,8 +17,7 @@ const readOrders = () => {
 };
 
 const writeOrders = (orders) => {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-  fs.writeFileSync(ORDER_FILE, `${JSON.stringify(orders.slice(-MAX_STORED_ORDERS), null, 2)}\n`);
+  writeJsonAtomic(getOrderFile(), orders.slice(-MAX_STORED_ORDERS));
 };
 
 const requireText = (value, label) => {

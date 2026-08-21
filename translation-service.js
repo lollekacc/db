@@ -4,6 +4,7 @@ const MAX_ITEMS = 120;
 const MAX_ITEM_LENGTH = 1200;
 const MAX_TOTAL_LENGTH = 40_000;
 const MAX_CACHE_ENTRIES = 10_000;
+const DEFAULT_TIMEOUT_MS = 30_000;
 const BRAND_NAMES = [
   'Amazon Prime',
   'Apollo',
@@ -175,18 +176,36 @@ const requestTranslations = async ({ targetLanguage, texts }) => {
   const protectedItems = texts.map(protectBrandNames);
   const protectedTexts = protectedItems.map(({ protectedText }) => protectedText);
   const totalCharacters = protectedTexts.reduce((total, text) => total + text.length, 0);
-  const response = await fetch(OPENAI_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_TRANSLATION_MODEL || process.env.OPENAI_MODEL || DEFAULT_MODEL,
-      input: buildPrompt({ targetLanguage, texts: protectedTexts }),
-      max_output_tokens: Math.min(12_000, Math.max(800, Math.ceil(totalCharacters * 1.6))),
-    }),
-  });
+  const configuredTimeout = Number(process.env.OPENAI_TRANSLATION_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0
+    ? configuredTimeout
+    : DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+
+  try {
+    response = await fetch(OPENAI_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_TRANSLATION_MODEL || process.env.OPENAI_MODEL || DEFAULT_MODEL,
+        input: buildPrompt({ targetLanguage, texts: protectedTexts }),
+        max_output_tokens: Math.min(12_000, Math.max(800, Math.ceil(totalCharacters * 1.6))),
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw createHttpError('Translation provider request timed out', 504);
+    }
+    throw createHttpError('Translation provider request failed', 502);
+  } finally {
+    clearTimeout(timeout);
+  }
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {

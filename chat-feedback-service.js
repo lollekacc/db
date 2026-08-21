@@ -1,13 +1,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
-
-const DEFAULT_FEEDBACK_FILE = path.join(__dirname, 'data', 'chat-feedback', 'chat-feedback.jsonl');
+const { getDataFilePath } = require('./data-storage');
 
 const allowedFeedbackThumbs = new Set(['up', 'down']);
 const allowedEventTypes = new Set(['feedback', 'offer_click']);
 
-const getFeedbackFilePath = () => process.env.CHAT_FEEDBACK_FILE || DEFAULT_FEEDBACK_FILE;
+const getFeedbackFilePath = () => (
+  process.env.CHAT_FEEDBACK_FILE || getDataFilePath('chat-feedback', 'chat-feedback.jsonl')
+);
 
 const trimText = (value, maxLength) => {
   if (value === null || value === undefined) return null;

@@ -4,6 +4,7 @@ const { BRAND_NAMES, languageNames, translateTexts } = require('./translation-se
 
 const originalFetch = global.fetch;
 const originalApiKey = process.env.OPENAI_API_KEY;
+const originalTimeout = process.env.OPENAI_TRANSLATION_TIMEOUT_MS;
 let providerCalls = 0;
 const seenProviderTexts = [];
 
@@ -69,6 +70,19 @@ const run = async () => {
     /Unsupported translation language/
   );
 
+  process.env.OPENAI_TRANSLATION_TIMEOUT_MS = '10';
+  global.fetch = async (_url, options) => new Promise((_resolve, reject) => {
+    options.signal.addEventListener('abort', () => {
+      const error = new Error('aborted');
+      error.name = 'AbortError';
+      reject(error);
+    }, { once: true });
+  });
+  await assert.rejects(
+    translateTexts({ language: 'de', texts: ['Unik timeout-kontroll'] }),
+    /timed out/
+  );
+
   console.log('Translation service tests passed.');
 };
 
@@ -77,6 +91,8 @@ run()
     global.fetch = originalFetch;
     if (originalApiKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalApiKey;
+    if (originalTimeout === undefined) delete process.env.OPENAI_TRANSLATION_TIMEOUT_MS;
+    else process.env.OPENAI_TRANSLATION_TIMEOUT_MS = originalTimeout;
   })
   .catch((error) => {
     console.error(error.stack || error.message);

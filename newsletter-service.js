@@ -1,15 +1,16 @@
 const fs = require('node:fs');
-const path = require('node:path');
+const { getDataFilePath, writeJsonAtomic } = require('./data-storage');
 
-const DATA_FILE = path.join(__dirname, 'data', 'newsletter-subscribers.json');
+const getSubscriberFile = () => getDataFilePath('newsletter-subscribers.json');
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const readSubscribers = () => {
-  if (!fs.existsSync(DATA_FILE)) return [];
+  const subscriberFile = getSubscriberFile();
+  if (!fs.existsSync(subscriberFile)) return [];
 
   try {
-    const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+    const data = JSON.parse(fs.readFileSync(subscriberFile, 'utf8'));
     return Array.isArray(data) ? data : [];
   } catch {
     return [];
@@ -17,8 +18,7 @@ const readSubscribers = () => {
 };
 
 const writeSubscribers = (subscribers) => {
-  fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-  fs.writeFileSync(DATA_FILE, `${JSON.stringify(subscribers, null, 2)}\n`);
+  writeJsonAtomic(getSubscriberFile(), subscribers);
 };
 
 const subscribeToNewsletter = ({ email, source = 'homepage' } = {}) => {
