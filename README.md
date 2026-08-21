@@ -7,11 +7,9 @@ Dealett AI uses a separated market-data model so it can reason about Swedish tel
 ### Data Files
 
 - `data/operators.json` is the broad Swedish telecom market reference. It contains operator-level facts such as brand type, network used, supported customer segments, 5G/eSIM support flags and verification status.
-- `data/plans.json` is the runtime source of truth for mobile operators, plans, prices, family terms, streaming and international benefits. The normalized JSON copies must remain byte-for-byte identical to it.
+- `data/plans.json` is the runtime source of truth for mobile operators, plans, prices, family terms, streaming and international benefits.
 - `data/partner-offers.json` is only for Dealett sellable offers. Rows should stay inactive until the operator, plan, reward and source have been verified.
-- `data/market-rules.json` defines claim-classification rules and placeholder heuristic ranges for judging customer price claims. These ranges are not real offers.
 - `data/market-verification-checklist.json` defines the manual verification scope for Telia, Tele2, Telenor and Tre. It lists the categories and plan fields that must be checked by a human before data can be trusted in production.
-- `docs/market-verification-checklist.md` is the human-readable checklist for manual operator/category verification.
 
 ### AI Behavior Rules
 
@@ -40,13 +38,9 @@ Prices, segments, plan details, reward amounts and source URLs must be updated r
 
 Run the manual verification report before updating production-facing market data. The report writes both JSON and Markdown output in `reports/` and flags placeholder rows, missing source URLs, missing dates, missing prices and incomplete operator/category coverage.
 
-The market update pipeline framework lives in `scripts/market-data/`. Collectors currently return `status: "not_implemented"` and do not scrape. Running `npm run market:update` saves raw placeholder snapshots in `data/market/raw/`, normalized output in `data/market/normalized/`, and update reports in `data/market/reports/`. The command is dry-run by default and leaves `data/plans.json` unchanged. Later, apply mode can be enabled with `MARKET_APPLY=true npm run market:update`; even then, verified rows are not overwritten automatically and all changes are reported.
-
 ### Commands
 
 ```bash
 npm run validate:market
 npm run market:verification-report
-npm run market:update
-npm run test:market
 ```
