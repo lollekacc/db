@@ -327,6 +327,76 @@ const addStreamingQualificationPatches = (quickReplies = []) => quickReplies.map
     : reply;
 });
 
+const hasHistoricalQuizAnswers = (context = {}) => (
+  context?.quizHandoff !== true &&
+  context?.quizAnswersStatus === 'unconfirmed' &&
+  Boolean(context?.historicalQuizQualification || context?.qualification)
+);
+
+const getHistoricalQuizQualification = (context = {}) => normalizeQualification(
+  context?.historicalQuizQualification || context?.qualification || {}
+);
+
+const lastAssistantAskedToUseQuiz = (messages = []) => {
+  const lastAssistant = [...(Array.isArray(messages) ? messages : [])]
+    .reverse()
+    .find((item) => item?.role === 'assistant');
+  return /quiz|svar|answers|same answers|samma svar/i.test(String(lastAssistant?.content || '')) &&
+    /använd|use|fresh|börja om|start/i.test(String(lastAssistant?.content || ''));
+};
+
+const acceptsHistoricalQuiz = (message, messages = []) => {
+  const text = String(message || '').trim();
+  if (/använd(?:a)?\s+(?:de\s+)?samma\s+svar(?:en)?|använd(?:a)?\s+quizsvar(?:en)?|use\s+(?:the\s+)?same\s+answers|use\s+(?:the\s+)?quiz\s+answers/i.test(text)) {
+    return true;
+  }
+  return lastAssistantAskedToUseQuiz(messages) && /^(ja|japp|yes|sure|ok|okej)$/i.test(text);
+};
+
+const declinesHistoricalQuiz = (message, messages = []) => {
+  const text = String(message || '').trim();
+  if (/börja\s+(?:om|från början|med nya svar)|start\s+(?:fresh|over|again)|nya\s+svar|new\s+answers/i.test(text)) {
+    return true;
+  }
+  return lastAssistantAskedToUseQuiz(messages) && /^(nej|no)$/i.test(text);
+};
+
+const buildQuizConsentResponse = ({ language, qualification }) => {
+  const english = language === 'en';
+  const ui = buildChatResponse({
+    message: english
+      ? 'I can see answers from an earlier quiz, but I won\'t use them without your approval. Do you want to use those answers or start fresh?'
+      : 'Jag kan se svar från ett tidigare quiz, men använder dem inte utan ditt godkännande. Vill du använda samma svar eller börja om?',
+    quickReplies: [
+      {
+        label: english ? 'Use the same answers' : 'Använd samma svar',
+        action: 'useHistoricalQuizAnswers',
+      },
+      {
+        label: english ? 'Start fresh' : 'Börja om',
+        action: 'startFreshWithoutQuiz',
+      },
+    ],
+  });
+  return {
+    reply: ui.message,
+    message: ui.message,
+    language,
+    topic: 'quiz answer consent',
+    qualification,
+    offerCalculation: null,
+    quickReplies: ui.quickReplies,
+    quickReplyMode: ui.quickReplyMode,
+    quickReplySubmitLabel: '',
+    suggestions: ui.quickReplies.map((reply) => reply.label),
+    offerCards: [],
+    embeddedWidget: null,
+    quizAnswersStatus: 'unconfirmed',
+    source: 'openai',
+    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
+  };
+};
+
 const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
@@ -349,6 +419,7 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
         'priceRange, exactMonthlyPrice, exactMonthlyPrices, familyPriceRange, and familyTotalPrice describe what the customer pays today, never a desired future budget. familyPriceRange is the approximate current total for a multi-person group.',
         'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
         'When the customer asks to start over, clear prior qualification values and build a fresh qualification only from messages after that request.',
+        'Quiz answers marked unconfirmed are historical context only. Never copy them into qualification, infer that the customer wants to use them, or treat them as current preferences.',
         'If context.quizHandoff is true, continue from the supplied quiz state. Do not restart the quiz and do not ask again for information already present in currentQualification or context.answers.',
         'recommendationRequested is true when the customer asks for, continues, or questions a mobile-plan comparison.',
         'When context.quizHandoff is true, recommendationRequested should be true unless the message is unrelated to mobile recommendations.',
@@ -406,6 +477,7 @@ const generateAnswer = ({
         'Ask one useful question when essential recommendation details are missing.',
         'Never present an offer while missingQualificationFields is non-empty. In particular, ask about binding time for every person before giving a final offer when bindingEnds is missing.',
         'If the customer came from a quiz handoff, act like an expert in-store salesperson who has the filled form in front of them: continue from the current stage, ask only the next missing question, and never repeat provided answers.',
+        'If quiz answers are marked unconfirmed, they are visible history only. Do not use them in advice, qualification, calculations, or recommendations until the customer explicitly approves them.',
         'Default to the shortest useful reply. A question must be one short sentence and contain exactly one question. A normal answer must be at most two or three short sentences. A recommendation must be no more than 100 words.',
         'Lead with the answer or recommendation. Do not recap information the customer already gave unless correcting it or confirming a detail that materially affects the result.',
         'When a calculation exists, keep reply to the recommendation and its decisive reason. Put detailed best-value and lowest-price explanations in bestValueReason, lowestPriceReason, bestValueBenefits, and lowestPriceBenefits so the offer cards carry the detail.',
@@ -458,8 +530,15 @@ const createChatCompletion = async ({
   const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
     ? String(language).toLowerCase()
     : 'sv';
-  const startsOver = /\b(starta om|börja om|börja från början|start over|start again|restart)\b/i.test(latestMessage);
-  const currentQualification = normalizeQualification(startsOver ? createEmptyQualification() : qualification);
+  const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
+  const historicalQuizAccepted = historicalQuizAvailable && acceptsHistoricalQuiz(latestMessage, messages);
+  const historicalQuizDeclined = historicalQuizAvailable && declinesHistoricalQuiz(latestMessage, messages);
+  const startsOver = historicalQuizDeclined || /\b(starta om|börja om|börja från början|börja med nya svar|start fresh|start over|start again|restart)\b/i.test(latestMessage);
+  const currentQualification = normalizeQualification(
+    historicalQuizAccepted
+      ? getHistoricalQuizQualification(context)
+      : (startsOver ? createEmptyQualification() : qualification)
+  );
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
     messages,
@@ -468,6 +547,12 @@ const createChatCompletion = async ({
     page,
     context,
   });
+  if (historicalQuizAvailable && !historicalQuizAccepted && !historicalQuizDeclined && analysis.recommendationRequested) {
+    return buildQuizConsentResponse({
+      language: normalizedLanguage,
+      qualification: currentQualification,
+    });
+  }
   const mergedQualification = mergeQualificationState(
     currentQualification,
     cleanAiQualification(analysis.qualification)
@@ -537,7 +622,6 @@ const createChatCompletion = async ({
       : '',
     offerCards,
   });
-
   return {
     reply: ui.message,
     message: ui.message,
@@ -551,6 +635,9 @@ const createChatCompletion = async ({
     suggestions: ui.quickReplies.map((reply) => reply.label),
     offerCards: ui.offerCards,
     embeddedWidget: null,
+    quizAnswersStatus: context?.quizHandoff === true || historicalQuizAccepted
+      ? 'confirmed'
+      : (historicalQuizDeclined ? 'ignored' : (historicalQuizAvailable ? 'unconfirmed' : 'none')),
     source: 'openai',
     model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
   };

@@ -44,10 +44,15 @@ const normalizeQuickReply = (reply, index) => {
   const label = typeof reply === 'string' ? reply.trim() : String(reply?.label || '').trim();
   if (!label) return null;
   const qualificationPatch = normalizeQualificationPatch(reply?.qualificationPatch);
+  const allowedActions = ['useHistoricalQuizAnswers', 'startFreshWithoutQuiz'];
+  const action = typeof reply === 'object' && allowedActions.includes(reply?.action)
+    ? reply.action
+    : null;
   return {
     id: slugify(typeof reply === 'object' ? (reply?.id || label) : label, `reply-${index + 1}`),
     label: label.slice(0, 80),
     ...(qualificationPatch ? { qualificationPatch } : {}),
+    ...(action ? { action } : {}),
   };
 };
 
