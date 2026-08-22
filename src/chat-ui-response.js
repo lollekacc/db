@@ -100,6 +100,20 @@ const formatMoney = (value, language) => {
   }).format(amount).replace(/[\u00a0\u202f]/g, ' ');
 };
 
+const getDisplayMonthlyValue = (option = {}, field, perPersonField) => {
+  const peopleCount = Number(option.peopleCount);
+  if (peopleCount > 1 && Number(option[perPersonField]) > 0) {
+    return Number(option[perPersonField]);
+  }
+  return Number(option[field]);
+};
+
+const getMonthlyUnit = (option = {}, language) => {
+  const peopleCount = Number(option.peopleCount);
+  if (peopleCount > 1) return language === 'en' ? 'person' : 'person';
+  return language === 'en' ? 'month' : 'mån';
+};
+
 const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language = 'sv', copy = {} } = {}) => {
   if (!offerCalculation.validOfferAvailable) return [];
   const isEnglish = language === 'en';
@@ -143,8 +157,8 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       planName: option.title || option.planName,
       dataLabel: option.data,
       resultLabel,
-      monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}/${isEnglish ? 'month' : 'mån'}`,
-      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
+      monthlyPriceLabel: `${formatMoney(getDisplayMonthlyValue(option, 'planMonthlyPrice', 'pricePerPerson'), language)}/${getMonthlyUnit(option, language)}`,
+      effectiveCostLabel: `${formatMoney(getDisplayMonthlyValue(option, 'effectiveMonthlyCost', 'effectivePricePerPerson'), language)}/${getMonthlyUnit(option, language)}`,
       savingsLabel: hasSavings
         ? `${savingsAmount >= 0 ? (isEnglish ? 'Better over time' : 'Bättre över tid') : (isEnglish ? 'Higher over time' : 'Högre över tid')} ${formatMoney(Math.abs(savingsAmount), language)}`
         : '',

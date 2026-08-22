@@ -78,37 +78,45 @@ const getTier = (plan = {}) => {
 
 const getMonthlyPrice = (price = {}) => Number(price?.monthly ?? price?.monthlyPrice) || 0;
 
-const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStreaming = []) => ({
-  id: suffix ? `${plan.id}-${suffix}` : plan.id,
-  sourcePlanId: plan.id,
-  operatorId: operator.id,
-  operator: operator.name,
-  logo: providerLogos[operator.name] || '',
-  title: plan.name,
-  name: plan.name,
-  category: 'mobil',
-  legacyCategory: 'mobil',
-  data: plan.data?.type === 'unlimited' ? 'Obegränsad' : `${getDataAmount(plan)} GB`,
-  dataAmount: getDataAmount(plan),
-  isUnlimited: plan.data?.type === 'unlimited',
-  tier: getTier(plan),
-  price: getMonthlyPrice(price),
-  monthlyPrice: getMonthlyPrice(price),
-  bindingMonths: Number(operator.bindingMonths) || 0,
-  giftCard: plan.giftCard || 'XXX',
-  minUsers: Number(plan.minUsers) || 1,
-  maxUsers: Number(plan.maxUsers) || (plan.familyEligible === true ? 10 : 1),
-  familyEligible: plan.familyEligible === true,
-  familyDataModel: operator.familyDataModel,
-  dataSharing: plan.data?.sharing || null,
-  includedStreaming,
-  streaming: plan.streaming || null,
-  roaming: plan.roaming || operator.internationalRoaming || null,
-  internationalCalls: plan.internationalCalls || null,
-  extraUserPrice: plan.extraUserPrice || operator.additionalUser?.price || null,
-  extraSim: plan.extraSim || null,
-  runtimeSellable: true,
-});
+const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStreaming = []) => {
+  const isSingleStreamingVariant = plan.streaming?.mode === 'choose_one' && includedStreaming.length > 0;
+  const title = isSingleStreamingVariant ? `${plan.name} ${includedStreaming[0]}` : plan.name;
+
+  return {
+    id: suffix ? `${plan.id}-${suffix}` : plan.id,
+    sourcePlanId: plan.id,
+    operatorId: operator.id,
+    operator: operator.name,
+    logo: providerLogos[operator.name] || '',
+    title,
+    name: title,
+    category: 'mobil',
+    legacyCategory: 'mobil',
+    data: plan.data?.type === 'unlimited' ? 'Obegränsad' : `${getDataAmount(plan)} GB`,
+    dataAmount: getDataAmount(plan),
+    isUnlimited: plan.data?.type === 'unlimited',
+    tier: getTier(plan),
+    price: getMonthlyPrice(price),
+    monthlyPrice: getMonthlyPrice(price),
+    bindingMonths: Number(operator.bindingMonths) || 0,
+    giftCard: plan.giftCard || 'XXX',
+    minUsers: Number(plan.minUsers) || 1,
+    maxUsers: Number(plan.maxUsers) || (plan.familyEligible === true ? 10 : 1),
+    familyEligible: plan.familyEligible === true,
+    familyDataModel: operator.familyDataModel,
+    dataSharing: plan.data?.sharing || null,
+    text: isSingleStreamingVariant ? `${includedStreaming[0]} ingår` : plan.text,
+    features: Array.isArray(plan.features) ? plan.features : [],
+    includedStreaming,
+    streaming: plan.streaming || null,
+    roaming: plan.roaming || operator.internationalRoaming || null,
+    internationalCalls: plan.internationalCalls || null,
+    extraUserPrice: plan.extraUserPrice || operator.additionalUser?.price || null,
+    extraSim: plan.extraSim || null,
+    isExtraVariant: plan.presentation?.hideUntilExpanded === true || isSingleStreamingVariant,
+    runtimeSellable: true,
+  };
+};
 
 const flattenPlanCatalog = (catalog) => catalog.operators.flatMap((operator) => {
   const plans = operator.plans.flatMap((plan) => {
@@ -277,6 +285,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
   const basePrice = Number(plan.price ?? plan.monthlyPrice) || 0;
   const monthlyPrice = basePrice + addonPrice;
   const regularMonthlyPrice = monthlyPrice;
+  const displayMonthlyPrice = persons > 1 ? Math.round(monthlyPrice / persons) : monthlyPrice;
   const rewardTotal = Number(provider.reward) || 0;
   const normalizedRewards = normalizeRewards(rewards, rewardTotal);
 
@@ -290,12 +299,13 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     price: monthlyPrice,
     monthlyPrice,
     regularMonthlyPrice,
+    displayMonthlyPrice,
     bindingMonths: Math.max(Number(plan.bindingMonths) || 0, 0),
     noticePeriodMonths: Math.max(Number(plan.noticePeriodMonths) || 0, 0),
     startFee: Math.max(Number(plan.startFee) || 0, 0),
     invoiceFee: Math.max(Number(plan.invoiceFee) || 0, 0),
     invoiceFeeOptional: plan.invoiceFeeOptional !== false,
-    pricePerPerson: persons > 1 ? Math.round(monthlyPrice / persons) : 0,
+    pricePerPerson: persons > 1 ? displayMonthlyPrice : 0,
     persons,
     phoneLines: persons,
     productType: 'mobile',
@@ -312,8 +322,9 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     } : null,
     answers,
     features: [
-      'Fria samtal och sms',
+      'Fria samtal, SMS och MMS',
       '5G & eSIM',
+      ...(Array.isArray(plan.features) ? plan.features : []),
       addonPlan ? `${addonPlan.title} ${formatCurrency(addonPrice)} kr/mån` : '',
     ].filter(Boolean),
   };

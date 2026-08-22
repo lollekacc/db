@@ -20,8 +20,8 @@ const calculate = (overrides) => calculateOfferOptions(qualify(overrides));
 
 const individual = calculate({});
 assert.equal(individual.options.length, 4);
-assert.equal(individual.bestValue.operator, 'Tele2');
-assert.equal(individual.lowestMonthlyPrice.operator, 'Tre');
+assert.equal(individual.bestValue.operator, 'Tre');
+assert.equal(individual.lowestMonthlyPrice.operator, 'Telenor');
 assert.notEqual(individual.bestValue.planId, individual.lowestMonthlyPrice.planId);
 assert.equal(individual.bestValue.planMonthlyPrice, 329);
 assert.equal(individual.bestValue.effectiveMonthlyCost, 329);
@@ -31,7 +31,7 @@ assert.equal(individual.bestValue.giftCardTier, 'maximum');
 assert.equal(individual.bestValue.giftCardEligible, true);
 assert.ok(individual.options.every((option) => option.eligibleForOffer));
 assert.ok(individual.options.every((option) => option.tradeoffs.length > 0));
-assert.match(individual.lowestMonthlyPrice.tradeoffs[0], /lägsta ordinarie pris/i);
+assert.match(individual.lowestMonthlyPrice.tradeoffs[0], /billigaste säljbara alternativet|lägsta ordinarie pris/i);
 
 const family = calculate({
   peopleCount: 4,
@@ -40,9 +40,9 @@ const family = calculate({
   exactMonthlyPrice: 350,
 });
 assert.equal(family.options.length, 4);
-assert.equal(family.bestValue.operator, 'Tele2');
-assert.equal(family.bestValue.planMonthlyPrice, 836);
-assert.equal(family.lowestMonthlyPrice.operator, 'Tre');
+assert.equal(family.bestValue.operator, 'Tre');
+assert.equal(family.bestValue.planMonthlyPrice, 876);
+assert.equal(family.lowestMonthlyPrice.operator, 'Tele2');
 assert.notEqual(family.bestValue.planId, family.lowestMonthlyPrice.planId);
 assert.ok(family.options.every((option) => option.familyEligible));
 
@@ -58,10 +58,10 @@ const teliaStreaming = calculate({
 });
 assert.equal(teliaStreaming.bestValue.operator, 'Telia');
 assert.equal(teliaStreaming.bestValue.sourcePlanId, 'telia-unlimited-plus-streaming-bundle');
-assert.equal(teliaStreaming.bestValue.planMonthlyPrice, 1416);
-assert.equal(teliaStreaming.bestValue.averageMonthlyPlanCost, 1416);
+assert.equal(teliaStreaming.bestValue.planMonthlyPrice, 1296);
+assert.equal(teliaStreaming.bestValue.averageMonthlyPlanCost, 1296);
 assert.equal(teliaStreaming.bestValue.streamingSavings, 650);
-assert.equal(teliaStreaming.bestValue.effectiveMonthlyCost, 766);
+assert.equal(teliaStreaming.bestValue.effectiveMonthlyCost, 646);
 assert.equal(teliaStreaming.bestValue.current24MonthCost, 38_400);
 assert.equal(teliaStreaming.bestStreamingFit.operator, 'Telia');
 assert.equal(teliaStreaming.bestStreamingFit.sourcePlanId, 'telia-unlimited-plus-streaming-bundle');
@@ -116,7 +116,7 @@ assert.equal(outsideEuData.options.length, 4);
 assert.equal(outsideEuData.bestTravelFit.travelMatch, true);
 assert.deepEqual(
   new Set(outsideEuData.options.filter((option) => option.travelMatch).map((option) => option.operator)),
-  new Set(['Tre'])
+  new Set(['Tele2', 'Tre'])
 );
 
 const streamingTravelTradeoff = calculate({
@@ -168,7 +168,7 @@ const sharedData = calculate({
 });
 assert.equal(sharedData.options.find((option) => option.operator === 'Telenor').dataType, 'unlimited');
 assert.equal(sharedData.options.find((option) => option.operator === 'Tre').dataType, 'unlimited');
-assert.equal(sharedData.options.find((option) => option.operator === 'Tele2').dataAmount, 30);
+assert.equal(sharedData.options.find((option) => option.operator === 'Tele2').dataAmount, 999);
 
 const longBindingBadSwitch = calculate({
   peopleCount: 1,

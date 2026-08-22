@@ -575,7 +575,7 @@ const buildBenefits = ({ operator, plan, peopleCount, capabilities, includedStre
     ? 'Obegränsad data'
     : `${plan.data.gb} GB ${((plan.data?.sharing === 'shared' || operator.familyDataModel === 'shared_on_limited_plans') && peopleCount > 1) ? 'delas i familjen' : 'per användare'}`,
   peopleCount > 1 ? `${peopleCount} användare med tilläggspris` : '',
-  capabilities.euEea ? 'Samtal, sms och roaming inom EU/EES' : '',
+  capabilities.euEea ? 'Samtal, SMS, MMS och roaming inom EU/EES' : '',
   capabilities.countries ? `Utlandsdata i ${capabilities.countries} länder` : '',
   capabilities.outsideEuLocalCalls ? 'Lokala samtal ingår utomlands' : '',
   capabilities.worldwideFamilyCalls ? 'Fria samtal inom familjen världen över' : '',
@@ -712,13 +712,12 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
         ? `${scenario.switchNowPeopleCount} kan byta nu; ${scenario.delayedPeopleCount} bör vänta tills bindningen är kortare.`
         : '',
       scenario.switchAction === 'delay_switch'
-        ? 'Totalt över 24 månader blir bytet inte fördelaktigt nu, så rekommendationen är att vänta eller exkludera bundna abonnemang.'
+        ? 'Bytet är inte fördelaktigt just nu, så rekommendationen är att vänta eller exkludera bundna abonnemang.'
         : '',
       [
         `${scenario.peopleCount} ${scenario.peopleCount === 1 ? 'användare' : 'användare'}`,
         plan.data?.type === 'unlimited' ? 'obegränsad data' : `${dataAmount} GB`,
       ].join(', '),
-      `På ${getCalculationTermMonths()} månader blir helheten cirka ${scenario.total24MonthCost.toLocaleString('sv-SE')} kr när abonnemanget, presentkortet och valda behov räknas ihop`,
       scenario.giftCardReason,
       scenario.oldCostsDuringOverlap > 0
         ? 'Det kan finnas en gammal kostnad kvar en period, och den är med i bedömningen.'
@@ -908,6 +907,8 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
   }
 
   const rewardTotal = Math.max(Number(option.giftCardValue) || 0, 0);
+  const displayMonthlyPrice = option.peopleCount > 1 ? option.pricePerPerson : option.planMonthlyPrice;
+  const displayEffectiveMonthlyCost = option.peopleCount > 1 ? option.effectivePricePerPerson : option.effectiveMonthlyCost;
   const cartItem = {
     cartItemId: `${option.operatorId}-${option.planId}-${Date.now()}`,
     offerId: option.planId,
@@ -918,6 +919,7 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
     price: option.planMonthlyPrice,
     monthlyPrice: option.planMonthlyPrice,
     regularMonthlyPrice: option.regularMonthlyPlanPrice,
+    displayMonthlyPrice,
     pricePerPerson: option.pricePerPerson,
     persons: option.peopleCount,
     phoneLines: option.peopleCount,
@@ -931,12 +933,9 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
     answers: { qualification, offerCalculation: option },
     features: [
       ...option.benefits,
-      `Effektiv kostnad ${option.effectiveMonthlyCost.toLocaleString('sv-SE')} kr/mån`,
+      `Effektiv kostnad ${displayEffectiveMonthlyCost.toLocaleString('sv-SE')} kr/${option.peopleCount > 1 ? 'person' : 'mån'}`,
       option.streamingSavings > 0
         ? `Ersatt streaming ${option.streamingSavings.toLocaleString('sv-SE')} kr/mån`
-        : '',
-      option.total24MonthCost
-        ? `24 mån total ${option.total24MonthCost.toLocaleString('sv-SE')} kr`
         : '',
     ].filter(Boolean),
   };

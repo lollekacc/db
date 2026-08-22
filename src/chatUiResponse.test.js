@@ -74,7 +74,10 @@ const cards = buildOfferCardsFromOfferCalculation({
     title: 'Unlimited streaming',
     data: 'Unlimited',
     planMonthlyPrice: 1196,
+    pricePerPerson: 299,
     effectiveMonthlyCost: 656,
+    effectivePricePerPerson: 164,
+    peopleCount: 4,
     monthlySavings: 944,
     bindingMonths: 24,
     giftCardReason: 'New-customer gift-card tier.',
@@ -105,6 +108,8 @@ assert.equal(cards.length, 2);
 assert.deepEqual(cards.map((card) => card.resultLabel), ['Best value', 'Lowest monthly price']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
 assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
+assert.equal(cards[0].monthlyPriceLabel, 'SEK 299/person');
+assert.equal(cards[0].effectiveCostLabel, 'SEK 164/person');
 assert.deepEqual(cards[0].benefits, [
   'Streaming replacement',
   'New-customer gift-card tier.',

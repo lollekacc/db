@@ -10,7 +10,7 @@
         "minUsers": 2,
         "maxUsers": 10,
         "price": {
-          "monthly": 239
+          "monthly": 199
         }
       },
       "plans": [
@@ -131,12 +131,17 @@
           "price": {
             "monthly": 569
           },
+          "text": "Telia Cloud med obegränsad lagring och stöd för Samla familjen.",
+          "features": [
+            "Telia Cloud obegränsad lagring",
+            "Samla familjen huvudabonnemang"
+          ],
           "familyEligible": true,
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -158,7 +163,7 @@
         },
         {
           "id": "telia-unlimited-plus-one-streaming",
-          "name": "Obegränsad Plus med valfri streamingtjänst",
+          "name": "Obegränsad Plus",
           "data": {
             "type": "unlimited",
             "sharing": "per_user"
@@ -171,40 +176,49 @@
               {
                 "service": "Netflix",
                 "price": {
-                  "monthly": 629
+                  "monthly": 469
                 }
               },
               {
                 "service": "Disney+",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "Amazon Prime",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "TV4 Play Plus",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "HBO Max",
                 "price": {
-                  "monthly": 609
+                  "monthly": 469
                 }
               }
             ]
+          },
+          "text": "Obegränsad Plus med en streamingtjänst.",
+          "features": [
+            "Telia Cloud obegränsad lagring",
+            "Samla familjen huvudabonnemang",
+            "En streamingtjänst ingår"
+          ],
+          "presentation": {
+            "hideUntilExpanded": true
           },
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -229,6 +243,7 @@
           "price": {
             "monthly": 699
           },
+          "text": "Obegränsad Plus med Netflix, HBO Max och Disney+.",
           "familyEligible": true,
           "streaming": {
             "mode": "included_bundle",
@@ -243,7 +258,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -275,7 +290,7 @@
         "minUsers": 2,
         "maxUsers": 10,
         "price": {
-          "monthly": 349
+          "monthly": 229
         }
       },
       "plans": [
@@ -296,7 +311,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -326,14 +341,14 @@
             "sharing": "shared"
           },
           "price": {
-            "monthly": 399
+            "monthly": 349
           },
           "familyEligible": true,
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -361,14 +376,14 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 499
+            "monthly": 449
           },
           "familyEligible": true,
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -396,8 +411,14 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 629
+            "monthly": 529
           },
+          "text": "Fria samtal inom Telenor Familj över hela världen, 30 GB mobilt bredband och 10 timmar internationella samtal till EU/EES.",
+          "features": [
+            "Fria samtal inom Telenor Familj över hela världen",
+            "Kostnadsfritt 30 GB mobilt bredband",
+            "10 timmar fria internationella samtal till EU/EES"
+          ],
           "familyEligible": true,
           "internationalCalls": {
             "freeCallsWithinFamilyWorldwide": true,
@@ -407,7 +428,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -445,11 +466,11 @@
       },
       "plans": [
         {
-          "id": "tele2-30gb",
-          "name": "30 GB",
+          "id": "tele2-15gb",
+          "name": "15 GB",
           "data": {
             "type": "limited",
-            "gb": 30,
+            "gb": 15,
             "sharing": "per_user"
           },
           "price": {
@@ -488,7 +509,7 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 479
+            "monthly": 399
           },
           "familyEligible": true,
           "roaming": {
@@ -523,8 +544,9 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 519
+            "monthly": 399
           },
+          "text": "Upp till 60 GB i över 170 länder och extra SIM med 50 GB till surfplatta eller annan enhet.",
           "familyEligible": true,
           "roaming": {
             "euEeaIncluded": true,
@@ -538,6 +560,10 @@
             "included": true,
             "dataGb": 50
           },
+          "features": [
+            "Upp till 60 GB i över 170 länder",
+            "Extra SIM med 50 GB"
+          ],
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
