@@ -48,6 +48,7 @@ const qualificationOutput = (overrides = {}) => ({
 });
 
 let calls = [];
+let simulatedQualification = historicalQualification;
 setOpenAiTransportForTests(async (_url, options) => {
   const request = JSON.parse(options.body);
   calls.push(request);
@@ -59,9 +60,10 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'compare mobile plans',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      recommendationProduct: 'mobile',
       knowledgeQuery: 'mobile plans',
       // Simulate a model trying to copy the visible historical answers.
-      qualification: qualificationOutput(historicalQualification),
+      qualification: qualificationOutput(simulatedQualification),
     }
     : {
       reply: 'Här är rekommendationen.',
@@ -79,6 +81,26 @@ setOpenAiTransportForTests(async (_url, options) => {
 });
 
 (async () => {
+  simulatedQualification = { peopleCount: 2 };
+  const freshConversation = await createChatCompletion({
+    message: 'vi är 2 personer',
+    language: 'sv',
+    qualification: createEmptyQualification(),
+    context: {
+      quizHandoff: false,
+      quizStarted: true,
+      quizAnswersStatus: 'unconfirmed',
+      historicalQuizQualification: {},
+      answers: {},
+    },
+  });
+
+  assert.equal(freshConversation.quizAnswersStatus, 'none');
+  assert.equal(freshConversation.qualification.peopleCount, 2);
+  assert.doesNotMatch(freshConversation.reply, /tidigare quiz|earlier quiz/i);
+
+  calls = [];
+  simulatedQualification = historicalQualification;
   const gated = await createChatCompletion({
     message: 'Hjälp mig hitta bästa abonnemanget',
     language: 'sv',

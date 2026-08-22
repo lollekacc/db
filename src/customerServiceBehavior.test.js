@@ -71,6 +71,71 @@ const scenarios = [
       quickReplies: [],
     },
   },
+  {
+    input: 'nej',
+    messages: [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }],
+    context: { openConversationTurn: true },
+    analysis: {
+      topic: 'change of subject',
+      interactionStage: 'understand',
+      desiredOutcome: null,
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: '',
+    },
+    answer: {
+      reply: 'Okej. Vad vill du ha hjälp med i stället?',
+      quickReplies: [],
+    },
+  },
+  {
+    input: 'jag vill inte ha abonnemang',
+    messages: [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }],
+    context: { openConversationTurn: true },
+    analysis: {
+      topic: 'cancel comparison',
+      interactionStage: 'understand',
+      desiredOutcome: 'Stop comparing subscriptions',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: '',
+    },
+    answer: {
+      reply: 'Absolut, vi lämnar abonnemangsjämförelsen. Vad vill du prata om i stället?',
+      quickReplies: [],
+    },
+  },
+  {
+    input: 'börja på nytt',
+    analysis: {
+      topic: 'restart conversation',
+      interactionStage: 'greeting',
+      desiredOutcome: 'Start a fresh conversation',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: '',
+    },
+    answer: {
+      reply: 'Absolut, vi börjar om. Vad vill du ha hjälp med?',
+      quickReplies: [],
+    },
+  },
+  {
+    input: 'ja vil ha bredbnd men vet int va som fins',
+    analysis: {
+      topic: 'broadband recommendation',
+      interactionStage: 'understand',
+      desiredOutcome: 'Compare broadband options',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      recommendationProduct: 'broadband',
+      knowledgeQuery: '5G broadband options',
+    },
+    answer: {
+      reply: 'Jag hjälper dig gärna jämföra bredband; börja med att kontrollera din adress.',
+      quickReplies: ['Kontrollera adress', 'Jämför 5G-bredband'],
+    },
+  },
 ];
 
 let activeScenario = null;
@@ -83,6 +148,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   const output = schemaName === 'dealett_customer_need'
     ? {
       ...activeScenario.analysis,
+      recommendationProduct: activeScenario.analysis.recommendationProduct ||
+        (activeScenario.analysis.recommendationRequested ? 'mobile' : 'none'),
       qualification: {
         peopleCount: null,
         people: [],
@@ -148,6 +215,7 @@ setOpenAiTransportForTests(async (_url, options) => {
     assert.match(analysisPrompt, /A greeting by itself/i);
     assert.match(analysisPrompt, /desiredOutcome is what the customer wants to happen now/i);
     assert.match(answerPrompt, /For a greeting with no stated need/i);
+    assert.match(answerPrompt, /context\.openConversationTurn is true/i);
     assert.match(answerPrompt, /After a final answer, completed guidance, referral, or refusal/i);
     assert.match(answerPrompt, /When Dealett cannot do what the customer asks/i);
     assert.equal(answerPayload.interactionStage, scenario.analysis.interactionStage);
@@ -165,6 +233,11 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(scenarios[2].answer.reply, /kontaktsidan/i);
   assert.doesNotMatch(scenarios[3].answer.reply, /Hur många abonnemang/i);
   assert.match(scenarios[3].answer.reply, /mår bra/i);
+  assert.doesNotMatch(scenarios[4].answer.reply, /Hur många abonnemang/i);
+  assert.doesNotMatch(scenarios[5].answer.reply, /Hur många abonnemang/i);
+  assert.doesNotMatch(scenarios[6].answer.reply, /Hur många abonnemang/i);
+  assert.doesNotMatch(scenarios[7].answer.reply, /Hur många abonnemang/i);
+  assert.match(scenarios[7].answer.reply, /bredband/i);
 
   console.log('customer service behavior tests passed');
 })().catch((error) => {

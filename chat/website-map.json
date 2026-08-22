@@ -22,7 +22,7 @@
       "id": "home",
       "pages": ["index.html"],
       "purpose": "Needs analysis and recommended mobile or family options.",
-      "assistantRole": "Ask usage, number of subscriptions, current operators, budget, and binding status before recommending."
+      "assistantRole": "Use the shared recommendation model: collect people count, current operators, target-specific binding eligibility, data use, and current mobile price for an initial result; then refine with matched paid streaming costs and travel needs, explaining benefits and trade-offs on every result."
     },
     {
       "id": "mobile",

@@ -1,28 +1,53 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sourceOfTruth": "mobile-recommendation-rules",
+  "humanSpecification": "docs/dealett-recommendation-model.md",
+  "objective": "Find the best-fitting eligible subscription and explain its price, value, benefits, and trade-offs; cheapest is not automatically best.",
   "calculation": {
     "termMonths": 24,
-    "formula": "24-month new cost + remaining old costs + fees - gift card - matching streaming savings",
+    "formula": "24-month new plan cost + eligible overlap costs + fees - finalized gift-card amount - matched streaming replacement value",
+    "baselineFormula": "24-month current mobile subscription cost; separately paid streaming is not added to this baseline",
     "useNormalMonthlyPricesOnly": true,
     "includeStartAndOneTimeFees": true
+  },
+  "questionPurposes": {
+    "peopleCount": "Choose individual or family/group plans and calculate additional-user pricing.",
+    "operators": "Determine new-customer, same-operator, or mixed future gift-card value tiers for each target operator.",
+    "bindingEnds": "Check whether each person is inside the target operator's sales window and can order now.",
+    "mobileUsage": "Meet the customer's data need without making them overpay for unused data.",
+    "currentPrice": "Measure monthly and 24-month value against the customer's current mobile subscription cost.",
+    "streaming": "Deduct only customer-paid services that the target plan includes and can replace.",
+    "travel": "Prefer plans whose roaming data and local-call capabilities match the customer's stated travel use."
   },
   "giftCard": {
     "placeholderValue": "XXX",
     "displayLabel": "Presentkort: XXX kr",
     "operatorChangeRequiredForMaximum": true,
     "eligibleWhenChangingOperator": true,
-    "sameOperatorEligible": false,
+    "otherOrNoOperatorCountsAsNewCustomer": true,
+    "sameOperatorEligible": true,
+    "valueTiers": {
+      "newCustomer": "maximum",
+      "sameOperator": "lower",
+      "mixedGroup": "mixed"
+    },
     "numericValueUntilFinalized": 0
   },
   "binding": {
-    "readyToSwitchRemainingMonthsMax": 3,
+    "defaultSalesWindowMonths": 3,
+    "salesWindowMonthsByTargetOperator": {
+      "telia": 3,
+      "tele2": 2,
+      "telenor": 3,
+      "tre": 3
+    },
+    "outsideSalesWindowEligible": false,
+    "unknownBindingRequiresVerification": true,
     "includeRemainingOldSubscriptionCosts": true,
     "includeNoticePeriodMonths": true,
     "includeDevicePayments": true,
-    "offerSwitchNowOnlyWhenTotalResultBeneficial": true,
+    "doNotHideEligibleHigherCostTradeoffs": true,
     "longBindingActions": [
-      "calculate_overlap",
       "delay_switch",
       "exclude_member"
     ]
@@ -51,7 +76,14 @@
   "streaming": {
     "deductOnlyCustomerSelectedServices": true,
     "deductOnlyMatchedIncludedServices": true,
-    "effectiveMonthlyCostFormula": "planMonthlyPrice - matchingStreamingSavings"
+    "effectiveMonthlyCostFormula": "planMonthlyPrice - matchingStreamingSavings",
+    "deductExactlyOnce": true,
+    "unmatchedServicesRemainCustomerCosts": true
+  },
+  "travel": {
+    "withinEuEea": ["data", "calls", "sms"],
+    "outsideEuEeaUsageChoices": ["data", "data_and_local_calls"],
+    "showMissingCapabilitiesAsTradeoffs": true
   },
   "results": {
     "featured": [
@@ -69,6 +101,9 @@
       }
     ],
     "distinctFeaturedAlternatives": true,
-    "ifFeaturedWinnersAreIdenticalShowNextBestDistinctAlternative": true
+    "ifFeaturedWinnersAreIdenticalShowNextBestDistinctAlternative": true,
+    "everyCardMustExplainWhySelected": true,
+    "everyCardMustShowTradeoffs": true,
+    "initialResultsMayBeRefinedByStreamingAndTravel": true
   }
 }

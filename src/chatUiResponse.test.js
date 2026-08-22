@@ -77,6 +77,9 @@ const cards = buildOfferCardsFromOfferCalculation({
     effectiveMonthlyCost: 656,
     monthlySavings: 944,
     bindingMonths: 24,
+    giftCardReason: 'New-customer gift-card tier.',
+    benefits: ['Travel data', 'EU roaming', 'Extra SIM', 'Unlimited calls'],
+    tradeoffs: ['Local calls cost extra.', 'TV4 is not included.'],
   },
   lowestMonthlyPrice: {
     planId: 'tre-low',
@@ -102,6 +105,12 @@ assert.equal(cards.length, 2);
 assert.deepEqual(cards.map((card) => card.resultLabel), ['Best value', 'Lowest monthly price']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
 assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
-assert.deepEqual(cards[0].benefits, ['Streaming replacement']);
+assert.deepEqual(cards[0].benefits, [
+  'Streaming replacement',
+  'New-customer gift-card tier.',
+  'Travel data',
+  'Trade-off: Local calls cost extra.',
+  'Trade-off: TV4 is not included.',
+]);
 
 console.log('chat UI response tests passed');

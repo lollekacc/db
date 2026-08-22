@@ -11,6 +11,15 @@ const getLastAssistantMessage = (messages = []) => [...(Array.isArray(messages) 
 
 const hasValue = (value) => value !== null && value !== undefined && value !== '';
 
+const isPeopleCountAnswer = (value) => {
+  const answer = normalizeText(value);
+  const prefix = '(?:(?:vi|jag|we|i)\\s+(?:ar|vill(?:\\s+(?:ha|jamfora))?|behover|ska(?:\\s+ha)?|are|want(?:\\s+to\\s+compare)?|need)\\s+)?';
+  const count = '(?:[1-9]|10|ett|en|tva|tre|fyra|fem|sex|sju|atta|nio|tio)';
+  const range = '(?:\\+|\\s+eller\\s+fler|\\s+or\\s+more)?';
+  const subject = '(?:\\s+(?:personer?|abonnemang|subscriptions?|people))?';
+  return new RegExp(`^${prefix}${count}${range}${subject}$`).test(answer);
+};
+
 const mergeQualificationState = (current = {}, analyzed = {}) => {
   const merged = { ...current };
   const scalarFields = [
@@ -238,7 +247,7 @@ const isQualificationContinuation = (messages = [], message = '') => {
   if (!previousQuestion || !answer) return false;
 
   if (/hur manga abonnemang|how many subscriptions/.test(previousQuestion)) {
-    return /^(?:[1-9]|10)(?:\+)?(?:\s|$)|\b(?:ett|en|tva|två|tre|fyra|fem|sex|sju|atta|åtta|nio|tio)\b|\babonnemang\b/.test(answer);
+    return isPeopleCountAnswer(answer);
   }
   if (/operator|operatör/.test(previousQuestion)) {
     return /\b(telia|tele2|telenor|tre|samma|olika|same|different)\b/.test(answer);

@@ -45,6 +45,7 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'Find a suitable mobile recommendation',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      recommendationProduct: 'mobile',
       knowledgeQuery: 'mobile plans',
       qualification: schemaQualification(payload.currentQualification),
     };

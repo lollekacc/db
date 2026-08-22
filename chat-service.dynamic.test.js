@@ -42,6 +42,7 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'Find the best-value mobile plan for travel outside the EU',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      recommendationProduct: 'mobile',
       knowledgeQuery: 'mobile roaming international data streaming',
       qualification: analysisQualification,
     }
@@ -111,6 +112,7 @@ setOpenAiTransportForTests(async (_url, options) => {
         desiredOutcome: 'Include paid streaming services in the existing comparison',
         customerEmotion: 'neutral',
         recommendationRequested: true,
+        recommendationProduct: 'mobile',
         knowledgeQuery: 'streaming bundles',
         qualification: { ...analysisQualification, streamingServices: [] },
       }

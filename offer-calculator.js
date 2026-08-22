@@ -25,7 +25,12 @@ const getRules = () => getRecommendationRules();
 
 const getCalculationTermMonths = () => Math.max(Number(getRules().calculation?.termMonths) || 24, 1);
 
-const getReadyToSwitchMonths = () => Math.max(Number(getRules().binding?.readyToSwitchRemainingMonthsMax) || 3, 0);
+const getReadyToSwitchMonths = (operator = {}) => {
+  const rules = getRules().binding || {};
+  const operatorKey = slugify(operator.id || operator.name);
+  const operatorWindow = rules.salesWindowMonthsByTargetOperator?.[operatorKey];
+  return Math.max(Number(operatorWindow ?? rules.defaultSalesWindowMonths) || 3, 0);
+};
 
 const slugify = (value) => String(value || '')
   .trim()
@@ -341,6 +346,7 @@ const getActivePeople = (qualification = {}, peopleCount = 1) => {
 const getMonthsUntil = (bindingEnd, now = new Date()) => {
   const normalized = String(bindingEnd || '').trim();
   if (!normalized || /ingen|no binding/i.test(normalized)) return 0;
+  if (/vet inte|don't know|dont know/i.test(normalized)) return Number.POSITIVE_INFINITY;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return 0;
   const end = new Date(`${normalized}T00:00:00.000Z`);
   if (Number.isNaN(end.getTime()) || end <= now) return 0;
@@ -351,7 +357,10 @@ const getMonthsUntil = (bindingEnd, now = new Date()) => {
 };
 
 const getPersonRemainingBindingMonths = (person = {}) => {
-  if (Number.isFinite(Number(person.remainingBindingMonths))) {
+  if (person.remainingBindingMonths !== null &&
+      person.remainingBindingMonths !== undefined &&
+      person.remainingBindingMonths !== '' &&
+      Number.isFinite(Number(person.remainingBindingMonths))) {
     return Math.max(Math.round(Number(person.remainingBindingMonths)), 0);
   }
   return getMonthsUntil(person.bindingEnd);
@@ -377,12 +386,18 @@ const getRemainingOldCost = (person = {}) => {
   return roundMoney(subscriptionMonthly * overlapMonths + (Number(person.devicePaymentMonthlyCost) || 0) * deviceMonths);
 };
 
-const hasDifferentOperator = (people = [], operator = {}) => {
+const getGiftCardCustomerStatus = (people = [], operator = {}) => {
   const target = slugify(operator.name || operator.id);
-  return people.some((person) => {
+  const statuses = people.map((person) => {
     const current = slugify(person.currentOperator);
-    return current && current !== 'annan-ingen' && current !== target;
+    return current === target ? 'same_operator' : 'new_customer';
   });
+  const newCustomerCount = statuses.filter((status) => status === 'new_customer').length;
+  const sameOperatorCount = statuses.length - newCustomerCount;
+  const tier = sameOperatorCount === 0
+    ? 'maximum'
+    : (newCustomerCount === 0 ? 'lower' : 'mixed');
+  return { newCustomerCount, sameOperatorCount, tier };
 };
 
 const getGiftCardValue = ({ operator, plan, people }) => {
@@ -390,21 +405,21 @@ const getGiftCardValue = ({ operator, plan, people }) => {
   const placeholderValue = String(plan.giftCard || rules.placeholderValue || 'XXX');
   const label = placeholderValue.match(/\skr$/i) ? placeholderValue : `${placeholderValue} kr`;
   const amount = Math.max(Number(rules.numericValueUntilFinalized) || 0, 0);
-  const requiresOperatorChange = rules.operatorChangeRequiredForMaximum !== false;
-  const eligible = requiresOperatorChange ? hasDifferentOperator(people, operator) : true;
-  if (!eligible) {
-    return {
-      amount: 0,
-      label,
-      eligible: false,
-      reason: 'Maximalt presentkort kräver normalt byte till en annan operatör.',
-    };
-  }
+  const status = getGiftCardCustomerStatus(people, operator);
+  const eligible = status.sameOperatorCount === 0 || rules.sameOperatorEligible !== false;
+  const reason = status.tier === 'maximum'
+    ? 'Ny kund hos måloperatören: framtida maxnivå för presentkortet.'
+    : (status.tier === 'lower'
+      ? 'Befintlig kund hos måloperatören: framtida lägre nivå för presentkortet.'
+      : 'Gruppen innehåller både nya och befintliga kunder; framtida presentkortsvärde blir blandat.');
   return {
-    amount: roundMoney(amount),
+    amount: eligible ? roundMoney(amount) : 0,
     label,
-    eligible: true,
-    reason: 'Presentkort enligt Dealetts rekommendationsregler.',
+    eligible,
+    tier: status.tier,
+    newCustomerCount: status.newCustomerCount,
+    sameOperatorCount: status.sameOperatorCount,
+    reason,
   };
 };
 
@@ -417,21 +432,21 @@ const getNumberHandlingNotes = (people = []) => people.map((person, index) => {
   return `${label}: nummerflytt planeras${person.numberOwnerConfirmed ? '' : ', kontrollera nummerägare först'}.`;
 });
 
-const splitSwitchPeople = (people = []) => {
-  const readyToSwitchMonths = getReadyToSwitchMonths();
+const splitSwitchPeople = (people = [], operator = {}) => {
+  const readyToSwitchMonths = getReadyToSwitchMonths(operator);
   const eligiblePeople = people.filter((person) => person.keepNumberPreference !== 'exclude' && person.excluded !== true);
   const readyPeople = eligiblePeople.filter((person) => getPersonRemainingBindingMonths(person) <= readyToSwitchMonths);
   const delayedPeople = eligiblePeople.filter((person) => getPersonRemainingBindingMonths(person) > readyToSwitchMonths);
-  return { eligiblePeople, readyPeople, delayedPeople };
+  return { eligiblePeople, readyPeople, delayedPeople, readyToSwitchMonths };
 };
 
-const getBaseline24MonthCost = ({ qualification, people, peopleCount, streamingSelectedCost }) => {
+const getBaseline24MonthCost = ({ qualification, people, peopleCount }) => {
   const termMonths = getCalculationTermMonths();
   const peopleMonthly = getPeopleCurrentMonthlyTotal(people);
   const fallback = getCurrentMonthlyTotal(qualification, peopleCount);
   const monthly = peopleMonthly > 0 ? peopleMonthly : fallback.amount;
   return {
-    amount: roundMoney(monthly * termMonths + streamingSelectedCost * termMonths),
+    amount: roundMoney(monthly * termMonths),
     monthly,
     estimated: peopleMonthly <= 0 && fallback.estimated,
   };
@@ -446,7 +461,6 @@ const createSwitchScenario = ({
   delayedPeople = [],
   peopleCount,
   streamingReplacement,
-  streamingSelectedCost,
   switchAction,
 }) => {
   const termMonths = getCalculationTermMonths();
@@ -475,7 +489,6 @@ const createSwitchScenario = ({
     qualification,
     people: participantPeople,
     peopleCount,
-    streamingSelectedCost,
   });
   const newCost24 = roundMoney(planMonthlyPrice * termMonths);
   const total24MonthCost = roundMoney(newCost24 + oldCosts + fees - giftCard.amount - streamingSavings24);
@@ -495,6 +508,9 @@ const createSwitchScenario = ({
     giftCard: plan.giftCard || 'XXX',
     giftCardLabel: giftCard.label,
     giftCardEligible: giftCard.eligible,
+    giftCardTier: giftCard.tier,
+    giftCardNewCustomerCount: giftCard.newCustomerCount,
+    giftCardSameOperatorCount: giftCard.sameOperatorCount,
     giftCardReason: giftCard.reason,
     streamingSavings24,
     current24MonthCost: baseline.amount,
@@ -516,9 +532,25 @@ const chooseSwitchScenario = ({
   people,
   peopleCount,
   streamingReplacement,
-  streamingSelectedCost,
 }) => {
-  const { eligiblePeople, readyPeople, delayedPeople } = splitSwitchPeople(people);
+  const { eligiblePeople, readyPeople, delayedPeople, readyToSwitchMonths } = splitSwitchPeople(people, operator);
+  if (!readyPeople.length) return null;
+
+  if (delayedPeople.length) {
+    const partialScenario = createSwitchScenario({
+      operator,
+      plan,
+      baseMonthlyPrice,
+      qualification,
+      participantPeople: readyPeople,
+      delayedPeople,
+      peopleCount,
+      streamingReplacement,
+      switchAction: 'switch_some_now',
+    });
+    return partialScenario ? { ...partialScenario, salesWindowMonths: readyToSwitchMonths } : null;
+  }
+
   const fullScenario = createSwitchScenario({
     operator,
     plan,
@@ -528,42 +560,9 @@ const chooseSwitchScenario = ({
     delayedPeople: [],
     peopleCount,
     streamingReplacement,
-    streamingSelectedCost,
-    switchAction: delayedPeople.length ? 'switch_all_now_with_overlap' : 'switch_now',
+    switchAction: 'switch_now',
   });
-
-  if (fullScenario && (delayedPeople.length === 0 || fullScenario.totalResultBeneficial)) {
-    return fullScenario;
-  }
-
-  const readyScenario = createSwitchScenario({
-    operator,
-    plan,
-    baseMonthlyPrice,
-    qualification,
-    participantPeople: readyPeople,
-    delayedPeople,
-    peopleCount,
-    streamingReplacement,
-    streamingSelectedCost,
-    switchAction: delayedPeople.length ? 'switch_some_now' : 'switch_now',
-  });
-  if (readyScenario && readyScenario.totalResultBeneficial) return readyScenario;
-
-  if (fullScenario) {
-    return {
-      ...fullScenario,
-      switchAction: delayedPeople.length ? 'delay_switch' : 'review_before_switch',
-      switchNowPeopleCount: 0,
-      delayedPeopleCount: delayedPeople.length || fullScenario.peopleCount,
-      delayedPeople: (delayedPeople.length ? delayedPeople : eligiblePeople)
-        .map((person) => person.label || person.id)
-        .filter(Boolean),
-      totalResultBeneficial: false,
-    };
-  }
-
-  return readyScenario;
+  return fullScenario ? { ...fullScenario, salesWindowMonths: readyToSwitchMonths } : null;
 };
 
 const expandPlanVariants = (operator, plan) => {
@@ -622,7 +621,6 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
     people: activePeople,
     peopleCount,
     streamingReplacement,
-    streamingSelectedCost: streamingEvaluation.selectedCost,
   });
   if (!scenario) return null;
 
@@ -678,9 +676,9 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
     monthlyPrice: roundMoney(planMonthlyPrice),
     regularMonthlyPlanPrice: roundMoney(regularMonthlyPlanPrice),
     averageMonthlyPlanCost: roundMoney(averageMonthlyPlanCost),
-    pricePerPerson: roundMoney(planMonthlyPrice / peopleCount),
+    pricePerPerson: roundMoney(planMonthlyPrice / scenario.peopleCount),
     effectiveMonthlyCost: roundMoney(effectiveMonthlyCost),
-    effectivePricePerPerson: roundMoney(effectiveMonthlyCost / peopleCount),
+    effectivePricePerPerson: roundMoney(effectiveMonthlyCost / scenario.peopleCount),
     streamingSavings: streamingReplacement.monthlySavings,
     replacedStreamingServices: streamingReplacement.services,
     includedStreamingServices: includedStreaming,
@@ -696,6 +694,9 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
     giftCard: scenario.giftCard,
     giftCardLabel: scenario.giftCardLabel,
     giftCardEligible: scenario.giftCardEligible,
+    giftCardTier: scenario.giftCardTier,
+    giftCardNewCustomerCount: scenario.giftCardNewCustomerCount,
+    giftCardSameOperatorCount: scenario.giftCardSameOperatorCount,
     giftCardReason: scenario.giftCardReason,
     streamingSavings24: scenario.streamingSavings24,
     total24MonthCost: scenario.total24MonthCost,
@@ -703,6 +704,7 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
     total24MonthResult: scenario.total24MonthResult,
     totalResultBeneficial: scenario.totalResultBeneficial,
     bindingMonths,
+    salesWindowMonths: scenario.salesWindowMonths || getReadyToSwitchMonths(operator),
     international: capabilities,
     benefits,
     reason: buildReasonText([
@@ -717,6 +719,7 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
         plan.data?.type === 'unlimited' ? 'obegränsad data' : `${dataAmount} GB`,
       ].join(', '),
       `På ${getCalculationTermMonths()} månader blir helheten cirka ${scenario.total24MonthCost.toLocaleString('sv-SE')} kr när abonnemanget, presentkortet och valda behov räknas ihop`,
+      scenario.giftCardReason,
       scenario.oldCostsDuringOverlap > 0
         ? 'Det kan finnas en gammal kostnad kvar en period, och den är med i bedömningen.'
         : '',
@@ -727,7 +730,7 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
       ...scenario.numberHandlingNotes,
       'Kontrollera nummerägare, befintliga tillägg, delbetalning på mobil och uppsägningstid innan beställning.',
     ]),
-    eligibleForOffer: scenario.totalResultBeneficial,
+    eligibleForOffer: true,
     matchAdjustedCost: roundMoney(matchAdjustedCost),
     travelMatch: travelEvaluation.match,
     travelScore: travelEvaluation.score,
@@ -794,6 +797,22 @@ const uniqueBestByOperator = (candidates) => {
   return [...byOperator.values()].sort(compareBestValue);
 };
 
+const ensureExplicitTradeoffs = (candidates = []) => {
+  const lowestPlanMonthlyPrice = Math.min(...candidates.map((candidate) => candidate.planMonthlyPrice));
+  return candidates.map((candidate) => {
+    if (candidate.tradeoffs.length) return candidate;
+    const monthlyDifference = roundMoney(candidate.planMonthlyPrice - lowestPlanMonthlyPrice);
+    const tradeoff = monthlyDifference > 0
+      ? `Ordinarie månadspriset är ${monthlyDifference.toLocaleString('sv-SE')} kr högre än det billigaste säljbara alternativet som klarar surfbehovet.`
+      : 'Detta alternativ prioriterar lägsta ordinarie pris; dyrare alternativ kan innehålla andra förmåner.';
+    return {
+      ...candidate,
+      tradeoffs: [tradeoff],
+      reason: buildReasonText([candidate.reason, tradeoff]),
+    };
+  });
+};
+
 const calculateOfferOptions = (qualification = {}) => {
   if (!qualification.readyForOffer) {
     return {
@@ -808,7 +827,7 @@ const calculateOfferOptions = (qualification = {}) => {
 
   const peopleCount = Math.max(Number(qualification.peopleCount) || 1, 1);
   const catalog = getPlanCatalog();
-  const allCandidates = catalog.operators.flatMap((operator) => operator.plans
+  const allCandidates = ensureExplicitTradeoffs(catalog.operators.flatMap((operator) => operator.plans
     .flatMap((plan) => expandPlanVariants(operator, plan)
       .map(({ streamingVariant }) => buildCandidate({
         operator,
@@ -817,7 +836,7 @@ const calculateOfferOptions = (qualification = {}) => {
         qualification,
         peopleCount,
       })))
-    .filter(Boolean));
+    .filter(Boolean)));
   const options = uniqueBestByOperator(allCandidates);
   const rules = getRules();
   const bestValue = [...allCandidates].sort(compareBestValue)[0] || null;
@@ -839,7 +858,7 @@ const calculateOfferOptions = (qualification = {}) => {
     validOfferAvailable: options.length > 0,
     noOfferReason: options.length
       ? null
-      : 'Inget abonnemang i mobilplansdatan matchar alla angivna behov.',
+      : 'Ingen person är just nu inom måloperatörernas säljfönster eller så matchar inget abonnemang alla angivna behov. Tele2 kräver högst 2 månader kvar; Telia, Telenor och Tre högst 3 månader.',
     bestValue: bestValue ? { ...bestValue, recommendationType: 'best_value' } : null,
     bestTravelFit: bestTravelFit ? { ...bestTravelFit, recommendationType: 'best_travel_fit' } : null,
     bestStreamingFit: bestStreamingFit ? { ...bestStreamingFit, recommendationType: 'best_streaming_fit' } : null,
@@ -864,7 +883,7 @@ const calculateOfferOptions = (qualification = {}) => {
         ? 'Only customer-supplied monthly costs for selected services included in the plan are deducted.'
         : 'Streaming savings follow data/recommendation-rules.json.',
       resultRule: rules.calculation?.formula || '24-month new cost + remaining old costs + fees - gift card - matching streaming savings.',
-      switchingRule: `Customers with ${getReadyToSwitchMonths()} months or less remaining are ready to switch; longer binding is included as overlapping old cost and may trigger delay or partial-family switching.`,
+      switchingRule: 'Tele2 accepts orders with at most 2 months remaining; Telia, Telenor, and Tre accept orders with at most 3 months remaining. People outside the target operator window are excluded until eligible.',
       allOperatorsLabel: rules.results?.featured?.find((result) => result.key === 'allOperators')?.label || 'Visa alla operatörer',
       currentMonthlyTotalIsEstimate: getCurrentMonthlyTotal(qualification, peopleCount).estimated,
     },

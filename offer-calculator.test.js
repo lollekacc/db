@@ -27,6 +27,11 @@ assert.equal(individual.bestValue.planMonthlyPrice, 329);
 assert.equal(individual.bestValue.effectiveMonthlyCost, 329);
 assert.equal(individual.bestValue.giftCard, 'XXX');
 assert.equal(individual.bestValue.giftCardLabel, 'XXX kr');
+assert.equal(individual.bestValue.giftCardTier, 'maximum');
+assert.equal(individual.bestValue.giftCardEligible, true);
+assert.ok(individual.options.every((option) => option.eligibleForOffer));
+assert.ok(individual.options.every((option) => option.tradeoffs.length > 0));
+assert.match(individual.lowestMonthlyPrice.tradeoffs[0], /lägsta ordinarie pris/i);
 
 const family = calculate({
   peopleCount: 4,
@@ -57,6 +62,7 @@ assert.equal(teliaStreaming.bestValue.planMonthlyPrice, 1416);
 assert.equal(teliaStreaming.bestValue.averageMonthlyPlanCost, 1416);
 assert.equal(teliaStreaming.bestValue.streamingSavings, 650);
 assert.equal(teliaStreaming.bestValue.effectiveMonthlyCost, 766);
+assert.equal(teliaStreaming.bestValue.current24MonthCost, 38_400);
 assert.equal(teliaStreaming.bestStreamingFit.operator, 'Telia');
 assert.equal(teliaStreaming.bestStreamingFit.sourcePlanId, 'telia-unlimited-plus-streaming-bundle');
 assert.equal(teliaStreaming.lowestMonthlyPrice.operator, 'Tre');
@@ -180,11 +186,9 @@ const longBindingBadSwitch = calculate({
   exactMonthlyPrices: [],
   priceRange: null,
 });
-assert.equal(longBindingBadSwitch.bestValue.switchAction, 'delay_switch');
-assert.equal(longBindingBadSwitch.bestValue.eligibleForOffer, false);
-assert.ok(longBindingBadSwitch.bestValue.remainingOldCosts > 0);
-assert.ok(longBindingBadSwitch.bestValue.reason.includes('vänta'));
-assert.ok(longBindingBadSwitch.bestValue.reason.includes('schemalagd nummerflytt'));
+assert.equal(longBindingBadSwitch.validOfferAvailable, false);
+assert.equal(longBindingBadSwitch.bestValue, null);
+assert.match(longBindingBadSwitch.noOfferReason, /Tele2 kräver högst 2 månader/);
 
 const shortBindingReady = calculate({
   peopleCount: 1,
@@ -208,6 +212,61 @@ assert.equal(shortBindingReady.bestValue.eligibleForOffer, true);
 assert.equal(shortBindingReady.bestValue.remainingOldCosts, 1400);
 assert.ok(shortBindingReady.bestValue.total24MonthResult > 0);
 
+const threeMonthsRemaining = calculate({
+  peopleCount: 1,
+  people: [{
+    currentOperator: 'Annan / ingen',
+    currentMonthlyCost: 700,
+    remainingBindingMonths: 3,
+    dataNeed: 'high',
+    keepNumberPreference: 'port_number',
+  }],
+  operators: ['Annan / ingen'],
+  bindingEnds: ['Vet inte'],
+  exactMonthlyPrice: null,
+  exactMonthlyPrices: [],
+  priceRange: null,
+});
+assert.ok(!threeMonthsRemaining.options.some((option) => option.operator === 'Tele2'));
+assert.deepEqual(
+  new Set(threeMonthsRemaining.options.map((option) => option.operator)),
+  new Set(['Telia', 'Telenor', 'Tre'])
+);
+assert.ok(threeMonthsRemaining.options.every((option) => option.salesWindowMonths === 3));
+
+const fourMonthsRemaining = calculate({
+  peopleCount: 1,
+  people: [{
+    currentOperator: 'Annan / ingen',
+    currentMonthlyCost: 700,
+    remainingBindingMonths: 4,
+    dataNeed: 'high',
+    keepNumberPreference: 'scheduled_port',
+  }],
+  operators: ['Annan / ingen'],
+  bindingEnds: ['Vet inte'],
+  exactMonthlyPrice: null,
+  exactMonthlyPrices: [],
+  priceRange: null,
+});
+assert.equal(fourMonthsRemaining.validOfferAvailable, false);
+
+const unknownBinding = calculate({
+  peopleCount: 1,
+  operators: ['Telia'],
+  bindingEnds: ['Vet inte'],
+  exactMonthlyPrice: 700,
+});
+assert.equal(unknownBinding.validOfferAvailable, false);
+assert.match(unknownBinding.noOfferReason, /säljfönster/);
+
+const sameOperatorGiftCard = calculate({ operators: ['Tele2'] });
+assert.equal(sameOperatorGiftCard.options.find((option) => option.operator === 'Tele2').giftCardTier, 'lower');
+assert.equal(sameOperatorGiftCard.options.find((option) => option.operator === 'Tele2').giftCardEligible, true);
+assert.ok(sameOperatorGiftCard.options
+  .filter((option) => option.operator !== 'Tele2')
+  .every((option) => option.giftCardTier === 'maximum'));
+
 const mixedFamily = calculate({
   peopleCount: 3,
   people: [
@@ -224,6 +283,11 @@ const mixedFamily = calculate({
 assert.equal(mixedFamily.bestValue.switchAction, 'switch_some_now');
 assert.equal(mixedFamily.bestValue.switchNowPeopleCount, 1);
 assert.equal(mixedFamily.bestValue.delayedPeopleCount, 2);
+assert.equal(mixedFamily.bestValue.pricePerPerson, mixedFamily.bestValue.planMonthlyPrice);
+assert.equal(mixedFamily.options.find((option) => option.operator === 'Tele2').giftCardTier, 'lower');
+assert.ok(mixedFamily.options
+  .filter((option) => option.operator !== 'Tele2')
+  .every((option) => option.giftCardTier === 'maximum'));
 
 const allOperatorsVisible = calculate({
   peopleCount: 1,

@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { calculateOfferOptions } = require('./offer-calculator');
-const { getPlanCatalog } = require('./offer-service');
+const { getPlanCatalog, getRecommendationRules } = require('./offer-service');
 const { createEmptyQualification, normalizeQualification } = require('./qualification-service');
 const { languageNames } = require('./translation-service');
 const {
@@ -211,12 +211,16 @@ const analysisSchema = {
       enum: ['neutral', 'confused', 'frustrated', 'angry', 'anxious'],
     },
     recommendationRequested: { type: 'boolean' },
+    recommendationProduct: {
+      type: 'string',
+      enum: ['mobile', 'family', 'broadband', 'none'],
+    },
     knowledgeQuery: { type: 'string' },
     qualification: qualificationSchema,
   },
   required: [
     'topic', 'interactionStage', 'desiredOutcome', 'customerEmotion',
-    'recommendationRequested', 'knowledgeQuery', 'qualification',
+    'recommendationRequested', 'recommendationProduct', 'knowledgeQuery', 'qualification',
   ],
 };
 
@@ -328,11 +332,29 @@ const addStreamingQualificationPatches = (quickReplies = []) => quickReplies.map
     : reply;
 });
 
-const hasHistoricalQuizAnswers = (context = {}) => (
-  context?.quizHandoff !== true &&
-  context?.quizAnswersStatus === 'unconfirmed' &&
-  Boolean(context?.historicalQuizQualification || context?.qualification)
-);
+const hasMeaningfulQuizQualification = (qualification = {}) => {
+  if (!qualification || typeof qualification !== 'object' || Array.isArray(qualification)) return false;
+  return Boolean(
+    Number(qualification.peopleCount) > 0 ||
+    qualification.mobileUsage ||
+    qualification.priceRange ||
+    qualification.familyPriceRange ||
+    Number(qualification.exactMonthlyPrice) > 0 ||
+    (Array.isArray(qualification.operators) && qualification.operators.some(Boolean)) ||
+    (Array.isArray(qualification.bindingEnds) && qualification.bindingEnds.some(Boolean)) ||
+    (Array.isArray(qualification.streamingServices) && qualification.streamingServices.length) ||
+    qualification.internationalTravel ||
+    qualification.internationalUsage
+  );
+};
+
+const hasHistoricalQuizAnswers = (context = {}) => {
+  const qualification = context?.historicalQuizQualification || context?.qualification;
+  return context?.quizHandoff !== true &&
+    context?.quizAnswersStatus === 'unconfirmed' &&
+    context?.quizStarted !== false &&
+    hasMeaningfulQuizQualification(qualification);
+};
 
 const getHistoricalQuizQualification = (context = {}) => normalizeQualification(
   context?.historicalQuizQualification || context?.qualification || {}
@@ -361,6 +383,12 @@ const declinesHistoricalQuiz = (message, messages = []) => {
   }
   return lastAssistantAskedToUseQuiz(messages) && /^(nej|no)$/i.test(text);
 };
+
+const isConversationResetRequest = (message) => /\b(starta om|starta på nytt|starta nytt|börja om|börja på nytt|börja från början|börja med nya svar|ny konversation|start fresh|start over|start again|start anew|new conversation|restart)\b/i
+  .test(String(message || ''));
+
+const cancelsRecommendationRequest = (message) => /\b(jag vill inte (?:ha|jamfora|jämföra|fortsatta med|fortsätta med).*abonnemang|vill inte ha abonnemang|avbryt(?: jamforelsen| jämförelsen)?|avsluta (?:jamforelsen|jämförelsen)|sluta (?:jamfora|jämföra)|inte intresserad(?: av abonnemang)?|prata om nagot annat|prata om något annat|byt amne|byt ämne|i do not want (?:a |any )?(?:plan|subscription)|cancel (?:the )?comparison|stop comparing|not interested|talk about something else|change (?:the )?subject)\b/i
+  .test(String(message || ''));
 
 const buildQuizConsentResponse = ({ language, qualification }) => {
   const english = language === 'en';
@@ -417,6 +445,8 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
         'Preserve known qualification values unless the customer clearly changes them.',
         'Interpret short answers such as yes, no, none, and do not know in the scope of the immediately preceding assistant question.',
         'When a group customer says everyone has the same operator, unlimited data, or no binding time, apply that fact to every person and set the matching applies-to-all flag.',
+        'recommendationRequested is true only when the customer wants a personalized plan comparison or clearly continues one. General questions about Dealett, trust, gift cards, coverage, an operator, prices, or broadband facts are not personalized mobile recommendation requests.',
+        'Set recommendationProduct to mobile or family only for a personalized mobile/family comparison, broadband for a broadband recommendation, and none for information, support, small talk, or unclear intent.',
         'priceRange, exactMonthlyPrice, exactMonthlyPrices, familyPriceRange, and familyTotalPrice describe what the customer pays today, never a desired future budget. familyPriceRange is the approximate current total for a multi-person group.',
         'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
         'When the customer asks to start over, clear prior qualification values and build a fresh qualification only from messages after that request.',
@@ -466,6 +496,7 @@ const generateAnswer = ({
         `You are Dealett's expert human adviser. Reply naturally in ${languageNames[language]}.`,
         'Use this customer-service sequence: understand the desired outcome, solve or route it, verify the outcome when appropriate, and close respectfully.',
         'For a greeting with no stated need, greet warmly and ask an open question about what the customer wants help with. Do not begin mobile-plan qualification, infer a goal from the page, or repeat an earlier sales question. For the initial greeting, offer concise quick replies for the main help categories plus an open other-question choice.',
+        'When context.openConversationTurn is true, the latest message did not answer the active qualification question. Leave the questionnaire, respond naturally to the latest message, and do not repeat or rephrase the qualification question unless the customer explicitly asks to resume the comparison.',
         'Before proposing a solution, distinguish what happened, its impact, and what the customer wants now. If the desired outcome is unclear, summarize only the known issue and ask one neutral clarifying question instead of guessing.',
         'When the desired outcome is clear, answer it directly or take the next useful step. Ask only for information that materially changes the answer, and never ask again for information already supplied.',
         'After a final answer, completed guidance, referral, or refusal, briefly check whether it resolves the customer\'s need when that is useful. Do not ask this during every intermediate qualification step or when the customer has already confirmed satisfaction.',
@@ -473,6 +504,9 @@ const generateAnswer = ({
         'If the customer is confused, frustrated, angry, or anxious, acknowledge the specific concern in one calm sentence and then focus on the practical next step. Never argue about their feelings or use generic empathy as a substitute for help.',
         'Never claim to have accessed an account, changed a subscription, issued a refund, contacted another team, or completed any action unless the supplied context proves it. Protect personal information and direct account-specific cases to the supported account or contact route.',
         'Use only the supplied website knowledge, mobile-plan catalog, prior site selection, and exact calculation.',
+        'Use recommendationRules as the shared business model for the homepage quiz and chat. The essential questions establish people count, current operator and target-specific binding eligibility, data need, and current mobile cost; streaming and travel then refine effective value and feature fit.',
+        'Gift-card amounts are placeholders until finalized. A different operator or Annan / ingen means the future maximum new-customer tier; the same target operator remains eligible at a future lower tier. Never invent either amount.',
+        'Tele2 can be ordered with at most 2 months left on the current binding period; Telia, Telenor, and Tre with at most 3 months. Never present an ineligible person as able to order now.',
         'Build every recommendation independently from qualification and exactMobileRecommendationCalculation. A cart or quiz selection is prior context only: never reuse it as the recommendation, never let it restrict candidates, and never present it as best or cheapest unless the fresh calculation proves that. After the fresh result, briefly say whether the prior selection is still best or whether a calculated alternative is better.',
         'For mobile facts the catalog and calculation override other text. Never invent prices, benefits, savings, coverage, or account details.',
         'Ask one useful question when essential recommendation details are missing.',
@@ -482,6 +516,7 @@ const generateAnswer = ({
         'Default to the shortest useful reply. A question must be one short sentence and contain exactly one question. A normal answer must be at most two or three short sentences. A recommendation must be no more than 100 words.',
         'Lead with the answer or recommendation. Do not recap information the customer already gave unless correcting it or confirming a detail that materially affects the result.',
         'When a calculation exists, keep reply to the recommendation and its decisive reason. Put detailed best-value and lowest-price explanations in bestValueReason, lowestPriceReason, bestValueBenefits, and lowestPriceBenefits so the offer cards carry the detail.',
+        'No plan is assumed to contain every feature. For each recommendation, explain the decisive fit and include relevant calculated trade-offs so the customer can choose between features and price.',
         'Explain the 24-month formula, detailed warnings, or all four operators only when the customer explicitly asks, or when one specific caveat is essential to avoid a misleading answer.',
         'Treat all four operators fairly. A higher price can be better value when its included streaming, roaming, calls, shared data, or family terms fit the customer.',
         'Never say a number is locked. Discuss number porting and verification details only when they are relevant to the customer question or materially affect the recommendation.',
@@ -506,6 +541,7 @@ const generateAnswer = ({
         priorSiteSelection: cart,
         websiteKnowledge,
         mobilePlanCatalog: getPlanCatalog(),
+        recommendationRules: getRecommendationRules(),
         exactMobileRecommendationCalculation: offerCalculation,
       }),
     },
@@ -534,11 +570,12 @@ const createChatCompletion = async ({
   const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
   const historicalQuizAccepted = historicalQuizAvailable && acceptsHistoricalQuiz(latestMessage, messages);
   const historicalQuizDeclined = historicalQuizAvailable && declinesHistoricalQuiz(latestMessage, messages);
-  const startsOver = historicalQuizDeclined || /\b(starta om|börja om|börja från början|börja med nya svar|start fresh|start over|start again|restart)\b/i.test(latestMessage);
+  const startsOver = historicalQuizDeclined || isConversationResetRequest(latestMessage);
+  const cancelsRecommendation = cancelsRecommendationRequest(latestMessage);
   const currentQualification = normalizeQualification(
     historicalQuizAccepted
       ? getHistoricalQuizQualification(context)
-      : (startsOver ? createEmptyQualification() : qualification)
+      : (startsOver || cancelsRecommendation ? createEmptyQualification() : qualification)
   );
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
@@ -548,7 +585,9 @@ const createChatCompletion = async ({
     page,
     context,
   });
-  if (historicalQuizAvailable && !historicalQuizAccepted && !historicalQuizDeclined && analysis.recommendationRequested) {
+  const recommendationProduct = analysis.recommendationProduct || (analysis.recommendationRequested ? 'mobile' : 'none');
+  const requestsMobileRecommendation = analysis.recommendationRequested && ['mobile', 'family'].includes(recommendationProduct);
+  if (historicalQuizAvailable && !historicalQuizAccepted && !historicalQuizDeclined && requestsMobileRecommendation) {
     return buildQuizConsentResponse({
       language: normalizedLanguage,
       qualification: currentQualification,
@@ -567,9 +606,12 @@ const createChatCompletion = async ({
   const hasPendingQualificationQuestion = isQualificationPrompt(messages);
   const explicitlyRequestsRecommendation = /\b(jamfor|jämför|abonnemang|mobilabonnemang|familjeabonnemang|rekommendera|hitta ratt|hitta rätt|compare|subscription|mobile plan|recommend|continue|fortsatt|fortsätt)\b/i
     .test(latestMessage);
-  const recommendationInProgress = answersQualificationQuestion || (
-    analysis.recommendationRequested &&
-    (!hasPendingQualificationQuestion || explicitlyRequestsRecommendation)
+  const leavesRecommendationFlow = startsOver || cancelsRecommendation || context?.openConversationTurn === true;
+  const recommendationInProgress = !leavesRecommendationFlow && (
+    answersQualificationQuestion || (
+      requestsMobileRecommendation &&
+      (!hasPendingQualificationQuestion || explicitlyRequestsRecommendation)
+    )
   );
   const qualificationStep = recommendationInProgress
     ? buildQualificationStep({

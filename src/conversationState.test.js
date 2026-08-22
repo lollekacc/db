@@ -113,8 +113,14 @@ assert.ok(!exactFamilyTotal.missingFields.includes('priceRange'));
 const countQuestionMessages = [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }];
 assert.equal(isQualificationContinuation(countQuestionMessages, '4'), true);
 assert.equal(isQualificationContinuation(countQuestionMessages, 'fyra abonnemang'), true);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'vi är 2 personer'), true);
+assert.equal(isQualificationContinuation(countQuestionMessages, '4 eller fler'), true);
 assert.equal(isQualificationContinuation(countQuestionMessages, 'hur mår du?'), false);
 assert.equal(isQualificationContinuation(countQuestionMessages, 'hej'), false);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'nej'), false);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'd'), false);
+assert.equal(isQualificationContinuation(countQuestionMessages, '.'), false);
+assert.equal(isQualificationContinuation(countQuestionMessages, 'jag vill inte ha abonnemang'), false);
 assert.equal(isQualificationPrompt(countQuestionMessages), true);
 assert.equal(isQualificationPrompt([{ role: 'assistant', content: 'Jag mår bra, tack!' }]), false);
 

@@ -14,9 +14,17 @@
     "bindingPeriodMonths": 24,
     "bindingPeriodAppliesTo": "Alla abonnemang och erbjudanden via Dealett.",
     "giftCardIncluded": true,
-    "giftCardRule": "Kunden får ett presentkort när de hittar och väljer rätt abonnemang via Dealett.",
-    "customerSwitchRule": "Dealett ska bara rekommendera byte när kunden har högst 6 månader kvar på bindningstiden och erbjudandet blir billigare efter dubbelkostnad och presentkort."
+    "giftCardRule": "Kunden får ett presentkort via Dealett. Byte till en annan operatör, inklusive svaret Annan / ingen, ger framtida maxnivå; samma operatör ger en lägre framtida nivå. Beloppen är tills vidare XXX kr och får inte uppskattas.",
+    "customerSwitchRule": "Tele2 kan säljas när högst 2 månader återstår av kundens nuvarande bindningstid; Telia, Telenor och Tre kan säljas när högst 3 månader återstår. En person utanför måloperatörens fönster kan inte beställa ännu."
   },
+  "recommendationPrinciples": [
+    "Billigast är inte automatiskt bäst; visa bästa totalvärde och ett tydligt billigare alternativ när de skiljer sig.",
+    "Fråga om surf för att undvika att kunden betalar för oanvänd data utan att rekommendera för lite data.",
+    "Jämför mot kundens nuvarande mobilkostnad och visa både månads- och 24-månadersvärde.",
+    "Räkna bara av streaming som kunden redan betalar för och som faktiskt ingår i den rekommenderade planen.",
+    "Väg in resor inom eller utanför EU/EES och skilj på bara surf respektive surf plus lokala samtal.",
+    "Varje rekommendation ska förklara varför den valdes och vilka relevanta funktioner kunden avstår från."
+  ],
   "assistantMustCommunicate": [
     "Dealett arbetar med Telia, Tele2, Telenor och Tre.",
     "Alla abonnemang har 24 månaders bindningstid.",

@@ -121,6 +121,21 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
     const savingsAmount = Number(option.total24MonthResult);
     const hasSavings = Number.isFinite(savingsAmount);
+    const supportingDetails = [
+      ...(Array.isArray(benefits) ? benefits : []),
+      option.giftCardReason,
+      ...(Array.isArray(option.benefits) ? option.benefits : []),
+    ].map((item) => String(item || '').trim()).filter(Boolean);
+    const tradeoffDetails = (Array.isArray(option.tradeoffs) ? option.tradeoffs : [])
+      .map((tradeoff) => String(tradeoff || '').trim())
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((tradeoff) => `${isEnglish ? 'Trade-off' : 'Avvägning'}: ${tradeoff}`);
+    const distinctSupportingDetails = [...new Set(supportingDetails)];
+    const cardDetails = [
+      ...distinctSupportingDetails.slice(0, Math.max(5 - tradeoffDetails.length, 0)),
+      ...tradeoffDetails,
+    ];
     return {
       id: option.planId,
       planId: option.planId,
@@ -137,8 +152,8 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       bindingLabel: Number(option.bindingMonths) > 0
         ? `${option.bindingMonths} ${isEnglish ? 'months binding' : 'mån bindningstid'}`
         : '',
-      reason,
-      benefits,
+      reason: reason || option.reason,
+      benefits: [...new Set(cardDetails)],
       ctaLabel: isEnglish ? 'Choose offer' : 'Välj erbjudande',
       ctaUrl: 'varukorg.html',
     };

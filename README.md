@@ -6,6 +6,8 @@ The chat requires `OPENAI_API_KEY` on the backend. `OPENAI_MODEL` is optional; t
 
 Every assistant answer is generated through the OpenAI Responses API with Structured Outputs. The first model call updates the customer's qualification, the shared `offer-calculator.js` performs all recommendation math, and a second model call explains the exact result using the website knowledge and mobile-plan catalog. API failures return an error and never substitute a scripted assistant reply.
 
+The whole-site business rules for qualification, eligibility, savings, streaming, travel, and result-card explanations are defined in [`docs/dealett-recommendation-model.md`](docs/dealett-recommendation-model.md) and implemented through `data/recommendation-rules.json`.
+
 Set `DEALETT_DATA_DIR` to a mounted persistent directory in production. Orders, newsletter subscriptions, and chat feedback use that directory; without it they use the local `data` directory.
 
 The quiz and chat both call the same calculator. Run these checks after changing recommendation or chat behavior:
