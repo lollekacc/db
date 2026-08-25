@@ -1,7 +1,7 @@
 const QUESTION_DEFINITIONS = {
   peopleCount: {
     focus: 'number_of_subscriptions',
-    guidance: 'Ask how many people or mobile subscriptions the comparison should cover.',
+    guidance: 'Ask for the exact number of people or mobile subscriptions. Use only exact-number quick replies such as 1, 2, and 3; never use ranges such as "3 or more".',
   },
   priceRange: {
     focus: 'current_monthly_price',

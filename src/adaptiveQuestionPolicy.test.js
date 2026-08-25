@@ -43,6 +43,8 @@ const genericStart = getAdaptiveQuestionPlan({
   qualification: incomplete,
 });
 assert.equal(genericStart.qualificationField, 'peopleCount');
+assert.match(genericStart.guidance, /exact number/i);
+assert.match(genericStart.guidance, /never use ranges/i);
 
 const onlyBindingMissing = normalizeQualification({
   peopleCount: 1,

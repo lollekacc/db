@@ -593,9 +593,12 @@ const createChatCompletion = async ({
       copy: answer,
     })
     : [];
+  const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
+    ? ['1', '2', '3'].map((label) => ({ label, action: 'send_message' }))
+    : answer.quickReplies;
   const ui = buildChatResponse({
     message: answer.reply,
-    quickReplies: answer.quickReplies,
+    quickReplies,
     quickReplyMode: 'single',
     quickReplySubmitLabel: '',
     offerCards,
