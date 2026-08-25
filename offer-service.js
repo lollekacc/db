@@ -40,7 +40,6 @@ const providerLogos = {
 let planCatalogCache = null;
 let plansCache = null;
 let broadbandCache = null;
-let recommendationRulesCache = null;
 
 const readJson = (fileName) => JSON.parse(
   fs.readFileSync(path.join(DATA_DIR, fileName), 'utf8')
@@ -158,13 +157,6 @@ const getPlans = () => {
 const getBroadbandPlans = () => {
   if (!broadbandCache) broadbandCache = readJson('5Gbredband.json');
   return broadbandCache;
-};
-
-const getRecommendationRules = () => {
-  if (!recommendationRulesCache) {
-    recommendationRulesCache = readJson('recommendation-rules.json');
-  }
-  return recommendationRulesCache;
 };
 
 const formatCurrency = (value) => new Intl.NumberFormat('sv-SE').format(Math.max(Number(value) || 0, 0));
@@ -419,6 +411,5 @@ module.exports = {
   getBroadbandPlans,
   getMobileOperatorOffers,
   getPlanCatalog,
-  getRecommendationRules,
   getPlans,
 };

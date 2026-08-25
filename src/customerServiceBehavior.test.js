@@ -106,6 +106,8 @@ setOpenAiTransportForTests(async (_url, options) => {
         },
         internationalTravel: null,
         internationalUsage: null,
+        extraSimRequired: false,
+        sharedDataRequired: false,
         exactMonthlyPrice: null,
         exactMonthlyPrices: [],
         customerSegment: null,
@@ -120,12 +122,12 @@ setOpenAiTransportForTests(async (_url, options) => {
       showOfferCards: false,
       quickReplies: (activeScenario.answer.quickReplies || [])
         .map((label) => ({ label, action: 'send_message' })),
-      bestValueReason: '',
-      lowestPriceReason: '',
-      bestValueBenefits: [],
-      lowestPriceBenefits: [],
+      bestMatchReason: '',
+      lowestEffectiveCostReason: '',
+      bestMatchBenefits: [],
+      lowestEffectiveCostBenefits: [],
       offerCardCopy: {
-        bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+        bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
         bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
       },
     };

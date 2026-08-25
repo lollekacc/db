@@ -403,6 +403,11 @@
             "freeCallsWithinFamilyWorldwide": true,
             "euEeaIncludedHours": 10
           },
+          "extraSim": {
+            "available": true,
+            "included": false,
+            "dataGb": null
+          },
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
@@ -535,6 +540,7 @@
             "localCallsIncludedAbroad": false
           },
           "extraSim": {
+            "available": true,
             "included": true,
             "dataGb": 50
           },

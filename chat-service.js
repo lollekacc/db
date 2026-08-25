@@ -90,18 +90,16 @@ const getCalculationFacts = (calculation) => {
       reason,
       benefits,
       tradeoffs,
-      giftCardReason,
-      numberHandlingNotes,
       ...facts
     } = option;
     return facts;
   };
   return {
     ...calculation,
-    bestValue: removeNarrative(calculation.bestValue),
+    bestMatch: removeNarrative(calculation.bestMatch),
     bestTravelFit: removeNarrative(calculation.bestTravelFit),
     bestStreamingFit: removeNarrative(calculation.bestStreamingFit),
-    lowestMonthlyPrice: removeNarrative(calculation.lowestMonthlyPrice),
+    lowestEffectiveCost: removeNarrative(calculation.lowestEffectiveCost),
     options: Array.isArray(calculation.options)
       ? calculation.options.map(removeNarrative)
       : [],
@@ -204,6 +202,25 @@ const qualificationSchema = {
     },
     internationalTravel: { type: ['string', 'null'], enum: ['none', 'eu', 'outside_eu', null] },
     internationalUsage: { type: ['string', 'null'], enum: ['calls', 'data', null] },
+    extraSimRequired: { type: 'boolean' },
+    sharedDataRequired: { type: 'boolean' },
+    needImportance: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        streaming: { type: ['string', 'null'], enum: ['flexible', 'must_have', null] },
+        outsideEuData: { type: ['string', 'null'], enum: ['flexible', 'must_have', null] },
+        internationalCalls: { type: ['string', 'null'], enum: ['flexible', 'must_have', null] },
+        extraSim: { type: ['string', 'null'], enum: ['flexible', 'must_have', null] },
+        sharedData: { type: ['string', 'null'], enum: ['flexible', 'must_have', null] },
+      },
+      required: ['streaming', 'outsideEuData', 'internationalCalls', 'extraSim', 'sharedData'],
+    },
+    internationalTripsPerYear: nullableNumber,
+    internationalDataPassCost: nullableNumber,
+    internationalCallsMonthlyCost: nullableNumber,
+    extraSimMonthlyCost: nullableNumber,
+    sharedDataMonthlyCost: nullableNumber,
     exactMonthlyPrice: nullableNumber,
     exactMonthlyPrices: { type: 'array', items: { type: 'number' }, maxItems: 10 },
     customerSegment: {
@@ -218,7 +235,10 @@ const qualificationSchema = {
   required: [
     'peopleCount', 'people', 'operators', 'bindingEnds', 'mobileUsage', 'requiredDataGb', 'priceRange', 'familyPriceRange',
     'streamingCalculation', 'streamingServices', 'streamingMonthlyCosts', 'internationalTravel',
-    'internationalUsage', 'exactMonthlyPrice', 'exactMonthlyPrices', 'customerSegment',
+    'internationalUsage', 'extraSimRequired', 'sharedDataRequired',
+    'needImportance', 'internationalTripsPerYear', 'internationalDataPassCost',
+    'internationalCallsMonthlyCost', 'extraSimMonthlyCost', 'sharedDataMonthlyCost',
+    'exactMonthlyPrice', 'exactMonthlyPrices', 'customerSegment',
     'familyTotalPrice', 'operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll',
   ],
 };
@@ -282,16 +302,16 @@ const answerSchema = {
         required: ['label', 'action'],
       },
     },
-    bestValueReason: { type: 'string' },
-    lowestPriceReason: { type: 'string' },
-    bestValueBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
-    lowestPriceBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    bestMatchReason: { type: 'string' },
+    lowestEffectiveCostReason: { type: 'string' },
+    bestMatchBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    lowestEffectiveCostBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
     offerCardCopy: {
       type: 'object',
       additionalProperties: false,
       properties: {
-        bestValueLabel: { type: 'string' },
-        lowestPriceLabel: { type: 'string' },
+        bestMatchLabel: { type: 'string' },
+        lowestEffectiveCostLabel: { type: 'string' },
         dataTitle: { type: 'string' },
         monthlyPriceTitle: { type: 'string' },
         bindingTitle: { type: 'string' },
@@ -301,14 +321,14 @@ const answerSchema = {
         ctaLabel: { type: 'string' },
       },
       required: [
-        'bestValueLabel', 'lowestPriceLabel', 'dataTitle', 'monthlyPriceTitle',
+        'bestMatchLabel', 'lowestEffectiveCostLabel', 'dataTitle', 'monthlyPriceTitle',
         'bindingTitle', 'perMonthSuffix', 'bindingMonthsSuffix', 'rewardLabel', 'ctaLabel',
       ],
     },
   },
   required: [
-    'reply', 'showOfferCards', 'quickReplies', 'bestValueReason', 'lowestPriceReason',
-    'bestValueBenefits', 'lowestPriceBenefits', 'offerCardCopy',
+    'reply', 'showOfferCards', 'quickReplies', 'bestMatchReason', 'lowestEffectiveCostReason',
+    'bestMatchBenefits', 'lowestEffectiveCostBenefits', 'offerCardCopy',
   ],
 };
 

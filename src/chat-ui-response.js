@@ -82,18 +82,20 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
   const cardCopy = copy.offerCardCopy || {};
   const entries = [
     {
-      option: offerCalculation.bestValue,
-      resultLabel: cardCopy.bestValueLabel,
-      reason: copy.bestValueReason,
-      benefits: copy.bestValueBenefits,
+      option: offerCalculation.bestMatch,
+      resultLabel: cardCopy.bestMatchLabel,
+      reason: copy.bestMatchReason,
+      benefits: copy.bestMatchBenefits,
     },
     {
-      option: offerCalculation.lowestMonthlyPrice,
-      resultLabel: cardCopy.lowestPriceLabel,
-      reason: copy.lowestPriceReason,
-      benefits: copy.lowestPriceBenefits,
+      option: offerCalculation.lowestEffectiveCost,
+      resultLabel: cardCopy.lowestEffectiveCostLabel,
+      reason: copy.lowestEffectiveCostReason,
+      benefits: copy.lowestEffectiveCostBenefits,
     },
-  ].filter((entry) => entry.option);
+  ].filter((entry, index, all) => entry.option && all.findIndex((candidate) => (
+    candidate.option?.planId === entry.option.planId
+  )) === index);
 
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
     return {

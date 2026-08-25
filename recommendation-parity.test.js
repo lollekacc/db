@@ -24,6 +24,8 @@ const schemaQualification = (qualification) => ({
   },
   internationalTravel: qualification.internationalTravel,
   internationalUsage: qualification.internationalUsage,
+  extraSimRequired: qualification.extraSimRequired,
+  sharedDataRequired: qualification.sharedDataRequired,
   exactMonthlyPrice: qualification.exactMonthlyPrice,
   exactMonthlyPrices: qualification.exactMonthlyPrices,
   customerSegment: qualification.customerSegment,
@@ -56,12 +58,12 @@ setOpenAiTransportForTests(async (_url, options) => {
       reply: 'A dynamic explanation of the two calculated results.',
       showOfferCards: true,
       quickReplies: [{ label: 'Show all four operators', action: 'send_message' }],
-      bestValueReason: 'Lowest real effective cost for the supplied needs.',
-      lowestPriceReason: 'Lowest monthly plan price among valid options.',
-      bestValueBenefits: ['Matches all supplied requirements'],
-      lowestPriceBenefits: ['Lowest subscription bill'],
+      bestMatchReason: 'Best fit for the supplied needs.',
+      lowestEffectiveCostReason: 'Lowest effective cost among valid options.',
+      bestMatchBenefits: ['Matches all supplied requirements'],
+      lowestEffectiveCostBenefits: ['Lowest effective cost'],
       offerCardCopy: {
-        bestValueLabel: 'Best value', lowestPriceLabel: 'Lowest monthly price',
+        bestMatchLabel: 'Best match', lowestEffectiveCostLabel: 'Lowest effective cost',
         dataTitle: 'Data', monthlyPriceTitle: 'Monthly price', bindingTitle: 'Binding',
         perMonthSuffix: '/month', bindingMonthsSuffix: ' months binding',
         rewardLabel: 'Gift card: XXX SEK', ctaLabel: 'Choose offer',
@@ -134,8 +136,14 @@ const scenarios = [
         qualification: scenario.qualification,
       });
       assert.deepEqual(chat.offerCalculation, quiz, `${scenario.name}: calculations differ`);
-      assert.equal(chat.offerCards.length, 2);
-      assert.deepEqual(chat.offerCards.map((card) => card.resultLabel), ['Best value', 'Lowest monthly price']);
+      const expectedPlanIds = new Set([
+        quiz.bestMatch?.planId,
+        quiz.lowestEffectiveCost?.planId,
+      ].filter(Boolean));
+      assert.deepEqual(
+        new Set(chat.offerCards.map((card) => card.planId)),
+        expectedPlanIds
+      );
     }
     console.log('recommendation parity tests passed');
   } finally {

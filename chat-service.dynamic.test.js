@@ -21,6 +21,8 @@ const analysisQualification = {
   streamingMonthlyCosts: { netflix: 179, hbo: null, disney: null, amazon: null, tv4: null },
   internationalTravel: 'outside_eu',
   internationalUsage: 'data',
+  extraSimRequired: false,
+  sharedDataRequired: false,
   exactMonthlyPrice: 499,
   exactMonthlyPrices: [],
   customerSegment: 'private',
@@ -52,12 +54,12 @@ setOpenAiTransportForTests(async (_url, options) => {
       reply: 'Tele2 is the best value for these needs, while Tre has the lowest qualifying monthly price.',
       showOfferCards: true,
       quickReplies: [{ label: 'Show all four operators', action: 'send_message' }],
-      bestValueReason: 'Its international data fits the stated travel need at the best effective cost.',
-      lowestPriceReason: 'It is the lowest-priced plan that still meets every stated requirement.',
-      bestValueBenefits: ['International data', 'Required data amount'],
-      lowestPriceBenefits: ['Lowest qualifying plan price'],
+      bestMatchReason: 'Its international data fits the stated travel need at the best effective cost.',
+      lowestEffectiveCostReason: 'It is the lowest-priced plan that still meets every stated requirement.',
+      bestMatchBenefits: ['International data', 'Required data amount'],
+      lowestEffectiveCostBenefits: ['Lowest qualifying plan price'],
       offerCardCopy: {
-        bestValueLabel: 'Best value', lowestPriceLabel: 'Lowest monthly price',
+        bestMatchLabel: 'Best match', lowestEffectiveCostLabel: 'Lowest effective cost',
         dataTitle: 'Data', monthlyPriceTitle: 'Monthly price', bindingTitle: 'Binding',
         perMonthSuffix: '/month', bindingMonthsSuffix: ' months binding',
         rewardLabel: 'Gift card: XXX SEK', ctaLabel: 'Choose offer',
@@ -101,10 +103,10 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(result.source, 'openai');
   assert.match(result.reply, /Tele2 is the best value/);
   assert.equal(result.offerCards.length, 2);
-  assert.equal(result.offerCalculation.options.length, 4);
+  assert.equal(result.offerCalculation.options.length, 2);
   assert.deepEqual(
     new Set(result.offerCalculation.options.map((option) => option.operator)),
-    new Set(['Telia', 'Tele2', 'Telenor', 'Tre'])
+    new Set(['Tele2', 'Tre'])
   );
   assert.equal(result.qualification.streamingMonthlyCosts.netflix, 179);
 
@@ -128,12 +130,12 @@ setOpenAiTransportForTests(async (_url, options) => {
         showOfferCards: false,
         quickReplies: ['Netflix', 'Disney+', 'HBO Max', 'TV4 Play', 'Amazon Prime']
           .map((label) => ({ label, action: 'send_message' })),
-        bestValueReason: '',
-        lowestPriceReason: '',
-        bestValueBenefits: [],
-        lowestPriceBenefits: [],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
         offerCardCopy: {
-          bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
           bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
         },
       };
@@ -184,12 +186,12 @@ setOpenAiTransportForTests(async (_url, options) => {
         reply: 'Tack, då fortsätter jag jämförelsen.',
         showOfferCards: false,
         quickReplies: [],
-        bestValueReason: '',
-        lowestPriceReason: '',
-        bestValueBenefits: [],
-        lowestPriceBenefits: [],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
         offerCardCopy: {
-          bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
           bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
         },
       };

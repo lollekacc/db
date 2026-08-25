@@ -5,7 +5,10 @@ const mergeQualificationState = (current = {}, analyzed = {}) => {
   const scalarFields = [
     'peopleCount', 'mobileUsage', 'requiredDataGb', 'priceRange', 'familyPriceRange',
     'streamingCalculation', 'internationalTravel', 'internationalUsage',
-    'exactMonthlyPrice', 'customerSegment', 'familyTotalPrice', 'recommendationMode',
+    'extraSimRequired', 'sharedDataRequired', 'exactMonthlyPrice',
+    'internationalTripsPerYear', 'internationalDataPassCost',
+    'internationalCallsMonthlyCost', 'extraSimMonthlyCost', 'sharedDataMonthlyCost',
+    'customerSegment', 'familyTotalPrice', 'recommendationMode',
   ];
   const arrayFields = [
     'people', 'operators', 'bindingEnds', 'streamingServices', 'exactMonthlyPrices',
@@ -21,6 +24,12 @@ const mergeQualificationState = (current = {}, analyzed = {}) => {
     merged.streamingMonthlyCosts = {
       ...(current.streamingMonthlyCosts || {}),
       ...analyzed.streamingMonthlyCosts,
+    };
+  }
+  if (analyzed.needImportance && Object.values(analyzed.needImportance).some(hasValue)) {
+    merged.needImportance = {
+      ...(current.needImportance || {}),
+      ...Object.fromEntries(Object.entries(analyzed.needImportance).filter(([, value]) => hasValue(value))),
     };
   }
 

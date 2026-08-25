@@ -38,6 +38,24 @@ const normalizePositiveMoney = (value) => {
   return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null;
 };
 
+const normalizeOptionalNonNegative = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) / 100 : null;
+};
+
+const normalizeNeedImportance = (value = {}) => {
+  const source = value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+  const normalize = (importance) => ['flexible', 'must_have'].includes(importance) ? importance : null;
+  return {
+    streaming: normalize(source.streaming),
+    outsideEuData: normalize(source.outsideEuData),
+    internationalCalls: normalize(source.internationalCalls),
+    extraSim: normalize(source.extraSim),
+    sharedData: normalize(source.sharedData),
+  };
+};
+
 const normalizeNonNegativeInteger = (value, fallback = 0) => {
   const amount = Number(value);
   if (!Number.isFinite(amount) || amount < 0) return fallback;
@@ -114,6 +132,14 @@ const createEmptyQualification = () => ({
   streamingMonthlyCosts: {},
   internationalTravel: null,
   internationalUsage: null,
+  extraSimRequired: false,
+  sharedDataRequired: false,
+  needImportance: normalizeNeedImportance(),
+  internationalTripsPerYear: null,
+  internationalDataPassCost: null,
+  internationalCallsMonthlyCost: null,
+  extraSimMonthlyCost: null,
+  sharedDataMonthlyCost: null,
   exactMonthlyPrice: null,
   exactMonthlyPrices: [],
   people: [],
@@ -194,6 +220,14 @@ const normalizeQualification = (qualification = {}) => {
   const internationalUsage = ['calls', 'data'].includes(qualification.internationalUsage)
     ? qualification.internationalUsage
     : null;
+  const extraSimRequired = qualification.extraSimRequired === true;
+  const sharedDataRequired = qualification.sharedDataRequired === true;
+  const needImportance = normalizeNeedImportance(qualification.needImportance);
+  const internationalTripsPerYear = normalizeOptionalNonNegative(qualification.internationalTripsPerYear);
+  const internationalDataPassCost = normalizeOptionalNonNegative(qualification.internationalDataPassCost);
+  const internationalCallsMonthlyCost = normalizeOptionalNonNegative(qualification.internationalCallsMonthlyCost);
+  const extraSimMonthlyCost = normalizeOptionalNonNegative(qualification.extraSimMonthlyCost);
+  const sharedDataMonthlyCost = normalizeOptionalNonNegative(qualification.sharedDataMonthlyCost);
   const exactMonthlyPrice = Number(qualification.exactMonthlyPrice) > 0
     ? Math.round(Number(qualification.exactMonthlyPrice))
     : null;
@@ -263,6 +297,14 @@ const normalizeQualification = (qualification = {}) => {
     streamingMonthlyCosts,
     internationalTravel,
     internationalUsage,
+    extraSimRequired,
+    sharedDataRequired,
+    needImportance,
+    internationalTripsPerYear,
+    internationalDataPassCost,
+    internationalCallsMonthlyCost,
+    extraSimMonthlyCost,
+    sharedDataMonthlyCost,
     exactMonthlyPrice,
     exactMonthlyPrices,
     people,

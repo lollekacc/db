@@ -3,9 +3,11 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check data-storage.js && node --check translation-service.js && node --check bankid-service.js && node --check order-service.js && node --check chat-service.js && node --check qualification-service.js && node --check chat-feedback-service.js && node --check offer-service.js && node --check offer-calculator.js && node --check offer-calculator.test.js && node --check chat-service.dynamic.test.js && node --check quiz-consent.test.js && node --check recommendation-parity.test.js && node --check src/chat-ui-response.js && node --check src/chatUiResponse.test.js && node --check src/chatFeedback.test.js && node --check src/conversation-state.js && node --check src/conversationState.test.js && node --check src/customerServiceBehavior.test.js",
+    "check": "node --check server.js && node --check data-storage.js && node --check translation-service.js && node --check bankid-service.js && node --check order-service.js && node --check chat-service.js && node --check qualification-service.js && node --check chat-feedback-service.js && node --check offer-service.js && node --check cost-calculator.js && node --check best-match.js && node --check offer-calculator.js && node --check cost-calculator.test.js && node --check best-match.test.js && node --check offer-calculator.test.js && node --check chat-service.dynamic.test.js && node --check quiz-consent.test.js && node --check recommendation-parity.test.js && node --check src/chat-ui-response.js && node --check src/chatUiResponse.test.js && node --check src/chatFeedback.test.js && node --check src/conversation-state.js && node --check src/conversationState.test.js && node --check src/customerServiceBehavior.test.js",
     "test:translation": "node translation-service.test.js",
     "test:recommendations": "node offer-calculator.test.js",
+    "test:cost-calculator": "node cost-calculator.test.js",
+    "test:best-match": "node best-match.test.js",
     "test:chat-dynamic": "node chat-service.dynamic.test.js",
     "test:quiz-consent": "node quiz-consent.test.js",
     "test:customer-service": "node src/customerServiceBehavior.test.js",

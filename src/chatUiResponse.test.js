@@ -58,7 +58,7 @@ assert.deepEqual(buildChatResponse({
 
 const cards = buildOfferCardsFromOfferCalculation({
   validOfferAvailable: true,
-  bestValue: {
+  bestMatch: {
     planId: 'telia-best',
     operator: 'Telia',
     title: 'Unlimited streaming',
@@ -68,7 +68,7 @@ const cards = buildOfferCardsFromOfferCalculation({
     monthlySavings: 944,
     bindingMonths: 24,
   },
-  lowestMonthlyPrice: {
+  lowestEffectiveCost: {
     planId: 'tre-low',
     operator: 'Tre',
     title: 'Unlimited',
@@ -81,13 +81,13 @@ const cards = buildOfferCardsFromOfferCalculation({
 }, {
   language: 'en',
   copy: {
-    bestValueReason: 'The included services replace current costs.',
-    lowestPriceReason: 'This has the lowest bill.',
-    bestValueBenefits: ['Streaming replacement'],
-    lowestPriceBenefits: ['Lower subscription price'],
+    bestMatchReason: 'The included services replace current costs.',
+    lowestEffectiveCostReason: 'This has the lowest effective cost.',
+    bestMatchBenefits: ['Streaming replacement'],
+    lowestEffectiveCostBenefits: ['Lower effective cost'],
     offerCardCopy: {
-      bestValueLabel: 'Best value',
-      lowestPriceLabel: 'Lowest monthly price',
+      bestMatchLabel: 'Best match',
+      lowestEffectiveCostLabel: 'Lowest effective cost',
       dataTitle: 'Data',
       monthlyPriceTitle: 'Monthly price',
       bindingTitle: 'Binding',
@@ -100,7 +100,7 @@ const cards = buildOfferCardsFromOfferCalculation({
 });
 
 assert.equal(cards.length, 2);
-assert.deepEqual(cards.map((card) => card.resultLabel), ['Best value', 'Lowest monthly price']);
+assert.deepEqual(cards.map((card) => card.resultLabel), ['Best match', 'Lowest effective cost']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
 assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
 assert.deepEqual(cards[0].benefits, ['Streaming replacement']);

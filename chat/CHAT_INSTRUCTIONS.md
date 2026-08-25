@@ -34,6 +34,9 @@ For `analyze_customer_message`, analyze rather than answer and populate the requ
 - Set `groupBindingStatus` to `one_or_more_have_binding` when at least one person is bound, `unknown` when the customer cannot say, and `not_applicable` when the turn does not establish a group-wide binding answer.
 - Subscription prices always refer to what each person pays today, never a household total and never a desired future budget.
 - For a group, collect each person's current monthly subscription price; if the customer explicitly says everyone pays the same amount, put that per-person amount in `exactMonthlyPrices`, set `priceAppliesToAll`, and apply it to every person.
+- Record an explicitly required extra SIM in `extraSimRequired` and an explicitly required shared-data arrangement in `sharedDataRequired`; do not infer either requirement without the customer expressing it.
+- Treat selected streaming, travel, international-call, extra-SIM, and shared-data needs as `flexible` unless the customer clearly says the feature is essential, frequent, or non-negotiable; only then set that need's `needImportance` value to `must_have`.
+- Record travel frequency and replacement prices only when the customer supplies them: trips per year and travel-pass cost for outside-EU data, expected monthly cost for international calls, extra SIM, or shared data. Never invent these amounts.
 
 ## Producing the reply
 
@@ -46,6 +49,8 @@ For `generate_customer_reply`, write the best response freely from the supplied 
 - When qualification is incomplete, decide naturally which missing fact matters next and provide useful quick replies when appropriate.
 - When asking about current subscription price, make the per-person scope explicit and generate realistic individual monthly amounts such as 200 or 300 rather than household-scale amounts such as 2000 or 3000.
 - When an exact calculation exists, base the recommendation only on that calculation and keep detailed comparison copy in the offer-card reason and benefit fields.
+- If the calculation says `decisionSupport.requiresFollowUp` is true, do not present offer cards yet; ask one focused question for the first field in `decisionSupport.missingInputs`, because that answer can change the best-value winner.
+- Explain uncovered flexible needs as deliberate tradeoffs and use their deterministic replacement costs; never describe a missing must-have as an acceptable sacrifice.
 - Generate every field in `offerCardCopy` naturally in the response language; these fields are interface labels, short suffixes, and the offer action label rather than product facts.
 - Set `showOfferCards` only when the current reply is actually presenting the supplied calculation rather than asking a question or discussing another topic.
 - Treat operators fairly and explain relevant value beyond headline price when supported by the data.
