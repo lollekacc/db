@@ -46,6 +46,7 @@ setOpenAiTransportForTests(async (_url, options) => {
       customerEmotion: 'neutral',
       recommendationRequested: true,
       resetRequested: false,
+      groupBindingStatus: 'not_applicable',
       quizAnswerDecision: 'unresolved',
       knowledgeQuery: 'mobile plans',
       qualification: schemaQualification(payload.currentQualification),

@@ -84,6 +84,7 @@ setOpenAiTransportForTests(async (_url, options) => {
     ? {
       ...activeScenario.analysis,
       resetRequested: false,
+      groupBindingStatus: 'not_applicable',
       quizAnswerDecision: 'unresolved',
       qualification: {
         peopleCount: null,

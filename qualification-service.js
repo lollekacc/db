@@ -239,7 +239,13 @@ const normalizeQualification = (qualification = {}) => {
   const hasAllPersonMonthlyCosts = peopleCount && people
     .slice(0, peopleCount)
     .every((person) => Number(person.currentMonthlyCost) > 0);
-  if (!priceRange && !familyPriceRange && !exactMonthlyPrice && !familyTotalPrice && (!peopleCount || exactMonthlyPrices.length < peopleCount) && !hasAllPersonMonthlyCosts) {
+  const hasPerPersonPrice = Boolean(
+    priceRange ||
+    exactMonthlyPrice ||
+    (peopleCount && exactMonthlyPrices.length >= peopleCount) ||
+    hasAllPersonMonthlyCosts
+  );
+  if (!hasPerPersonPrice) {
     missingFields.push('priceRange');
   }
   if (peopleCount && people.length < peopleCount) missingFields.push('people');

@@ -62,6 +62,7 @@ setOpenAiTransportForTests(async (_url, options) => {
       customerEmotion: 'neutral',
       recommendationRequested: true,
       resetRequested: false,
+      groupBindingStatus: 'not_applicable',
       quizAnswerDecision: acceptsHistory ? 'use' : 'unresolved',
       knowledgeQuery: 'mobile plans',
       // Simulate a model trying to copy the visible historical answers.

@@ -43,6 +43,7 @@ setOpenAiTransportForTests(async (_url, options) => {
       customerEmotion: 'neutral',
       recommendationRequested: true,
       resetRequested: false,
+      groupBindingStatus: 'not_applicable',
       quizAnswerDecision: 'unresolved',
       knowledgeQuery: 'mobile roaming international data streaming',
       qualification: analysisQualification,
@@ -117,6 +118,7 @@ setOpenAiTransportForTests(async (_url, options) => {
         customerEmotion: 'neutral',
         recommendationRequested: true,
         resetRequested: false,
+        groupBindingStatus: 'not_applicable',
         quizAnswerDecision: 'unresolved',
         knowledgeQuery: 'streaming bundles',
         qualification: { ...analysisQualification, streamingServices: [] },
@@ -154,6 +156,65 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(streamingQuestion.quickReplySubmitLabel, '');
   assert.equal(streamingQuestion.offerCards.length, 0);
   assert.ok(streamingQuestion.quickReplies.every((reply) => reply.action === 'send_message'));
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    const analysis = request.text.format.name === 'dealett_customer_need';
+    const output = analysis
+      ? {
+        topic: 'group mobile comparison',
+        interactionStage: 'understand',
+        desiredOutcome: 'Continue the group comparison',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'none_have_binding',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'mobile plans',
+        qualification: {
+          ...analysisQualification,
+          peopleCount: 2,
+          operators: ['Tele2', 'Telia'],
+          bindingEnds: [],
+          exactMonthlyPrice: null,
+          exactMonthlyPrices: [200, 300],
+        },
+      }
+      : {
+        reply: 'Tack, då fortsätter jag jämförelsen.',
+        showOfferCards: false,
+        quickReplies: [],
+        bestValueReason: '',
+        lowestPriceReason: '',
+        bestValueBenefits: [],
+        lowestPriceBenefits: [],
+        offerCardCopy: {
+          bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const groupAnswer = await createChatCompletion({
+    message: 'Nej',
+    language: 'sv',
+    messages: [{ role: 'assistant', content: 'Har någon av er bindningstid kvar?' }],
+    qualification: {
+      peopleCount: 2,
+      operators: ['Tele2', 'Telia'],
+      mobileUsage: 'high',
+    },
+  });
+
+  assert.deepEqual(groupAnswer.qualification.bindingEnds, ['Ingen bindningstid', 'Ingen bindningstid']);
+  assert.equal(groupAnswer.qualification.bindingAppliesToAll, true);
+  assert.deepEqual(groupAnswer.qualification.exactMonthlyPrices, [200, 300]);
+  assert.deepEqual(groupAnswer.qualification.people.map((person) => person.currentMonthlyCost), [200, 300]);
 
   const source = fs.readFileSync(require.resolve('./chat-service'), 'utf8');
   assert.doesNotMatch(source, /fallbackReply|detectIntent|inferQualificationFromText|DEALETT_CHAT_FORCE_FALLBACK/);

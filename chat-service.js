@@ -239,6 +239,10 @@ const analysisSchema = {
     },
     recommendationRequested: { type: 'boolean' },
     resetRequested: { type: 'boolean' },
+    groupBindingStatus: {
+      type: 'string',
+      enum: ['none_have_binding', 'one_or_more_have_binding', 'unknown', 'not_applicable'],
+    },
     quizAnswerDecision: {
       type: 'string',
       enum: ['use', 'ignore', 'unresolved'],
@@ -248,7 +252,7 @@ const analysisSchema = {
   },
   required: [
     'topic', 'interactionStage', 'desiredOutcome', 'customerEmotion',
-    'recommendationRequested', 'resetRequested', 'quizAnswerDecision',
+    'recommendationRequested', 'resetRequested', 'groupBindingStatus', 'quizAnswerDecision',
     'knowledgeQuery', 'qualification',
   ],
 };
@@ -371,8 +375,16 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
 
 const cleanAiQualification = (qualification = {}) => ({
   ...qualification,
+  familyPriceRange: null,
+  familyTotalPrice: null,
   streamingMonthlyCosts: Object.fromEntries(Object.entries(qualification.streamingMonthlyCosts || {})
     .filter(([, value]) => Number(value) > 0)),
+});
+
+const normalizeChatQualification = (qualification = {}) => normalizeQualification({
+  ...qualification,
+  familyPriceRange: null,
+  familyTotalPrice: null,
 });
 
 const hasHistoricalQuizAnswers = (context = {}) => (
@@ -381,7 +393,7 @@ const hasHistoricalQuizAnswers = (context = {}) => (
   Boolean(context?.historicalQuizQualification || context?.qualification)
 );
 
-const getHistoricalQuizQualification = (context = {}) => normalizeQualification(
+const getHistoricalQuizQualification = (context = {}) => normalizeChatQualification(
   context?.historicalQuizQualification || context?.qualification || {}
 );
 
@@ -479,7 +491,7 @@ const createChatCompletion = async ({
     ? requestedLanguage
     : 'sv';
   const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
-  const currentQualification = normalizeQualification(qualification);
+  const currentQualification = normalizeChatQualification(qualification);
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
     messages,
@@ -499,11 +511,17 @@ const createChatCompletion = async ({
     !historicalQuizAccepted &&
     !historicalQuizDeclined &&
     recommendationInProgress;
+  const analyzedQualification = cleanAiQualification(analysis.qualification);
+  const analyzedPeopleCount = Number(analyzedQualification.peopleCount || qualificationBase.peopleCount) || 0;
+  if (analyzedPeopleCount > 1 && analysis.groupBindingStatus === 'none_have_binding') {
+    analyzedQualification.bindingEnds = ['Ingen bindningstid'];
+    analyzedQualification.bindingAppliesToAll = true;
+  }
   const mergedQualification = mergeQualificationState(
     qualificationBase,
-    quizConsentRequired ? {} : cleanAiQualification(analysis.qualification)
+    quizConsentRequired ? {} : analyzedQualification
   );
-  const nextQualification = normalizeQualification(mergedQualification);
+  const nextQualification = normalizeChatQualification(mergedQualification);
   const offerCalculation = recommendationInProgress &&
     !quizConsentRequired &&
     nextQualification.missingFields.length === 0
