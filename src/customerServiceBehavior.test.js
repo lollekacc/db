@@ -83,6 +83,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   const output = schemaName === 'dealett_customer_need'
     ? {
       ...activeScenario.analysis,
+      resetRequested: false,
+      quizAnswerDecision: 'unresolved',
       qualification: {
         peopleCount: null,
         people: [],
@@ -114,10 +116,17 @@ setOpenAiTransportForTests(async (_url, options) => {
     }
     : {
       ...activeScenario.answer,
+      showOfferCards: false,
+      quickReplies: (activeScenario.answer.quickReplies || [])
+        .map((label) => ({ label, action: 'send_message' })),
       bestValueReason: '',
       lowestPriceReason: '',
       bestValueBenefits: [],
       lowestPriceBenefits: [],
+      offerCardCopy: {
+        bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+        bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+      },
     };
 
   return {
@@ -145,11 +154,10 @@ setOpenAiTransportForTests(async (_url, options) => {
     const answerPrompt = capturedRequests[1].input[0].content;
     const answerPayload = JSON.parse(capturedRequests[1].input.at(-1).content);
 
-    assert.match(analysisPrompt, /A greeting by itself/i);
-    assert.match(analysisPrompt, /desiredOutcome is what the customer wants to happen now/i);
-    assert.match(answerPrompt, /For a greeting with no stated need/i);
-    assert.match(answerPrompt, /After a final answer, completed guidance, referral, or refusal/i);
-    assert.match(answerPrompt, /When Dealett cannot do what the customer asks/i);
+    assert.match(analysisPrompt, /A greeting alone is not a recommendation request/i);
+    assert.match(analysisPrompt, /desiredOutcome.*what the customer wants now/i);
+    assert.match(answerPrompt, /write the best response freely/i);
+    assert.match(answerPrompt, /cannot perform a requested action/i);
     assert.equal(answerPayload.interactionStage, scenario.analysis.interactionStage);
     assert.equal(answerPayload.desiredOutcome, scenario.analysis.desiredOutcome);
     assert.equal(answerPayload.customerEmotion, scenario.analysis.customerEmotion);

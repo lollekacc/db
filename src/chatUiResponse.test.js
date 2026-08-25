@@ -7,27 +7,20 @@ const {
 } = require('./chat-ui-response');
 
 assert.deepEqual(normalizeQuickReplies(['1', '2', '3', '4', '5+', 'Ignored']), [
-  { id: '1', label: '1' },
-  { id: '2', label: '2' },
-  { id: '3', label: '3' },
-  { id: '4', label: '4' },
-  { id: '5', label: '5+' },
+  { id: '1', label: '1', action: 'send_message' },
+  { id: '2', label: '2', action: 'send_message' },
+  { id: '3', label: '3', action: 'send_message' },
+  { id: '4', label: '4', action: 'send_message' },
+  { id: '5', label: '5+', action: 'send_message' },
 ]);
 
 assert.deepEqual(normalizeQuickReplies([{
-  label: 'Nej, ingen av oss',
-  qualificationPatch: {
-    bindingEnds: Array(4).fill('Ingen bindningstid'),
-    bindingAppliesToAll: true,
-    unsafeField: 'ignored',
-  },
+  label: 'Open support',
+  action: 'open_contact',
 }]), [{
-  id: 'nej-ingen-av-oss',
-  label: 'Nej, ingen av oss',
-  qualificationPatch: {
-    bindingEnds: Array(4).fill('Ingen bindningstid'),
-    bindingAppliesToAll: true,
-  },
+  id: 'open-support',
+  label: 'Open support',
+  action: 'open_contact',
 }]);
 
 assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
@@ -55,10 +48,7 @@ assert.deepEqual(buildChatResponse({
   quickReplies: [{
     id: 'netflix',
     label: 'Netflix',
-    qualificationPatch: {
-      streamingCalculation: 'include',
-      streamingServices: ['netflix'],
-    },
+    action: 'send_message',
   }],
   quickReplyMode: 'multiple',
   quickReplySubmitLabel: 'Skicka val',
@@ -95,6 +85,17 @@ const cards = buildOfferCardsFromOfferCalculation({
     lowestPriceReason: 'This has the lowest bill.',
     bestValueBenefits: ['Streaming replacement'],
     lowestPriceBenefits: ['Lower subscription price'],
+    offerCardCopy: {
+      bestValueLabel: 'Best value',
+      lowestPriceLabel: 'Lowest monthly price',
+      dataTitle: 'Data',
+      monthlyPriceTitle: 'Monthly price',
+      bindingTitle: 'Binding',
+      perMonthSuffix: '/month',
+      bindingMonthsSuffix: ' months binding',
+      rewardLabel: 'Gift card: XXX SEK',
+      ctaLabel: 'Choose offer',
+    },
   },
 });
 

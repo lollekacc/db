@@ -13,46 +13,20 @@ const slugify = (value, fallback) => {
   return slug || fallback;
 };
 
-const normalizeQualificationPatch = (patch) => {
-  if (!patch || typeof patch !== 'object' || Array.isArray(patch)) return null;
-  const result = {};
-  const peopleCount = Number(patch.peopleCount);
-  if (Number.isInteger(peopleCount) && peopleCount >= 1 && peopleCount <= 10) result.peopleCount = peopleCount;
-  if (Array.isArray(patch.operators)) result.operators = patch.operators.map(String).slice(0, 10);
-  if (Array.isArray(patch.bindingEnds)) result.bindingEnds = patch.bindingEnds.map(String).slice(0, 10);
-  if (['low', 'medium', 'high'].includes(patch.mobileUsage)) result.mobileUsage = patch.mobileUsage;
-  if (['under300', '300-400', '400-500', 'no_limit'].includes(patch.priceRange)) result.priceRange = patch.priceRange;
-  if (['under1000', '1000-1500', '1500-2000', 'over2000', 'unknown'].includes(patch.familyPriceRange)) {
-    result.familyPriceRange = patch.familyPriceRange;
-  }
-  if (['none', 'include', 'unknown'].includes(patch.streamingCalculation)) {
-    result.streamingCalculation = patch.streamingCalculation;
-  }
-  if (Array.isArray(patch.streamingServices)) {
-    const allowedStreamingServices = ['netflix', 'hbo', 'disney', 'amazon', 'tv4'];
-    result.streamingServices = [...new Set(patch.streamingServices
-      .map((service) => String(service || '').trim().toLowerCase())
-      .filter((service) => allowedStreamingServices.includes(service)))];
-  }
-  ['operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll'].forEach((field) => {
-    if (typeof patch[field] === 'boolean') result[field] = patch[field];
-  });
-  return Object.keys(result).length ? result : null;
-};
-
 const normalizeQuickReply = (reply, index) => {
   const label = typeof reply === 'string' ? reply.trim() : String(reply?.label || '').trim();
   if (!label) return null;
-  const qualificationPatch = normalizeQualificationPatch(reply?.qualificationPatch);
-  const allowedActions = ['useHistoricalQuizAnswers', 'startFreshWithoutQuiz'];
+  const allowedActions = [
+    'send_message', 'open_coverage_map', 'open_broadband_page',
+    'open_broadband_address', 'open_cart', 'open_account', 'open_contact',
+  ];
   const action = typeof reply === 'object' && allowedActions.includes(reply?.action)
     ? reply.action
-    : null;
+    : 'send_message';
   return {
     id: slugify(typeof reply === 'object' ? (reply?.id || label) : label, `reply-${index + 1}`),
     label: label.slice(0, 80),
-    ...(qualificationPatch ? { qualificationPatch } : {}),
-    ...(action ? { action } : {}),
+    action,
   };
 };
 
@@ -69,6 +43,9 @@ const normalizeOfferCard = (card, index) => {
     id: slugify(card.id || `${operator}-${planName}`, `offer-${index + 1}`),
     operator: operator.slice(0, 80),
     planName: planName.slice(0, 120),
+    dataTitle: String(card.dataTitle || '').trim().slice(0, 80),
+    monthlyPriceTitle: String(card.monthlyPriceTitle || '').trim().slice(0, 80),
+    bindingTitle: String(card.bindingTitle || '').trim().slice(0, 80),
     dataLabel: String(card.dataLabel || '').trim().slice(0, 80),
     monthlyPriceLabel: String(card.monthlyPriceLabel || '').trim().slice(0, 80),
     bindingLabel: String(card.bindingLabel || '').trim().slice(0, 100),
@@ -102,44 +79,43 @@ const formatMoney = (value, language) => {
 
 const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language = 'sv', copy = {} } = {}) => {
   if (!offerCalculation.validOfferAvailable) return [];
-  const isEnglish = language === 'en';
+  const cardCopy = copy.offerCardCopy || {};
   const entries = [
     {
       option: offerCalculation.bestValue,
-      resultLabel: isEnglish ? 'Best value' : 'Bäst värde',
+      resultLabel: cardCopy.bestValueLabel,
       reason: copy.bestValueReason,
       benefits: copy.bestValueBenefits,
     },
     {
       option: offerCalculation.lowestMonthlyPrice,
-      resultLabel: isEnglish ? 'Lowest monthly price' : 'Lägst månadspris',
+      resultLabel: cardCopy.lowestPriceLabel,
       reason: copy.lowestPriceReason,
       benefits: copy.lowestPriceBenefits,
     },
   ].filter((entry) => entry.option);
 
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
-    const savingsAmount = Number(option.total24MonthResult);
-    const hasSavings = Number.isFinite(savingsAmount);
     return {
       id: option.planId,
       planId: option.planId,
       operator: option.operator,
       planName: option.title || option.planName,
       dataLabel: option.data,
+      dataTitle: cardCopy.dataTitle,
+      monthlyPriceTitle: cardCopy.monthlyPriceTitle,
+      bindingTitle: cardCopy.bindingTitle,
       resultLabel,
-      monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}/${isEnglish ? 'month' : 'mån'}`,
-      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}/${isEnglish ? 'month' : 'mån'}`,
-      savingsLabel: hasSavings
-        ? `${savingsAmount >= 0 ? (isEnglish ? 'Better over time' : 'Bättre över tid') : (isEnglish ? 'Higher over time' : 'Högre över tid')} ${formatMoney(Math.abs(savingsAmount), language)}`
-        : '',
-      rewardLabel: isEnglish ? 'Gift card: XXX SEK' : 'Presentkort: XXX kr',
+      monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}${cardCopy.perMonthSuffix}`,
+      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
+      savingsLabel: '',
+      rewardLabel: cardCopy.rewardLabel,
       bindingLabel: Number(option.bindingMonths) > 0
-        ? `${option.bindingMonths} ${isEnglish ? 'months binding' : 'mån bindningstid'}`
+        ? `${option.bindingMonths}${cardCopy.bindingMonthsSuffix}`
         : '',
       reason,
       benefits,
-      ctaLabel: isEnglish ? 'Choose offer' : 'Välj erbjudande',
+      ctaLabel: cardCopy.ctaLabel,
       ctaUrl: 'varukorg.html',
     };
   }));

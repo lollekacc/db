@@ -45,17 +45,26 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'Find a suitable mobile recommendation',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      resetRequested: false,
+      quizAnswerDecision: 'unresolved',
       knowledgeQuery: 'mobile plans',
       qualification: schemaQualification(payload.currentQualification),
     };
   } else {
     output = {
       reply: 'A dynamic explanation of the two calculated results.',
-      quickReplies: ['Show all four operators'],
+      showOfferCards: true,
+      quickReplies: [{ label: 'Show all four operators', action: 'send_message' }],
       bestValueReason: 'Lowest real effective cost for the supplied needs.',
       lowestPriceReason: 'Lowest monthly plan price among valid options.',
       bestValueBenefits: ['Matches all supplied requirements'],
       lowestPriceBenefits: ['Lowest subscription bill'],
+      offerCardCopy: {
+        bestValueLabel: 'Best value', lowestPriceLabel: 'Lowest monthly price',
+        dataTitle: 'Data', monthlyPriceTitle: 'Monthly price', bindingTitle: 'Binding',
+        perMonthSuffix: '/month', bindingMonthsSuffix: ' months binding',
+        rewardLabel: 'Gift card: XXX SEK', ctaLabel: 'Choose offer',
+      },
     };
   }
   return {

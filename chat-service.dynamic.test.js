@@ -42,16 +42,25 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'Find the best-value mobile plan for travel outside the EU',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      resetRequested: false,
+      quizAnswerDecision: 'unresolved',
       knowledgeQuery: 'mobile roaming international data streaming',
       qualification: analysisQualification,
     }
     : {
       reply: 'Tele2 is the best value for these needs, while Tre has the lowest qualifying monthly price.',
-      quickReplies: ['Show all four operators'],
+      showOfferCards: true,
+      quickReplies: [{ label: 'Show all four operators', action: 'send_message' }],
       bestValueReason: 'Its international data fits the stated travel need at the best effective cost.',
       lowestPriceReason: 'It is the lowest-priced plan that still meets every stated requirement.',
       bestValueBenefits: ['International data', 'Required data amount'],
       lowestPriceBenefits: ['Lowest qualifying plan price'],
+      offerCardCopy: {
+        bestValueLabel: 'Best value', lowestPriceLabel: 'Lowest monthly price',
+        dataTitle: 'Data', monthlyPriceTitle: 'Monthly price', bindingTitle: 'Binding',
+        perMonthSuffix: '/month', bindingMonthsSuffix: ' months binding',
+        rewardLabel: 'Gift card: XXX SEK', ctaLabel: 'Choose offer',
+      },
     };
   return {
     ok: true,
@@ -79,14 +88,10 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(calls[1].text.verbosity, 'low');
   assert.equal(calls[1].max_output_tokens, 700);
   const answerPrompt = calls[1].input.find((item) => item.role === 'system')?.content || '';
-  assert.match(answerPrompt, /question must be one short sentence and contain exactly one question/i);
-  assert.match(answerPrompt, /recommendation must be no more than 100 words/i);
-  assert.match(answerPrompt, /offer cards carry the detail/i);
-  assert.match(answerPrompt, /only when the customer explicitly asks/i);
-  assert.match(answerPrompt, /understand the desired outcome, solve or route it, verify the outcome/i);
-  assert.match(answerPrompt, /For a greeting with no stated need/i);
-  assert.match(answerPrompt, /When Dealett cannot do what the customer asks/i);
-  assert.match(answerPrompt, /acknowledge the specific concern/i);
+  assert.match(answerPrompt, /write every customer-facing response/i);
+  assert.match(answerPrompt, /Ask only one focused question/i);
+  assert.match(answerPrompt, /exact calculation/i);
+  assert.match(answerPrompt, /only scripted conversational message/i);
   const answerPayload = JSON.parse(calls[1].input.at(-1).content);
   assert.equal(answerPayload.interactionStage, 'solve');
   assert.equal(answerPayload.customerEmotion, 'neutral');
@@ -111,16 +116,24 @@ setOpenAiTransportForTests(async (_url, options) => {
         desiredOutcome: 'Include paid streaming services in the existing comparison',
         customerEmotion: 'neutral',
         recommendationRequested: true,
+        resetRequested: false,
+        quizAnswerDecision: 'unresolved',
         knowledgeQuery: 'streaming bundles',
         qualification: { ...analysisQualification, streamingServices: [] },
       }
       : {
         reply: 'Vilka streamingtjänster betalar du för?',
-        quickReplies: ['Netflix', 'Disney+', 'HBO Max', 'TV4 Play', 'Amazon Prime'],
+        showOfferCards: false,
+        quickReplies: ['Netflix', 'Disney+', 'HBO Max', 'TV4 Play', 'Amazon Prime']
+          .map((label) => ({ label, action: 'send_message' })),
         bestValueReason: '',
         lowestPriceReason: '',
         bestValueBenefits: [],
         lowestPriceBenefits: [],
+        offerCardCopy: {
+          bestValueLabel: '', lowestPriceLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
       };
     return {
       ok: true,
@@ -137,13 +150,10 @@ setOpenAiTransportForTests(async (_url, options) => {
     page: { path: 'mobilabonnemang.html' },
   });
 
-  assert.equal(streamingQuestion.quickReplyMode, 'multiple');
-  assert.equal(streamingQuestion.quickReplySubmitLabel, 'Skicka val');
+  assert.equal(streamingQuestion.quickReplyMode, 'single');
+  assert.equal(streamingQuestion.quickReplySubmitLabel, '');
   assert.equal(streamingQuestion.offerCards.length, 0);
-  assert.deepEqual(
-    streamingQuestion.quickReplies.map((reply) => reply.qualificationPatch.streamingServices[0]),
-    ['netflix', 'disney', 'hbo', 'tv4', 'amazon']
-  );
+  assert.ok(streamingQuestion.quickReplies.every((reply) => reply.action === 'send_message'));
 
   const source = fs.readFileSync(require.resolve('./chat-service'), 'utf8');
   assert.doesNotMatch(source, /fallbackReply|detectIntent|inferQualificationFromText|DEALETT_CHAT_FORCE_FALLBACK/);

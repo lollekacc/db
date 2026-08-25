@@ -4,18 +4,11 @@ const path = require('node:path');
 const { calculateOfferOptions } = require('./offer-calculator');
 const { getPlanCatalog } = require('./offer-service');
 const { createEmptyQualification, normalizeQualification } = require('./qualification-service');
-const { languageNames } = require('./translation-service');
 const {
   buildChatResponse,
   buildOfferCardsFromOfferCalculation,
 } = require('./src/chat-ui-response');
-const {
-  applyConversationAnswer,
-  buildQualificationStep,
-  isQualificationContinuation,
-  isQualificationPrompt,
-  mergeQualificationState,
-} = require('./src/conversation-state');
+const { mergeQualificationState } = require('./src/conversation-state');
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5.6-terra';
@@ -28,10 +21,12 @@ const WEBSITE_SOURCES = {
   broadbandRequirements: path.join(__dirname, 'chat', 'broadband-requirements.json'),
   broadbandPlans: path.join(__dirname, 'data', '5Gbredband.json'),
 };
+const CHAT_INSTRUCTIONS_PATH = path.join(__dirname, 'chat', 'CHAT_INSTRUCTIONS.md');
 
 let openAiTransport = (...args) => fetch(...args);
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
+const chatInstructions = fs.readFileSync(CHAT_INSTRUCTIONS_PATH, 'utf8');
 
 const loadWebsiteData = () => Object.fromEntries(
   Object.entries(WEBSITE_SOURCES).map(([name, filePath]) => [name, readJson(filePath)])
@@ -85,6 +80,38 @@ const retrieveWebsiteKnowledge = ({ query, page = {} }) => {
     size += entry.length;
   }
   return selected.join('\n');
+};
+
+const getCalculationFacts = (calculation) => {
+  if (!calculation) return null;
+  const removeNarrative = (option) => {
+    if (!option || typeof option !== 'object') return option;
+    const {
+      reason,
+      benefits,
+      tradeoffs,
+      giftCardReason,
+      numberHandlingNotes,
+      ...facts
+    } = option;
+    return facts;
+  };
+  return {
+    ...calculation,
+    bestValue: removeNarrative(calculation.bestValue),
+    bestTravelFit: removeNarrative(calculation.bestTravelFit),
+    bestStreamingFit: removeNarrative(calculation.bestStreamingFit),
+    lowestMonthlyPrice: removeNarrative(calculation.lowestMonthlyPrice),
+    options: Array.isArray(calculation.options)
+      ? calculation.options.map(removeNarrative)
+      : [],
+    assumptions: calculation.assumptions
+      ? {
+        requiredDataGb: calculation.assumptions.requiredDataGb,
+        currentMonthlyTotalIsEstimate: calculation.assumptions.currentMonthlyTotalIsEstimate,
+      }
+      : null,
+  };
 };
 
 const trimMessages = (messages = []) => Array.isArray(messages)
@@ -211,12 +238,18 @@ const analysisSchema = {
       enum: ['neutral', 'confused', 'frustrated', 'angry', 'anxious'],
     },
     recommendationRequested: { type: 'boolean' },
+    resetRequested: { type: 'boolean' },
+    quizAnswerDecision: {
+      type: 'string',
+      enum: ['use', 'ignore', 'unresolved'],
+    },
     knowledgeQuery: { type: 'string' },
     qualification: qualificationSchema,
   },
   required: [
     'topic', 'interactionStage', 'desiredOutcome', 'customerEmotion',
-    'recommendationRequested', 'knowledgeQuery', 'qualification',
+    'recommendationRequested', 'resetRequested', 'quizAnswerDecision',
+    'knowledgeQuery', 'qualification',
   ],
 };
 
@@ -225,15 +258,53 @@ const answerSchema = {
   additionalProperties: false,
   properties: {
     reply: { type: 'string', minLength: 1 },
-    quickReplies: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    showOfferCards: { type: 'boolean' },
+    quickReplies: {
+      type: 'array',
+      maxItems: 5,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          label: { type: 'string' },
+          action: {
+            type: 'string',
+            enum: [
+              'send_message', 'open_coverage_map', 'open_broadband_page',
+              'open_broadband_address', 'open_cart', 'open_account', 'open_contact',
+            ],
+          },
+        },
+        required: ['label', 'action'],
+      },
+    },
     bestValueReason: { type: 'string' },
     lowestPriceReason: { type: 'string' },
     bestValueBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
     lowestPriceBenefits: { type: 'array', items: { type: 'string' }, maxItems: 5 },
+    offerCardCopy: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        bestValueLabel: { type: 'string' },
+        lowestPriceLabel: { type: 'string' },
+        dataTitle: { type: 'string' },
+        monthlyPriceTitle: { type: 'string' },
+        bindingTitle: { type: 'string' },
+        perMonthSuffix: { type: 'string' },
+        bindingMonthsSuffix: { type: 'string' },
+        rewardLabel: { type: 'string' },
+        ctaLabel: { type: 'string' },
+      },
+      required: [
+        'bestValueLabel', 'lowestPriceLabel', 'dataTitle', 'monthlyPriceTitle',
+        'bindingTitle', 'perMonthSuffix', 'bindingMonthsSuffix', 'rewardLabel', 'ctaLabel',
+      ],
+    },
   },
   required: [
-    'reply', 'quickReplies', 'bestValueReason', 'lowestPriceReason',
-    'bestValueBenefits', 'lowestPriceBenefits',
+    'reply', 'showOfferCards', 'quickReplies', 'bestValueReason', 'lowestPriceReason',
+    'bestValueBenefits', 'lowestPriceBenefits', 'offerCardCopy',
   ],
 };
 
@@ -304,30 +375,6 @@ const cleanAiQualification = (qualification = {}) => ({
     .filter(([, value]) => Number(value) > 0)),
 });
 
-const streamingServiceFromLabel = (label) => {
-  const normalized = String(label || '').toLowerCase();
-  if (normalized.includes('netflix')) return 'netflix';
-  if (/hbo|max/.test(normalized)) return 'hbo';
-  if (normalized.includes('disney')) return 'disney';
-  if (/amazon|prime/.test(normalized)) return 'amazon';
-  if (normalized.includes('tv4')) return 'tv4';
-  return null;
-};
-
-const isStreamingServiceQuestion = (answer = {}) => {
-  const reply = String(answer.reply || '');
-  const services = (answer.quickReplies || []).map(streamingServiceFromLabel).filter(Boolean);
-  return services.length >= 2 && /streaming|streamingtjanst|streamingtjänst/i.test(reply);
-};
-
-const addStreamingQualificationPatches = (quickReplies = []) => quickReplies.map((reply) => {
-  const label = typeof reply === 'string' ? reply : reply?.label;
-  const service = streamingServiceFromLabel(label);
-  return service
-    ? { label, qualificationPatch: { streamingCalculation: 'include', streamingServices: [service] } }
-    : reply;
-});
-
 const hasHistoricalQuizAnswers = (context = {}) => (
   context?.quizHandoff !== true &&
   context?.quizAnswersStatus === 'unconfirmed' &&
@@ -338,66 +385,6 @@ const getHistoricalQuizQualification = (context = {}) => normalizeQualification(
   context?.historicalQuizQualification || context?.qualification || {}
 );
 
-const lastAssistantAskedToUseQuiz = (messages = []) => {
-  const lastAssistant = [...(Array.isArray(messages) ? messages : [])]
-    .reverse()
-    .find((item) => item?.role === 'assistant');
-  return /quiz|svar|answers|same answers|samma svar/i.test(String(lastAssistant?.content || '')) &&
-    /använd|use|fresh|börja om|start/i.test(String(lastAssistant?.content || ''));
-};
-
-const acceptsHistoricalQuiz = (message, messages = []) => {
-  const text = String(message || '').trim();
-  if (/använd(?:a)?\s+(?:de\s+)?samma\s+svar(?:en)?|använd(?:a)?\s+quizsvar(?:en)?|use\s+(?:the\s+)?same\s+answers|use\s+(?:the\s+)?quiz\s+answers/i.test(text)) {
-    return true;
-  }
-  return lastAssistantAskedToUseQuiz(messages) && /^(ja|japp|yes|sure|ok|okej)$/i.test(text);
-};
-
-const declinesHistoricalQuiz = (message, messages = []) => {
-  const text = String(message || '').trim();
-  if (/börja\s+(?:om|från början|med nya svar)|start\s+(?:fresh|over|again)|nya\s+svar|new\s+answers/i.test(text)) {
-    return true;
-  }
-  return lastAssistantAskedToUseQuiz(messages) && /^(nej|no)$/i.test(text);
-};
-
-const buildQuizConsentResponse = ({ language, qualification }) => {
-  const english = language === 'en';
-  const ui = buildChatResponse({
-    message: english
-      ? 'I can see answers from an earlier quiz, but I won\'t use them without your approval. Do you want to use those answers or start fresh?'
-      : 'Jag kan se svar från ett tidigare quiz, men använder dem inte utan ditt godkännande. Vill du använda samma svar eller börja om?',
-    quickReplies: [
-      {
-        label: english ? 'Use the same answers' : 'Använd samma svar',
-        action: 'useHistoricalQuizAnswers',
-      },
-      {
-        label: english ? 'Start fresh' : 'Börja om',
-        action: 'startFreshWithoutQuiz',
-      },
-    ],
-  });
-  return {
-    reply: ui.message,
-    message: ui.message,
-    language,
-    topic: 'quiz answer consent',
-    qualification,
-    offerCalculation: null,
-    quickReplies: ui.quickReplies,
-    quickReplyMode: ui.quickReplyMode,
-    quickReplySubmitLabel: '',
-    suggestions: ui.quickReplies.map((reply) => reply.label),
-    offerCards: [],
-    embeddedWidget: null,
-    quizAnswersStatus: 'unconfirmed',
-    source: 'openai',
-    model: process.env.OPENAI_MODEL || DEFAULT_MODEL,
-  };
-};
-
 const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
@@ -407,30 +394,13 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
   input: [
     {
       role: 'system',
-      content: [
-        'Extract the customer need for Dealett without answering it.',
-        'Classify the conversation before extracting sales details: greeting, understand, solve, confirm, dissatisfied, or close.',
-        'desiredOutcome is what the customer wants to happen now, not merely the event or symptom they described. Use null when it is not yet clear.',
-        'A greeting by itself is interactionStage greeting, has desiredOutcome null, and is not a recommendation request. Never infer a sales goal from the current page, cart, or a previous assistant question alone.',
-        'Use dissatisfied when the customer says prior help did not solve the need. Use confirm when they report that the help worked or explicitly accept the outcome.',
-        'Detect confused, frustrated, angry, or anxious language without treating disagreement as abuse.',
-        'Preserve known qualification values unless the customer clearly changes them.',
-        'Interpret short answers such as yes, no, none, and do not know in the scope of the immediately preceding assistant question.',
-        'When a group customer says everyone has the same operator, unlimited data, or no binding time, apply that fact to every person and set the matching applies-to-all flag.',
-        'priceRange, exactMonthlyPrice, exactMonthlyPrices, familyPriceRange, and familyTotalPrice describe what the customer pays today, never a desired future budget. familyPriceRange is the approximate current total for a multi-person group.',
-        'Only record prices, service usage, travel, data needs, operators, and contract details the customer actually supplied.',
-        'When the customer asks to start over, clear prior qualification values and build a fresh qualification only from messages after that request.',
-        'Quiz answers marked unconfirmed are historical context only. Never copy them into qualification, infer that the customer wants to use them, or treat them as current preferences.',
-        'If context.quizHandoff is true, continue from the supplied quiz state. Do not restart the quiz and do not ask again for information already present in currentQualification or context.answers.',
-        'recommendationRequested is true when the customer asks for, continues, or questions a mobile-plan comparison.',
-        'When context.quizHandoff is true, recommendationRequested should be true unless the message is unrelated to mobile recommendations.',
-        'Use low/medium/high only when the wording supports it; exact GB is preferred when stated.',
-      ].join(' '),
+      content: chatInstructions,
     },
     ...trimMessages(messages),
     {
       role: 'user',
       content: JSON.stringify({
+        operation: 'analyze_customer_message',
         latestMessage: message,
         language,
         page,
@@ -462,39 +432,15 @@ const generateAnswer = ({
   input: [
     {
       role: 'system',
-      content: [
-        `You are Dealett's expert human adviser. Reply naturally in ${languageNames[language]}.`,
-        'Use this customer-service sequence: understand the desired outcome, solve or route it, verify the outcome when appropriate, and close respectfully.',
-        'For a greeting with no stated need, greet warmly and ask an open question about what the customer wants help with. Do not begin mobile-plan qualification, infer a goal from the page, or repeat an earlier sales question. For the initial greeting, offer concise quick replies for the main help categories plus an open other-question choice.',
-        'Before proposing a solution, distinguish what happened, its impact, and what the customer wants now. If the desired outcome is unclear, summarize only the known issue and ask one neutral clarifying question instead of guessing.',
-        'When the desired outcome is clear, answer it directly or take the next useful step. Ask only for information that materially changes the answer, and never ask again for information already supplied.',
-        'After a final answer, completed guidance, referral, or refusal, briefly check whether it resolves the customer\'s need when that is useful. Do not ask this during every intermediate qualification step or when the customer has already confirmed satisfaction.',
-        'When Dealett cannot do what the customer asks, acknowledge the impact, state the limit plainly, give a brief truthful reason, and offer the closest realistic alternative or support route. Do not blame the system, invent an exception, promise a result another team controls, or keep transferring the customer without purpose.',
-        'If the customer is confused, frustrated, angry, or anxious, acknowledge the specific concern in one calm sentence and then focus on the practical next step. Never argue about their feelings or use generic empathy as a substitute for help.',
-        'Never claim to have accessed an account, changed a subscription, issued a refund, contacted another team, or completed any action unless the supplied context proves it. Protect personal information and direct account-specific cases to the supported account or contact route.',
-        'Use only the supplied website knowledge, mobile-plan catalog, prior site selection, and exact calculation.',
-        'Build every recommendation independently from qualification and exactMobileRecommendationCalculation. A cart or quiz selection is prior context only: never reuse it as the recommendation, never let it restrict candidates, and never present it as best or cheapest unless the fresh calculation proves that. After the fresh result, briefly say whether the prior selection is still best or whether a calculated alternative is better.',
-        'For mobile facts the catalog and calculation override other text. Never invent prices, benefits, savings, coverage, or account details.',
-        'Ask one useful question when essential recommendation details are missing.',
-        'Never present an offer while missingQualificationFields is non-empty. In particular, ask about binding time for every person before giving a final offer when bindingEnds is missing.',
-        'If the customer came from a quiz handoff, act like an expert in-store salesperson who has the filled form in front of them: continue from the current stage, ask only the next missing question, and never repeat provided answers.',
-        'If quiz answers are marked unconfirmed, they are visible history only. Do not use them in advice, qualification, calculations, or recommendations until the customer explicitly approves them.',
-        'Default to the shortest useful reply. A question must be one short sentence and contain exactly one question. A normal answer must be at most two or three short sentences. A recommendation must be no more than 100 words.',
-        'Lead with the answer or recommendation. Do not recap information the customer already gave unless correcting it or confirming a detail that materially affects the result.',
-        'When a calculation exists, keep reply to the recommendation and its decisive reason. Put detailed best-value and lowest-price explanations in bestValueReason, lowestPriceReason, bestValueBenefits, and lowestPriceBenefits so the offer cards carry the detail.',
-        'Explain the 24-month formula, detailed warnings, or all four operators only when the customer explicitly asks, or when one specific caveat is essential to avoid a misleading answer.',
-        'Treat all four operators fairly. A higher price can be better value when its included streaming, roaming, calls, shared data, or family terms fit the customer.',
-        'Never say a number is locked. Discuss number porting and verification details only when they are relevant to the customer question or materially affect the recommendation.',
-        'When a calculation exists, include a quick reply in the reply language that lets the customer ask to see all four operators.',
-        'Keep the answer concise and conversational. Omit introductions, repetition, generic reassurance, optional background, and unnecessary sign-offs. Quick replies must directly answer the single question you just asked, not offer generic next actions.',
-        'When asking how many subscriptions, provide numeric quick replies such as 1, 2, 3, and 4 or more. When asking an operator, provide the actual operator names. When asking binding time, make the scope explicit. When asking about price, ask what the customer pays today rather than their desired budget. Use up to five buttons and cover the normal answers.',
-      ].join(' '),
+      content: chatInstructions,
     },
     ...trimMessages(messages),
     {
       role: 'user',
       content: JSON.stringify({
+        operation: 'generate_customer_reply',
         latestMessage: message,
+        language,
         page,
         context,
         topic,
@@ -506,7 +452,7 @@ const generateAnswer = ({
         priorSiteSelection: cart,
         websiteKnowledge,
         mobilePlanCatalog: getPlanCatalog(),
-        exactMobileRecommendationCalculation: offerCalculation,
+        exactMobileRecommendationCalculation: getCalculationFacts(offerCalculation),
       }),
     },
   ],
@@ -522,24 +468,18 @@ const createChatCompletion = async ({
   context = {},
 }) => {
   const latestMessage = String(message || '').trim();
-  if (!latestMessage) {
+  if (!latestMessage && context?.quizHandoff !== true) {
     const error = new Error('Message is required');
     error.statusCode = 400;
     throw error;
   }
 
-  const normalizedLanguage = languageNames[String(language || '').toLowerCase()]
-    ? String(language).toLowerCase()
+  const requestedLanguage = String(language || '').trim().toLowerCase();
+  const normalizedLanguage = /^[a-z]{2,3}(?:-[a-z]{2})?$/.test(requestedLanguage)
+    ? requestedLanguage
     : 'sv';
   const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
-  const historicalQuizAccepted = historicalQuizAvailable && acceptsHistoricalQuiz(latestMessage, messages);
-  const historicalQuizDeclined = historicalQuizAvailable && declinesHistoricalQuiz(latestMessage, messages);
-  const startsOver = historicalQuizDeclined || /\b(starta om|börja om|börja från början|börja med nya svar|start fresh|start over|start again|restart)\b/i.test(latestMessage);
-  const currentQualification = normalizeQualification(
-    historicalQuizAccepted
-      ? getHistoricalQuizQualification(context)
-      : (startsOver ? createEmptyQualification() : qualification)
-  );
+  const currentQualification = normalizeQualification(qualification);
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
     messages,
@@ -548,71 +488,50 @@ const createChatCompletion = async ({
     page,
     context,
   });
-  if (historicalQuizAvailable && !historicalQuizAccepted && !historicalQuizDeclined && analysis.recommendationRequested) {
-    return buildQuizConsentResponse({
-      language: normalizedLanguage,
-      qualification: currentQualification,
-    });
-  }
+  const historicalQuizAccepted = historicalQuizAvailable && analysis.quizAnswerDecision === 'use';
+  const historicalQuizDeclined = historicalQuizAvailable &&
+    (analysis.quizAnswerDecision === 'ignore' || analysis.resetRequested);
+  const qualificationBase = analysis.resetRequested || historicalQuizDeclined
+    ? createEmptyQualification()
+    : (historicalQuizAccepted ? getHistoricalQuizQualification(context) : currentQualification);
+  const recommendationInProgress = analysis.recommendationRequested;
+  const quizConsentRequired = historicalQuizAvailable &&
+    !historicalQuizAccepted &&
+    !historicalQuizDeclined &&
+    recommendationInProgress;
   const mergedQualification = mergeQualificationState(
-    currentQualification,
-    cleanAiQualification(analysis.qualification)
+    qualificationBase,
+    quizConsentRequired ? {} : cleanAiQualification(analysis.qualification)
   );
-  const nextQualification = normalizeQualification(applyConversationAnswer({
-    message: latestMessage,
-    messages,
-    qualification: mergedQualification,
-  }));
-  const answersQualificationQuestion = isQualificationContinuation(messages, latestMessage);
-  const hasPendingQualificationQuestion = isQualificationPrompt(messages);
-  const explicitlyRequestsRecommendation = /\b(jamfor|jämför|abonnemang|mobilabonnemang|familjeabonnemang|rekommendera|hitta ratt|hitta rätt|compare|subscription|mobile plan|recommend|continue|fortsatt|fortsätt)\b/i
-    .test(latestMessage);
-  const recommendationInProgress = answersQualificationQuestion || (
-    analysis.recommendationRequested &&
-    (!hasPendingQualificationQuestion || explicitlyRequestsRecommendation)
-  );
-  const qualificationStep = recommendationInProgress
-    ? buildQualificationStep({
-      qualification: nextQualification,
-      message: latestMessage,
-      messages,
-      language: normalizedLanguage,
-    })
-    : null;
-  const offerCalculation = recommendationInProgress && !qualificationStep
+  const nextQualification = normalizeQualification(mergedQualification);
+  const offerCalculation = recommendationInProgress &&
+    !quizConsentRequired &&
+    nextQualification.missingFields.length === 0
     ? calculateOfferOptions(nextQualification)
     : null;
   const websiteKnowledge = retrieveWebsiteKnowledge({
     query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
     page,
   });
-  const answer = qualificationStep
-    ? {
-      reply: qualificationStep.reply,
-      quickReplies: qualificationStep.quickReplies,
-      bestValueReason: '',
-      lowestPriceReason: '',
-      bestValueBenefits: [],
-      lowestPriceBenefits: [],
-    }
-    : await generateAnswer({
-      message: latestMessage,
-      messages,
-      language: normalizedLanguage,
-      page,
-      cart,
-      context,
-      topic: analysis.topic,
-      interactionStage: analysis.interactionStage,
-      desiredOutcome: analysis.desiredOutcome,
-      customerEmotion: analysis.customerEmotion,
-      qualification: nextQualification,
-      offerCalculation,
-      websiteKnowledge,
-    });
-  const streamingMultiSelect = isStreamingServiceQuestion(answer);
-  const isInformationQuestion = /\?\s*$/.test(String(answer.reply || '').trim());
-  const offerCards = offerCalculation && !isInformationQuestion
+  const answer = await generateAnswer({
+    message: latestMessage,
+    messages,
+    language: normalizedLanguage,
+    page,
+    cart,
+    context: {
+      ...context,
+      quizConsentRequired,
+    },
+    topic: analysis.topic,
+    interactionStage: analysis.interactionStage,
+    desiredOutcome: analysis.desiredOutcome,
+    customerEmotion: analysis.customerEmotion,
+    qualification: nextQualification,
+    offerCalculation,
+    websiteKnowledge,
+  });
+  const offerCards = offerCalculation && answer.showOfferCards
     ? buildOfferCardsFromOfferCalculation(offerCalculation, {
       language: normalizedLanguage,
       copy: answer,
@@ -620,13 +539,9 @@ const createChatCompletion = async ({
     : [];
   const ui = buildChatResponse({
     message: answer.reply,
-    quickReplies: streamingMultiSelect
-      ? addStreamingQualificationPatches(answer.quickReplies)
-      : answer.quickReplies,
-    quickReplyMode: streamingMultiSelect ? 'multiple' : 'single',
-    quickReplySubmitLabel: streamingMultiSelect
-      ? (normalizedLanguage === 'en' ? 'Send choices' : 'Skicka val')
-      : '',
+    quickReplies: answer.quickReplies,
+    quickReplyMode: 'single',
+    quickReplySubmitLabel: '',
     offerCards,
   });
   return {

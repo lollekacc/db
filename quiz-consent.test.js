@@ -52,6 +52,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   const request = JSON.parse(options.body);
   calls.push(request);
   const analysis = request.text.format.name === 'dealett_customer_need';
+  const payload = JSON.parse(request.input.at(-1).content);
+  const acceptsHistory = /Använd samma svar/i.test(payload.latestMessage || '');
   const output = analysis
     ? {
       topic: 'mobile comparison',
@@ -59,17 +61,29 @@ setOpenAiTransportForTests(async (_url, options) => {
       desiredOutcome: 'compare mobile plans',
       customerEmotion: 'neutral',
       recommendationRequested: true,
+      resetRequested: false,
+      quizAnswerDecision: acceptsHistory ? 'use' : 'unresolved',
       knowledgeQuery: 'mobile plans',
       // Simulate a model trying to copy the visible historical answers.
       qualification: qualificationOutput(historicalQualification),
     }
     : {
-      reply: 'Här är rekommendationen.',
-      quickReplies: [],
+      reply: acceptsHistory ? 'Här är rekommendationen.' : 'Vill du använda de tidigare svaren?',
+      showOfferCards: acceptsHistory,
+      quickReplies: acceptsHistory ? [] : [
+        { label: 'Använd samma svar', action: 'send_message' },
+        { label: 'Börja om', action: 'send_message' },
+      ],
       bestValueReason: 'Bäst värde.',
       lowestPriceReason: 'Lägst pris.',
       bestValueBenefits: [],
       lowestPriceBenefits: [],
+      offerCardCopy: {
+        bestValueLabel: 'Bäst värde', lowestPriceLabel: 'Lägst månadspris',
+        dataTitle: 'Surf', monthlyPriceTitle: 'Månadskostnad', bindingTitle: 'Bindning',
+        perMonthSuffix: '/mån', bindingMonthsSuffix: ' mån bindningstid',
+        rewardLabel: 'Presentkort: XXX kr', ctaLabel: 'Välj erbjudande',
+      },
     };
   return {
     ok: true,
@@ -86,15 +100,12 @@ setOpenAiTransportForTests(async (_url, options) => {
     context,
   });
 
-  assert.equal(calls.length, 1, 'Historical answers must be gated before answer generation or calculation');
+  assert.equal(calls.length, 2, 'The model should generate the consent request without using historical answers');
   assert.equal(gated.quizAnswersStatus, 'unconfirmed');
   assert.equal(gated.offerCalculation, null);
   assert.equal(gated.qualification.peopleCount, null);
-  assert.match(gated.reply, /använder dem inte utan ditt godkännande/i);
-  assert.deepEqual(gated.quickReplies.map((reply) => reply.action), [
-    'useHistoricalQuizAnswers',
-    'startFreshWithoutQuiz',
-  ]);
+  assert.match(gated.reply, /tidigare svaren/i);
+  assert.ok(gated.quickReplies.every((reply) => reply.action === 'send_message'));
 
   calls = [];
   const accepted = await createChatCompletion({
