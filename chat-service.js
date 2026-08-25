@@ -9,6 +9,7 @@ const {
   buildOfferCardsFromOfferCalculation,
 } = require('./src/chat-ui-response');
 const { mergeQualificationState } = require('./src/conversation-state');
+const { getAdaptiveQuestionPlan } = require('./src/adaptive-question-policy');
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5.6-terra';
@@ -314,15 +315,19 @@ const answerSchema = {
         lowestEffectiveCostLabel: { type: 'string' },
         dataTitle: { type: 'string' },
         monthlyPriceTitle: { type: 'string' },
+        perPersonPriceTitle: { type: 'string' },
+        totalPriceTitle: { type: 'string' },
         bindingTitle: { type: 'string' },
         perMonthSuffix: { type: 'string' },
+        perPersonSuffix: { type: 'string' },
         bindingMonthsSuffix: { type: 'string' },
         rewardLabel: { type: 'string' },
         ctaLabel: { type: 'string' },
       },
       required: [
         'bestMatchLabel', 'lowestEffectiveCostLabel', 'dataTitle', 'monthlyPriceTitle',
-        'bindingTitle', 'perMonthSuffix', 'bindingMonthsSuffix', 'rewardLabel', 'ctaLabel',
+        'perPersonPriceTitle', 'totalPriceTitle', 'bindingTitle', 'perMonthSuffix',
+        'perPersonSuffix', 'bindingMonthsSuffix', 'rewardLabel', 'ctaLabel',
       ],
     },
   },
@@ -457,6 +462,7 @@ const generateAnswer = ({
   offerCalculation,
   websiteKnowledge,
   context,
+  adaptiveQuestionPlan,
 }) => callOpenAi({
   schemaName: 'dealett_adviser_reply',
   schema: answerSchema,
@@ -481,6 +487,7 @@ const generateAnswer = ({
         customerEmotion,
         qualification,
         missingQualificationFields: qualification.missingFields,
+        adaptiveQuestionPlan,
         priorSiteSelection: cart,
         websiteKnowledge,
         mobilePlanCatalog: getPlanCatalog(),
@@ -520,6 +527,8 @@ const createChatCompletion = async ({
     page,
     context,
   });
+  const unavailableHistoricalQuizRequested = !historicalQuizAvailable &&
+    analysis.quizAnswerDecision === 'use';
   const historicalQuizAccepted = historicalQuizAvailable && analysis.quizAnswerDecision === 'use';
   const historicalQuizDeclined = historicalQuizAvailable &&
     (analysis.quizAnswerDecision === 'ignore' || analysis.resetRequested);
@@ -531,7 +540,9 @@ const createChatCompletion = async ({
     !historicalQuizAccepted &&
     !historicalQuizDeclined &&
     recommendationInProgress;
-  const analyzedQualification = cleanAiQualification(analysis.qualification);
+  const analyzedQualification = cleanAiQualification(
+    unavailableHistoricalQuizRequested ? {} : analysis.qualification
+  );
   const analyzedPeopleCount = Number(analyzedQualification.peopleCount || qualificationBase.peopleCount) || 0;
   if (analyzedPeopleCount > 1 && analysis.groupBindingStatus === 'none_have_binding') {
     analyzedQualification.bindingEnds = ['Ingen bindningstid'];
@@ -542,6 +553,11 @@ const createChatCompletion = async ({
     quizConsentRequired ? {} : analyzedQualification
   );
   const nextQualification = normalizeChatQualification(mergedQualification);
+  const adaptiveQuestionPlan = getAdaptiveQuestionPlan({
+    message: latestMessage,
+    analysis,
+    qualification: nextQualification,
+  });
   const offerCalculation = recommendationInProgress &&
     !quizConsentRequired &&
     nextQualification.missingFields.length === 0
@@ -560,6 +576,7 @@ const createChatCompletion = async ({
     context: {
       ...context,
       quizConsentRequired,
+      unavailableHistoricalQuizRequested,
     },
     topic: analysis.topic,
     interactionStage: analysis.interactionStage,
@@ -568,6 +585,7 @@ const createChatCompletion = async ({
     qualification: nextQualification,
     offerCalculation,
     websiteKnowledge,
+    adaptiveQuestionPlan,
   });
   const offerCards = offerCalculation && answer.showOfferCards
     ? buildOfferCardsFromOfferCalculation(offerCalculation, {

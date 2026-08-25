@@ -48,6 +48,7 @@ const normalizeOfferCard = (card, index) => {
     bindingTitle: String(card.bindingTitle || '').trim().slice(0, 80),
     dataLabel: String(card.dataLabel || '').trim().slice(0, 80),
     monthlyPriceLabel: String(card.monthlyPriceLabel || '').trim().slice(0, 80),
+    monthlyPriceSubLabel: String(card.monthlyPriceSubLabel || '').trim().slice(0, 100),
     bindingLabel: String(card.bindingLabel || '').trim().slice(0, 100),
     reason: String(card.reason || '').trim().slice(0, 400),
     ctaLabel: String(card.ctaLabel || '').trim().slice(0, 80),
@@ -77,6 +78,26 @@ const formatMoney = (value, language) => {
   }).format(amount).replace(/[\u00a0\u202f]/g, ' ');
 };
 
+const removeRepeatedCardFacts = (benefits = [], option = {}) => {
+  const primaryPrice = Number(option.pricePerPerson);
+  const totalPrice = Number(option.planMonthlyPrice);
+  const bindingMonths = Number(option.bindingMonths);
+  const priceNumbers = [primaryPrice, totalPrice]
+    .filter((value) => Number.isFinite(value) && value > 0)
+    .map((value) => String(Math.round(value)));
+
+  return (Array.isArray(benefits) ? benefits : []).filter((benefit) => {
+    const text = String(benefit || '').trim();
+    const normalized = text.toLocaleLowerCase('sv').replace(/[\s\u00a0\u202f,.]/g, '');
+    const repeatsPrice = priceNumbers.some((price) => normalized.includes(price)) &&
+      /(kr|sek|person|month|månad|mån)/i.test(text) &&
+      !/(spar|saving|billigare|less|lägre)/i.test(text);
+    const repeatsBinding = bindingMonths > 0 && normalized.includes(String(bindingMonths)) &&
+      /(bind|contract)/i.test(text);
+    return !repeatsPrice && !repeatsBinding;
+  });
+};
+
 const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language = 'sv', copy = {} } = {}) => {
   if (!offerCalculation.validOfferAvailable) return [];
   const cardCopy = copy.offerCardCopy || {};
@@ -98,6 +119,7 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
   )) === index);
 
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
+    const isGroupOffer = Number(option.peopleCount) > 1;
     return {
       id: option.planId,
       planId: option.planId,
@@ -105,10 +127,18 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       planName: option.title || option.planName,
       dataLabel: option.data,
       dataTitle: cardCopy.dataTitle,
-      monthlyPriceTitle: cardCopy.monthlyPriceTitle,
+      monthlyPriceTitle: isGroupOffer
+        ? (cardCopy.perPersonPriceTitle || cardCopy.monthlyPriceTitle)
+        : cardCopy.monthlyPriceTitle,
       bindingTitle: cardCopy.bindingTitle,
       resultLabel,
-      monthlyPriceLabel: `${formatMoney(option.planMonthlyPrice, language)}${cardCopy.perMonthSuffix}`,
+      monthlyPriceLabel: `${formatMoney(
+        isGroupOffer ? option.pricePerPerson : option.planMonthlyPrice,
+        language
+      )}${isGroupOffer ? (cardCopy.perPersonSuffix || cardCopy.perMonthSuffix) : cardCopy.perMonthSuffix}`,
+      monthlyPriceSubLabel: isGroupOffer
+        ? `${cardCopy.totalPriceTitle || cardCopy.monthlyPriceTitle}: ${formatMoney(option.planMonthlyPrice, language)}${cardCopy.perMonthSuffix}`
+        : '',
       effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
       savingsLabel: '',
       rewardLabel: cardCopy.rewardLabel,
@@ -116,7 +146,7 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
         ? `${option.bindingMonths}${cardCopy.bindingMonthsSuffix}`
         : '',
       reason,
-      benefits,
+      benefits: removeRepeatedCardFacts(benefits, option),
       ctaLabel: cardCopy.ctaLabel,
       ctaUrl: 'varukorg.html',
     };

@@ -14,6 +14,8 @@ const historicalQualification = {
   bindingEnds: ['Ingen bindningstid'],
   mobileUsage: 'high',
   priceRange: '300-400',
+  streamingCalculation: 'none',
+  internationalTravel: 'none',
 };
 
 const context = {
@@ -56,6 +58,7 @@ setOpenAiTransportForTests(async (_url, options) => {
   const analysis = request.text.format.name === 'dealett_customer_need';
   const payload = JSON.parse(request.input.at(-1).content);
   const acceptsHistory = /Använd samma svar/i.test(payload.latestMessage || '');
+  const unavailableHistory = payload.context?.unavailableHistoricalQuizRequested === true;
   const output = analysis
     ? {
       topic: 'mobile comparison',
@@ -71,8 +74,10 @@ setOpenAiTransportForTests(async (_url, options) => {
       qualification: qualificationOutput(historicalQualification),
     }
     : {
-      reply: acceptsHistory ? 'Här är rekommendationen.' : 'Vill du använda de tidigare svaren?',
-      showOfferCards: acceptsHistory,
+      reply: unavailableHistory
+        ? 'Jag har inga tidigare svar att använda. Vilken operatör har du idag?'
+        : (acceptsHistory ? 'Här är rekommendationen.' : 'Vill du använda de tidigare svaren?'),
+      showOfferCards: acceptsHistory && !unavailableHistory,
       quickReplies: acceptsHistory ? [] : [
         { label: 'Använd samma svar', action: 'send_message' },
         { label: 'Börja om', action: 'send_message' },
@@ -124,6 +129,22 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(accepted.qualification.peopleCount, 1);
   assert.deepEqual(accepted.qualification.operators, ['Tele2']);
   assert.ok(accepted.offerCalculation, 'Accepted historical answers should be eligible for calculation');
+
+  calls = [];
+  const unavailable = await createChatCompletion({
+    message: 'Använd samma svar',
+    language: 'sv',
+    qualification: createEmptyQualification(),
+    context: {},
+  });
+
+  const unavailableAnswerPayload = JSON.parse(calls[1].input.at(-1).content);
+  assert.equal(unavailableAnswerPayload.context.unavailableHistoricalQuizRequested, true);
+  assert.equal(unavailable.quizAnswersStatus, 'none');
+  assert.equal(unavailable.qualification.peopleCount, null);
+  assert.deepEqual(unavailable.qualification.operators, []);
+  assert.equal(unavailable.offerCalculation, null);
+  assert.match(unavailable.reply, /inga tidigare svar/i);
 
   console.log('quiz consent tests passed');
 })().catch((error) => {

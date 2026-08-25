@@ -94,6 +94,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(answerPrompt, /write every customer-facing response/i);
   assert.match(answerPrompt, /Ask only one focused question/i);
   assert.match(answerPrompt, /exact calculation/i);
+  assert.match(answerPrompt, /decisive reason/i);
+  assert.match(answerPrompt, /Do not restate the operator, data allowance, exact prices/i);
   assert.match(answerPrompt, /only scripted conversational message/i);
   const answerPayload = JSON.parse(calls[1].input.at(-1).content);
   assert.equal(answerPayload.interactionStage, 'solve');
@@ -112,6 +114,7 @@ setOpenAiTransportForTests(async (_url, options) => {
 
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);
+    calls.push(request);
     const output = request.text.format.name === 'dealett_customer_need'
       ? {
         topic: 'streaming costs in mobile comparison',
@@ -150,7 +153,11 @@ setOpenAiTransportForTests(async (_url, options) => {
     message: 'om jag betalar för streaming tjänster också',
     language: 'sv',
     messages: [{ role: 'assistant', content: result.reply }],
-    qualification: result.qualification,
+    qualification: {
+      ...result.qualification,
+      streamingCalculation: 'unknown',
+      streamingServices: [],
+    },
     page: { path: 'mobilabonnemang.html' },
   });
 
@@ -158,6 +165,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(streamingQuestion.quickReplySubmitLabel, '');
   assert.equal(streamingQuestion.offerCards.length, 0);
   assert.ok(streamingQuestion.quickReplies.every((reply) => reply.action === 'send_message'));
+  const streamingAnswerPayload = JSON.parse(calls.at(-1).input.at(-1).content);
+  assert.equal(streamingAnswerPayload.adaptiveQuestionPlan.focus, 'streaming_services');
 
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);

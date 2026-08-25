@@ -56,6 +56,22 @@ const scenarios = [
     },
   },
   {
+    input: 'Jag betalar för mycket för mitt abonnemang.',
+    analysis: {
+      topic: 'expensive mobile subscription',
+      interactionStage: 'understand',
+      desiredOutcome: 'Lower the current monthly subscription cost',
+      customerEmotion: 'frustrated',
+      recommendationRequested: true,
+      knowledgeQuery: 'cheaper mobile plans',
+    },
+    expectedFocus: 'current_monthly_price',
+    answer: {
+      reply: 'Då börjar vi med kostnaden. Ungefär vad betalar du per månad idag?',
+      quickReplies: ['Under 300 kr', '300–400 kr', '400–500 kr', 'Över 500 kr'],
+    },
+  },
+  {
     input: 'hur mår du?',
     messages: [{ role: 'assistant', content: 'Hur många abonnemang vill du jämföra?' }],
     analysis: {
@@ -164,6 +180,10 @@ setOpenAiTransportForTests(async (_url, options) => {
     assert.equal(answerPayload.interactionStage, scenario.analysis.interactionStage);
     assert.equal(answerPayload.desiredOutcome, scenario.analysis.desiredOutcome);
     assert.equal(answerPayload.customerEmotion, scenario.analysis.customerEmotion);
+    if (scenario.expectedFocus) {
+      assert.equal(answerPayload.adaptiveQuestionPlan.focus, scenario.expectedFocus);
+      assert.notEqual(answerPayload.adaptiveQuestionPlan.focus, 'binding_status');
+    }
     assert.equal(result.reply, scenario.answer.reply);
     assert.equal(result.offerCalculation, null);
   }
@@ -174,8 +194,10 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(scenarios[1].answer.reply, /supportärende/i);
   assert.match(scenarios[2].answer.reply, /kan inte genomföra en återbetalning/i);
   assert.match(scenarios[2].answer.reply, /kontaktsidan/i);
-  assert.doesNotMatch(scenarios[3].answer.reply, /Hur många abonnemang/i);
-  assert.match(scenarios[3].answer.reply, /mår bra/i);
+  assert.match(scenarios[3].answer.reply, /betalar du per månad/i);
+  assert.doesNotMatch(scenarios[3].answer.reply, /bindningstid/i);
+  assert.doesNotMatch(scenarios[4].answer.reply, /Hur många abonnemang/i);
+  assert.match(scenarios[4].answer.reply, /mår bra/i);
 
   console.log('customer service behavior tests passed');
 })().catch((error) => {

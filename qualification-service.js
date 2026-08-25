@@ -146,7 +146,10 @@ const createEmptyQualification = () => ({
   customerSegment: null,
   familyTotalPrice: null,
   readyForOffer: false,
-  missingFields: ['peopleCount', 'operators', 'bindingEnds', 'mobileUsage', 'priceRange'],
+  missingFields: [
+    'peopleCount', 'operators', 'bindingEnds', 'mobileUsage', 'priceRange',
+    'streamingCalculation', 'internationalTravel',
+  ],
 });
 
 const normalizeQualification = (qualification = {}) => {
@@ -281,6 +284,14 @@ const normalizeQualification = (qualification = {}) => {
   );
   if (!hasPerPersonPrice) {
     missingFields.push('priceRange');
+  }
+  if (!streamingCalculation) missingFields.push('streamingCalculation');
+  if (streamingCalculation === 'include' && !streamingServices.length) {
+    missingFields.push('streamingServices');
+  }
+  if (!internationalTravel) missingFields.push('internationalTravel');
+  if (internationalTravel === 'outside_eu' && !internationalUsage) {
+    missingFields.push('internationalUsage');
   }
   if (peopleCount && people.length < peopleCount) missingFields.push('people');
 
