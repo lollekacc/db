@@ -87,6 +87,41 @@ const scenarios = [
       quickReplies: [],
     },
   },
+  {
+    input: '1',
+    messages: [{ role: 'assistant', content: 'Hur många mobilabonnemang vill du jämföra?' }],
+    analysis: {
+      topic: 'mobile plan comparison',
+      interactionStage: 'understand',
+      desiredOutcome: 'Compare one mobile subscription',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: 'mobile plans',
+    },
+    qualification: { peopleCount: 1 },
+    expectedFocus: 'current_operator_and_binding',
+    answer: {
+      reply: 'Vilken mobiloperatör har du idag, och när upphör bindningstiden för det mobilabonnemanget?',
+      quickReplies: [],
+    },
+  },
+  {
+    input: 'Hjälp mig jämföra mobilabonnemang',
+    analysis: {
+      topic: 'mobile plan comparison',
+      interactionStage: 'understand',
+      desiredOutcome: 'Compare mobile subscriptions',
+      customerEmotion: 'neutral',
+      recommendationRequested: true,
+      knowledgeQuery: 'mobile plans',
+    },
+    expectedFocus: 'number_of_subscriptions',
+    expectedQuickReplies: Array.from({ length: 10 }, (_, index) => String(index + 1)),
+    answer: {
+      reply: 'Hur många mobilabonnemang vill du jämföra?',
+      quickReplies: [],
+    },
+  },
 ];
 
 let activeScenario = null;
@@ -131,6 +166,7 @@ setOpenAiTransportForTests(async (_url, options) => {
         operatorAppliesToAll: false,
         bindingAppliesToAll: false,
         priceAppliesToAll: false,
+        ...(activeScenario.qualification || {}),
       },
     }
     : {
@@ -183,6 +219,9 @@ setOpenAiTransportForTests(async (_url, options) => {
     if (scenario.expectedFocus) {
       assert.equal(answerPayload.adaptiveQuestionPlan.focus, scenario.expectedFocus);
       assert.notEqual(answerPayload.adaptiveQuestionPlan.focus, 'binding_status');
+    }
+    if (scenario.expectedQuickReplies) {
+      assert.deepEqual(result.quickReplies.map((reply) => reply.label), scenario.expectedQuickReplies);
     }
     assert.equal(result.reply, scenario.answer.reply);
     assert.equal(result.offerCalculation, null);

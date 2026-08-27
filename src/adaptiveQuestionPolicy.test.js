@@ -53,11 +53,11 @@ assert.match(genericStart.guidance, /exact number/i);
 assert.match(genericStart.guidance, /never use ranges/i);
 assert.deepEqual(CANONICAL_QUESTION_ORDER.slice(0, 6), [
   'peopleCount',
+  'operators',
+  'bindingEnds',
   'priceRange',
   'mobileUsage',
   'internationalTravel',
-  'internationalUsage',
-  'streamingCalculation',
 ]);
 
 const initialFlow = buildNextQuestionFlowState({
@@ -138,8 +138,37 @@ const afterDeferral = getAdaptiveQuestionPlan({
   qualification: incomplete,
   flowState: deferredFlow,
 });
-assert.equal(afterDeferral.qualificationField, 'priceRange');
+assert.equal(afterDeferral.qualificationField, 'operators');
 assert.equal(afterDeferral.selectionReason, 'canonical_order');
+
+const afterPeopleCount = normalizeQualification({ peopleCount: 1 });
+const combinedOperatorBindingQuestion = getAdaptiveQuestionPlan({
+  message: 'Ett abonnemang',
+  analysis: recommendationAnalysis(),
+  qualification: afterPeopleCount,
+});
+assert.equal(combinedOperatorBindingQuestion.qualificationField, 'operators');
+assert.equal(combinedOperatorBindingQuestion.focus, 'current_operator_and_binding');
+assert.deepEqual(combinedOperatorBindingQuestion.combinedQualificationFields, [
+  'operators',
+  'bindingEnds',
+]);
+assert.match(combinedOperatorBindingQuestion.guidance, /one combined question/i);
+assert.match(combinedOperatorBindingQuestion.guidance, /mobile operator/i);
+assert.match(combinedOperatorBindingQuestion.guidance, /binding time ends/i);
+
+const operatorAlreadyKnown = normalizeQualification({
+  peopleCount: 1,
+  operators: ['Tele2'],
+});
+const bindingOnlyFollowUp = getAdaptiveQuestionPlan({
+  message: 'Tele2',
+  analysis: recommendationAnalysis(),
+  qualification: operatorAlreadyKnown,
+});
+assert.equal(bindingOnlyFollowUp.qualificationField, 'bindingEnds');
+assert.equal(bindingOnlyFollowUp.focus, 'binding_status');
+assert.deepEqual(bindingOnlyFollowUp.combinedQualificationFields, []);
 
 assert.deepEqual(normalizeQuestionFlowState({
   inProgress: true,
@@ -153,6 +182,7 @@ assert.deepEqual(normalizeQuestionFlowState({
   blockedQuestionField: null,
   attempts: { peopleCount: 3 },
   deferredFields: ['priceRange'],
+  pendingBindingEnd: null,
 });
 
 const lastRequiredField = normalizeQualification({
@@ -211,6 +241,53 @@ const bindingQuestion = getAdaptiveQuestionPlan({
   qualification: onlyBindingMissing,
 });
 assert.equal(bindingQuestion.qualificationField, 'bindingEnds');
+assert.match(bindingQuestion.guidance, /current mobile subscription/i);
+assert.match(bindingQuestion.guidance, /streaming service/i);
+
+const completedBindingQualification = normalizeQualification({
+  peopleCount: 1,
+  operators: ['Tele2'],
+  bindingEnds: ['2026-12-01'],
+  mobileUsage: 'high',
+  exactMonthlyPrice: 499,
+  streamingCalculation: 'none',
+  internationalTravel: 'none',
+});
+const pendingBindingFlow = normalizeQuestionFlowState({
+  inProgress: true,
+  activeQuestionField: 'bindingEnds',
+  attempts: { bindingEnds: 2 },
+  pendingBindingEnd: {
+    date: '2027-02-27',
+    monthsRemaining: 6,
+    targetIndex: 0,
+    appliesToAll: false,
+  },
+});
+const bindingConfirmation = getAdaptiveQuestionPlan({
+  message: 'Jag kan inte svara just nu',
+  analysis: recommendationAnalysis(),
+  qualification: completedBindingQualification,
+  flowState: pendingBindingFlow,
+});
+assert.equal(bindingConfirmation.qualificationField, 'bindingEnds');
+assert.equal(bindingConfirmation.selectionReason, 'binding_date_confirmation');
+assert.equal(bindingConfirmation.pendingBindingEnd.date, '2027-02-27');
+assert.match(bindingConfirmation.guidance, /2027-02-27/);
+assert.equal(bindingConfirmation.attemptNumber, 3);
+const blockedBindingConfirmation = buildNextQuestionFlowState({
+  previousFlowState: pendingBindingFlow,
+  adaptiveQuestionPlan: bindingConfirmation,
+  qualification: completedBindingQualification,
+});
+assert.equal(blockedBindingConfirmation.blockedQuestionField, 'bindingEnds');
+assert.equal(blockedBindingConfirmation.inProgress, false);
+assert.equal(getAdaptiveQuestionPlan({
+  message: 'Okej',
+  analysis: recommendationAnalysis(),
+  qualification: completedBindingQualification,
+  flowState: blockedBindingConfirmation,
+}), null);
 
 const outsideEu = normalizeQualification({
   peopleCount: 1,

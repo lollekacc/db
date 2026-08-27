@@ -10,6 +10,10 @@ const {
 } = require('./src/chat-ui-response');
 const { mergeQualificationState } = require('./src/conversation-state');
 const {
+  applyBindingTimeInput,
+  isStreamingOnlyBindingMessage,
+} = require('./src/binding-time');
+const {
   buildNextQuestionFlowState,
   getAdaptiveQuestionPlan,
   normalizeQuestionFlowState,
@@ -417,6 +421,7 @@ const getExplicitInternationalUsage = (message, activeQuestionField) => {
 
 const cleanAiQualification = (qualification = {}, { message = '', activeQuestionField = null } = {}) => ({
   ...qualification,
+  bindingEnds: isStreamingOnlyBindingMessage(message) ? [] : qualification.bindingEnds,
   familyPriceRange: null,
   familyTotalPrice: null,
   internationalUsage: getExplicitInternationalUsage(message, activeQuestionField),
@@ -478,6 +483,18 @@ const buildInternationalUsageQuickReplies = (language) => {
     ? ['Bara surf', 'Lokala samtal och surf']
     : ['Data only', 'Local calls and data'])
     .map((label) => ({ label, action: 'send_message' }));
+};
+
+const buildBindingQuickReplies = (language, pendingBindingEnd) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  const labels = pendingBindingEnd
+    ? (isSwedish
+      ? ['Ja, det stämmer', 'Nej, annat datum', 'Vet inte']
+      : ['Yes, that is correct', 'No, different date', "I don't know"])
+    : (isSwedish
+      ? ['Ingen bindningstid', 'Vet inte']
+      : ['No binding period', "I don't know"]);
+  return labels.map((label) => ({ label, action: 'send_message' }));
 };
 
 const hasHistoricalQuizAnswers = (context = {}) => (
@@ -636,25 +653,42 @@ const createChatCompletion = async ({
     qualificationBase,
     quizConsentRequired ? {} : analyzedQualification
   );
-  const nextQualification = applyStreamingWidgetPatch(
-    normalizeChatQualification(mergedQualification),
+  const bindingInput = applyBindingTimeInput({
+    qualification: mergedQualification,
+    flowState: flowBase,
+    message: latestMessage,
+  });
+  const normalizedNextQualification = applyStreamingWidgetPatch(
+    normalizeChatQualification(bindingInput.qualification),
     context
   );
+  const questionFlowBase = normalizeQuestionFlowState(bindingInput.flowState);
+  const nextQualification = questionFlowBase.pendingBindingEnd
+    ? {
+      ...normalizedNextQualification,
+      readyForOffer: false,
+      missingFields: [...new Set([
+        ...normalizedNextQualification.missingFields,
+        'bindingEnds',
+      ])],
+    }
+    : normalizedNextQualification;
   const adaptiveQuestionPlan = quizConsentRequired
     ? null
     : getAdaptiveQuestionPlan({
       message: latestMessage,
       analysis,
       qualification: nextQualification,
-      flowState: flowBase,
+      flowState: questionFlowBase,
     });
   const nextFlowState = buildNextQuestionFlowState({
-    previousFlowState: flowBase,
+    previousFlowState: questionFlowBase,
     adaptiveQuestionPlan,
     qualification: nextQualification,
   });
   const offerCalculation = recommendationInProgress &&
     !quizConsentRequired &&
+    !adaptiveQuestionPlan &&
     nextQualification.missingFields.length === 0
     ? calculateOfferOptions(nextQualification)
     : null;
@@ -692,12 +726,17 @@ const createChatCompletion = async ({
   const showStreamingWidget = ['streamingCalculation', 'streamingServices']
     .includes(adaptiveQuestionPlan?.qualificationField);
   const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
-    ? ['1', '2', '3'].map((label) => ({ label, action: 'send_message' }))
+    ? Array.from({ length: 10 }, (_, index) => ({
+      label: String(index + 1),
+      action: 'send_message',
+    }))
     : (adaptiveQuestionPlan?.qualificationField === 'internationalUsage'
       ? buildInternationalUsageQuickReplies(normalizedLanguage)
-      : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
-        ? []
-        : answer.quickReplies));
+      : (adaptiveQuestionPlan?.qualificationField === 'bindingEnds'
+        ? buildBindingQuickReplies(normalizedLanguage, adaptiveQuestionPlan.pendingBindingEnd)
+        : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
+          ? []
+          : answer.quickReplies)));
   const embeddedWidget = showStreamingWidget
     ? buildStreamingPriceWidget(normalizedLanguage)
     : null;

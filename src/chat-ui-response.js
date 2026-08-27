@@ -1,4 +1,4 @@
-const MAX_QUICK_REPLIES = 5;
+const MAX_QUICK_REPLIES = 10;
 const MAX_OFFER_CARDS = 2;
 
 const slugify = (value, fallback) => {

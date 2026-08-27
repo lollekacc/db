@@ -1,7 +1,9 @@
+const { isStreamingOnlyBindingMessage, isValidIsoDate } = require('./binding-time');
+
 const QUESTION_DEFINITIONS = {
   peopleCount: {
     focus: 'number_of_subscriptions',
-    guidance: 'Ask for the exact number of people or mobile subscriptions. Use only exact-number quick replies such as 1, 2, and 3; never use ranges such as "3 or more".',
+    guidance: 'Ask for the exact number of people or mobile subscriptions. The interface provides every exact-number quick reply from 1 through 10; never use ranges such as "3 or more".',
   },
   priceRange: {
     focus: 'current_monthly_price',
@@ -37,7 +39,7 @@ const QUESTION_DEFINITIONS = {
   },
   bindingEnds: {
     focus: 'binding_status',
-    guidance: 'Ask about binding time only now; frame it as determining when a switch can happen, not which plan best fits.',
+    guidance: 'Ask only about binding time on the customer\'s current mobile subscription. Explicitly say "mobile subscription" so this can never be mistaken for Netflix, HBO Max, Disney+, or another streaming service. Frame it as determining when a switch can happen, not which plan best fits. Accept a date, months remaining, no binding time, or that the customer does not know.',
   },
   people: {
     focus: 'person_details',
@@ -47,6 +49,8 @@ const QUESTION_DEFINITIONS = {
 
 const CANONICAL_QUESTION_ORDER = [
   'peopleCount',
+  'operators',
+  'bindingEnds',
   'priceRange',
   'mobileUsage',
   'internationalTravel',
@@ -54,8 +58,6 @@ const CANONICAL_QUESTION_ORDER = [
   'streamingCalculation',
   'streamingServices',
   'streamingPrices',
-  'operators',
-  'bindingEnds',
   'people',
 ];
 const MAX_QUESTION_ATTEMPTS = 3;
@@ -116,6 +118,21 @@ const normalizeQuestionFlowState = (flowState = {}) => {
   const deferredFields = Array.isArray(source.deferredFields)
     ? unique(source.deferredFields.filter((field) => QUESTION_DEFINITIONS[field]))
     : [];
+  const pendingSource = source.pendingBindingEnd && typeof source.pendingBindingEnd === 'object'
+    ? source.pendingBindingEnd
+    : null;
+  const pendingBindingEnd = pendingSource &&
+    isValidIsoDate(pendingSource.date) &&
+    Number.isInteger(Number(pendingSource.monthsRemaining)) &&
+    Number(pendingSource.monthsRemaining) >= 0 &&
+    Number(pendingSource.monthsRemaining) <= 120
+    ? {
+      date: pendingSource.date,
+      monthsRemaining: Number(pendingSource.monthsRemaining),
+      targetIndex: Math.max(0, Math.min(Number(pendingSource.targetIndex) || 0, 9)),
+      appliesToAll: pendingSource.appliesToAll === true,
+    }
+    : null;
 
   return {
     version: 1,
@@ -124,6 +141,7 @@ const normalizeQuestionFlowState = (flowState = {}) => {
     blockedQuestionField,
     attempts,
     deferredFields,
+    pendingBindingEnd,
   };
 };
 
@@ -137,11 +155,12 @@ const getAdaptiveQuestionPlan = ({
     ? qualification.missingFields.filter((field) => QUESTION_DEFINITIONS[field])
     : [];
   const currentFlow = normalizeQuestionFlowState(flowState);
+  const pendingBindingEnd = currentFlow.pendingBindingEnd;
   const explicitlyClosed = analysis.interactionStage === 'close';
   const shouldContinue = !explicitlyClosed && (
     analysis.recommendationRequested === true || currentFlow.inProgress
   );
-  if (!shouldContinue || !missingFields.length) return null;
+  if ((!shouldContinue && !pendingBindingEnd) || (!missingFields.length && !pendingBindingEnd)) return null;
 
   const contextText = [message, analysis.topic, analysis.desiredOutcome]
     .filter(Boolean)
@@ -150,11 +169,13 @@ const getAdaptiveQuestionPlan = ({
     ? RELEVANCE_RULES
       .filter((rule) => rule.pattern.test(contextText))
       .flatMap((rule) => rule.fields)
+      .filter((field) => field !== 'bindingEnds' || !isStreamingOnlyBindingMessage(contextText))
     : [];
   const relevantMissingFields = unique(relevantFields).filter((field) => missingFields.includes(field));
   if (
     currentFlow.blockedQuestionField &&
-    missingFields.includes(currentFlow.blockedQuestionField) &&
+    (missingFields.includes(currentFlow.blockedQuestionField) ||
+      currentFlow.blockedQuestionField === 'bindingEnds' && pendingBindingEnd) &&
     !relevantMissingFields.length
   ) {
     return null;
@@ -173,12 +194,16 @@ const getAdaptiveQuestionPlan = ({
     missingFields.includes(field) && !deferredFields.includes(field)
   ));
   const fallbackField = CANONICAL_QUESTION_ORDER.find((field) => missingFields.includes(field)) || missingFields[0];
-  const qualificationField = jumpField || resumableActiveField || orderedField || fallbackField;
+  const qualificationField = pendingBindingEnd
+    ? 'bindingEnds'
+    : (jumpField || resumableActiveField || orderedField || fallbackField);
   if (!qualificationField) return null;
 
-  const selectionReason = jumpField
+  const selectionReason = pendingBindingEnd
+    ? 'binding_date_confirmation'
+    : (jumpField
     ? 'customer_jump'
-    : (resumableActiveField ? 'resume_active' : 'canonical_order');
+    : (resumableActiveField ? 'resume_active' : 'canonical_order'));
   const previousAttempts = Number(currentFlow.attempts[qualificationField]) || 0;
   const attemptNumber = Math.min(
     currentFlow.activeQuestionField === qualificationField ? previousAttempts + 1 : 1,
@@ -195,13 +220,30 @@ const getAdaptiveQuestionPlan = ({
       !Number(qualification.streamingMonthlyCosts?.[service])
     ))
     : [];
+  const combinesOperatorAndBinding = qualificationField === 'operators' &&
+    missingFields.includes('bindingEnds');
+  const questionDefinition = combinesOperatorAndBinding
+    ? {
+      focus: 'current_operator_and_binding',
+      guidance: 'Ask one combined question, matching the quiz: which mobile operator the customer currently has and when that same mobile subscription\'s binding time ends. For multiple people, ask for both facts per person. Accept an exact date, months remaining, no binding time, or that the customer does not know. Make both requested answers clear, but keep them in one question.',
+    }
+    : QUESTION_DEFINITIONS[qualificationField];
+  const questionGuidance = pendingBindingEnd
+    ? `Confirm the calculated end date ${pendingBindingEnd.date} for the customer's current mobile subscription. It was calculated from ${pendingBindingEnd.monthsRemaining} months remaining. Ask whether the mobile subscription's binding time ends on that exact date; do not request a different date unless the customer rejects it.`
+    : questionDefinition.guidance;
 
   return {
     qualificationField,
-    ...QUESTION_DEFINITIONS[qualificationField],
-    guidance: `${QUESTION_DEFINITIONS[qualificationField].guidance}${retryGuidance}`,
-    unresolvedFields: missingFields,
+    ...questionDefinition,
+    guidance: `${questionGuidance}${retryGuidance}`,
+    unresolvedFields: pendingBindingEnd && !missingFields.includes('bindingEnds')
+      ? [...missingFields, 'bindingEnds']
+      : missingFields,
     missingStreamingPrices,
+    combinedQualificationFields: combinesOperatorAndBinding
+      ? ['operators', 'bindingEnds']
+      : [],
+    pendingBindingEnd: qualificationField === 'bindingEnds' ? pendingBindingEnd : null,
     selectionReason,
     attemptNumber,
     resumedAfterTangent: analysis.recommendationRequested !== true && currentFlow.inProgress,
@@ -217,6 +259,9 @@ const buildNextQuestionFlowState = ({
   const missingFields = Array.isArray(qualification.missingFields)
     ? qualification.missingFields.filter((field) => QUESTION_DEFINITIONS[field])
     : [];
+  if (previous.pendingBindingEnd && !missingFields.includes('bindingEnds')) {
+    missingFields.push('bindingEnds');
+  }
   const qualificationField = adaptiveQuestionPlan?.qualificationField;
   if (!qualificationField || !missingFields.length) {
     if (previous.blockedQuestionField && missingFields.includes(previous.blockedQuestionField)) {
@@ -251,6 +296,7 @@ const buildNextQuestionFlowState = ({
     blockedQuestionField,
     attempts,
     deferredFields,
+    pendingBindingEnd: previous.pendingBindingEnd,
   });
 };
 

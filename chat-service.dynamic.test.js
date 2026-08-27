@@ -7,6 +7,7 @@ const {
   createChatCompletion,
   setOpenAiTransportForTests,
 } = require('./chat-service');
+const { calculateBindingEndDate } = require('./src/binding-time');
 
 const analysisQualification = {
   peopleCount: 1,
@@ -439,6 +440,151 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(groupAnswer.qualification.bindingAppliesToAll, true);
   assert.deepEqual(groupAnswer.qualification.exactMonthlyPrices, [200, 300]);
   assert.deepEqual(groupAnswer.qualification.people.map((person) => person.currentMonthlyCost), [200, 300]);
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const payload = JSON.parse(request.input.at(-1).content);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'correct mobile binding time',
+        interactionStage: 'confirm',
+        desiredOutcome: 'Correct the current mobile subscription binding time',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'mobile subscription binding time',
+        qualification: payload.currentQualification,
+      }
+      : {
+        reply: payload.adaptiveQuestionPlan?.pendingBindingEnd
+          ? `Slutar bindningstiden för ditt nuvarande mobilabonnemang ${payload.adaptiveQuestionPlan.pendingBindingEnd.date}?`
+          : 'Då har jag uppdaterat bindningstiden.',
+        showOfferCards: false,
+        quickReplies: [],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const bindingQualification = {
+    peopleCount: 1,
+    operators: ['Tele2'],
+    bindingEnds: ['2026-12-01'],
+    mobileUsage: 'high',
+    exactMonthlyPrice: 499,
+    streamingCalculation: 'none',
+    internationalTravel: 'none',
+  };
+  const bindingCorrection = await createChatCompletion({
+    message: 'Jag har egentligen 6 månader kvar',
+    language: 'sv',
+    qualification: bindingQualification,
+  });
+  const proposedBindingDate = calculateBindingEndDate(6);
+  assert.equal(bindingCorrection.flowState.pendingBindingEnd.date, proposedBindingDate);
+  assert.equal(bindingCorrection.flowState.activeQuestionField, 'bindingEnds');
+  assert.deepEqual(bindingCorrection.qualification.bindingEnds, ['2026-12-01']);
+  assert.equal(bindingCorrection.qualification.readyForOffer, false);
+  assert.deepEqual(bindingCorrection.qualification.missingFields, ['bindingEnds']);
+  assert.equal(bindingCorrection.offerCalculation, null);
+  assert.match(bindingCorrection.reply, new RegExp(proposedBindingDate));
+  assert.deepEqual(bindingCorrection.quickReplies.map((reply) => reply.label), [
+    'Ja, det stämmer',
+    'Nej, annat datum',
+    'Vet inte',
+  ]);
+
+  const confirmedBindingCorrection = await createChatCompletion({
+    message: 'Ja, det stämmer',
+    language: 'sv',
+    qualification: bindingCorrection.qualification,
+    flowState: bindingCorrection.flowState,
+  });
+  assert.deepEqual(confirmedBindingCorrection.qualification.bindingEnds, [proposedBindingDate]);
+  assert.equal(confirmedBindingCorrection.flowState.pendingBindingEnd, null);
+  assert.equal(confirmedBindingCorrection.flowState.inProgress, false);
+
+  const exactBindingCorrection = await createChatCompletion({
+    message: 'Bindningstiden ska vara 2027-09-01 istället',
+    language: 'sv',
+    qualification: confirmedBindingCorrection.qualification,
+  });
+  assert.deepEqual(exactBindingCorrection.qualification.bindingEnds, ['2027-09-01']);
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const payload = JSON.parse(request.input.at(-1).content);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'streaming binding clarification',
+        interactionStage: 'understand',
+        desiredOutcome: 'Continue the mobile comparison',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'mobile binding time',
+        qualification: {
+          ...payload.currentQualification,
+          bindingEnds: ['Ingen bindningstid'],
+        },
+      }
+      : {
+        reply: 'Jag menar ditt nuvarande mobilabonnemang: har det bindningstid kvar?',
+        showOfferCards: false,
+        quickReplies: [],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const streamingBindingCorrection = await createChatCompletion({
+    message: 'Streamingtjänster har ingen bindningstid',
+    language: 'sv',
+    qualification: {
+      ...bindingQualification,
+      bindingEnds: [],
+    },
+    flowState: {
+      inProgress: true,
+      activeQuestionField: 'bindingEnds',
+      attempts: { bindingEnds: 1 },
+    },
+  });
+  assert.deepEqual(streamingBindingCorrection.qualification.bindingEnds, []);
+  assert.equal(streamingBindingCorrection.flowState.activeQuestionField, 'bindingEnds');
+  assert.match(streamingBindingCorrection.reply, /mobilabonnemang/i);
+  assert.deepEqual(streamingBindingCorrection.quickReplies.map((reply) => reply.label), [
+    'Ingen bindningstid',
+    'Vet inte',
+  ]);
 
   const source = fs.readFileSync(require.resolve('./chat-service'), 'utf8');
   assert.doesNotMatch(source, /fallbackReply|detectIntent|inferQualificationFromText|DEALETT_CHAT_FORCE_FALLBACK/);

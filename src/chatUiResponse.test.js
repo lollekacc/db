@@ -7,12 +7,17 @@ const {
   normalizeQuickReplies,
 } = require('./chat-ui-response');
 
-assert.deepEqual(normalizeQuickReplies(['1', '2', '3', '4', '5+', 'Ignored']), [
+assert.deepEqual(normalizeQuickReplies(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Ignored']), [
   { id: '1', label: '1', action: 'send_message' },
   { id: '2', label: '2', action: 'send_message' },
   { id: '3', label: '3', action: 'send_message' },
   { id: '4', label: '4', action: 'send_message' },
-  { id: '5', label: '5+', action: 'send_message' },
+  { id: '5', label: '5', action: 'send_message' },
+  { id: '6', label: '6', action: 'send_message' },
+  { id: '7', label: '7', action: 'send_message' },
+  { id: '8', label: '8', action: 'send_message' },
+  { id: '9', label: '9', action: 'send_message' },
+  { id: '10', label: '10', action: 'send_message' },
 ]);
 
 assert.deepEqual(normalizeQuickReplies([{
