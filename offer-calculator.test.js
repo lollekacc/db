@@ -75,6 +75,51 @@ const internationalCalls = calculate({
 assert.deepEqual(internationalCalls.options.map((option) => option.operator), ['Tre']);
 assert.equal(internationalCalls.bestMatch.operator, 'Tre');
 assert.ok(internationalCalls.bestMatch.match.matchedCapabilities.includes('local_calls_abroad'));
+assert.equal(internationalCalls.secondaryOffer.operator, 'Tele2');
+assert.equal(internationalCalls.secondaryOffer.recommendationType, 'lowest_cost_alternative');
+assert.deepEqual(internationalCalls.secondaryOffer.relaxedRequirements, [
+  'outside_eu_data',
+  'international_calls',
+]);
+
+const internationalCallsMustHave = calculate({
+  peopleCount: 2,
+  operators: Array(2).fill('Annan / ingen'),
+  bindingEnds: Array(2).fill('Ingen bindningstid'),
+  mobileUsage: 'high',
+  internationalTravel: 'outside_eu',
+  internationalUsage: 'calls',
+  needImportance: {
+    outsideEuData: 'must_have',
+    internationalCalls: 'must_have',
+  },
+});
+assert.equal(internationalCallsMustHave.bestMatch.operator, 'Tre');
+assert.equal(internationalCallsMustHave.secondaryOffer, null);
+
+const internationalCallsWithStreaming = calculate({
+  peopleCount: 1,
+  operators: ['Annan / ingen'],
+  bindingEnds: ['Ingen bindningstid'],
+  mobileUsage: 'high',
+  exactMonthlyPrice: 499,
+  streamingCalculation: 'include',
+  streamingServices: ['netflix', 'hbo', 'disney'],
+  streamingMonthlyCosts: { netflix: 179, hbo: 129, disney: 119 },
+  internationalTravel: 'outside_eu',
+  internationalUsage: 'calls',
+});
+assert.equal(internationalCallsWithStreaming.bestMatch.operator, 'Tre');
+assert.equal(internationalCallsWithStreaming.secondaryOffer.operator, 'Telia');
+assert.equal(
+  internationalCallsWithStreaming.secondaryOffer.sourcePlanId,
+  'telia-unlimited-plus-streaming-bundle'
+);
+assert.equal(
+  internationalCallsWithStreaming.secondaryOffer.recommendationType,
+  'best_streaming_alternative'
+);
+assert.ok(internationalCallsWithStreaming.secondaryOffer.streamingSavings > 0);
 
 const extraSim = calculate({
   mobileUsage: 'high',

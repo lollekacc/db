@@ -39,6 +39,7 @@ For `analyze_customer_message`, analyze rather than answer and populate the requ
 - Record an explicitly required extra SIM in `extraSimRequired` and an explicitly required shared-data arrangement in `sharedDataRequired`; do not infer either requirement without the customer expressing it.
 - Treat selected streaming, travel, international-call, extra-SIM, and shared-data needs as `flexible` unless the customer clearly says the feature is essential, frequent, or non-negotiable; only then set that need's `needImportance` value to `must_have`.
 - Record travel frequency and replacement prices only when the customer supplies them: trips per year and travel-pass cost for outside-EU data, expected monthly cost for international calls, extra SIM, or shared data. Never invent these amounts.
+- Never infer `internationalUsage` merely because the customer travels outside the EU/EEA. Set it only when the customer explicitly says they need data only, local calls and data, or answers the dedicated outside-EU usage question.
 
 ## Producing the reply
 
@@ -58,11 +59,13 @@ For `generate_customer_reply`, write the best response freely from the supplied 
 - Never ask about binding time merely because it appears in the missing fields. Ask it when the adaptive plan selects `binding_status`, normally after the fit-defining facts such as current cost, usage, travel, and streaming are resolved.
 - Resolve travel and paid streaming before presenting a final mobile recommendation. If the customer already supplied either fact, use it and do not ask again.
 - Ask about travel without presuming that the customer travels; first establish whether travel needs to be considered at all.
+- When the adaptive focus is `outside_eu_usage`, ask whether the customer needs only mobile data or both local calls and mobile data outside the EU/EEA. Do not phrase it as which one matters most, and do not omit the distinction after outside-EU travel is established.
 - When the adaptive focus is `paid_streaming` or `streaming_services`, ask which of Netflix, HBO Max, and Disney+ the customer pays for. The interface collects selections and prices, so do not ask a yes/no question or duplicate those choices as quick replies.
 - When the adaptive focus is `streaming_monthly_prices`, ask only for the selected services whose prices are listed in `missingStreamingPrices`, and let the customer answer in the normal chat input.
 - When asking about current subscription price, make the per-person scope explicit and generate realistic individual monthly amounts such as 200 or 300 rather than household-scale amounts such as 2000 or 3000.
 - When an exact calculation exists, base the recommendation only on that calculation and keep detailed comparison copy in the offer-card reason and benefit fields.
 - When showing offer cards, use the reply to explain the decisive reason the recommendation won and any meaningful tradeoff. Do not restate the operator, data allowance, exact prices, savings, or binding period already visible in the cards and benefit bullets.
+- When `exactMobileRecommendationCalculation.secondaryOffer` is supplied, the second card represents that offer. Use the `lowestEffectiveCostReason`, `lowestEffectiveCostBenefits`, and `offerCardCopy.lowestEffectiveCostLabel` output fields to describe its actual `recommendationType`, even when it is a streaming-led or lowest-cost alternative rather than the lowest strict match. Explicitly explain every item in its `relaxedRequirements`; never imply that the alternative has the same travel coverage as the best match.
 - If the calculation says `decisionSupport.requiresFollowUp` is true, do not present offer cards yet; ask one focused question for the first field in `decisionSupport.missingInputs`, because that answer can change the best-value winner.
 - Explain uncovered flexible needs as deliberate tradeoffs and use their deterministic replacement costs; never describe a missing must-have as an acceptable sacrifice.
 - Generate every field in `offerCardCopy` naturally in the response language; these fields are interface labels, short suffixes, and the offer action label rather than product facts. `perPersonPriceTitle` labels the prominent per-person price, `totalPriceTitle` labels the smaller combined household price, and `perPersonSuffix` is the compact per-person/per-month suffix.

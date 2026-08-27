@@ -135,7 +135,7 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       benefits: copy.bestMatchBenefits,
     },
     {
-      option: offerCalculation.lowestEffectiveCost,
+      option: offerCalculation.secondaryOffer || offerCalculation.lowestEffectiveCost,
       resultLabel: cardCopy.lowestEffectiveCostLabel,
       reason: copy.lowestEffectiveCostReason,
       benefits: copy.lowestEffectiveCostBenefits,

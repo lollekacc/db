@@ -635,6 +635,73 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
   };
 };
 
+const getComparableEffectiveCost = (option = {}) => {
+  if (option.effectiveMonthlyCost !== null && option.effectiveMonthlyCost !== undefined) {
+    const effective = Number(option.effectiveMonthlyCost);
+    if (Number.isFinite(effective)) return effective;
+  }
+  if (option.knownEffectiveMonthlyCost !== null && option.knownEffectiveMonthlyCost !== undefined) {
+    const known = Number(option.knownEffectiveMonthlyCost);
+    if (Number.isFinite(known)) return known;
+  }
+  return Number.POSITIVE_INFINITY;
+};
+
+const compareAlternativeCost = (left, right) => (
+  getComparableEffectiveCost(left) - getComparableEffectiveCost(right) ||
+  (Number(left.planMonthlyPrice) || 0) - (Number(right.planMonthlyPrice) || 0) ||
+  String(left.planId || '').localeCompare(String(right.planId || ''), 'sv')
+);
+
+const decorateSecondaryOffer = (option, recommendationType) => {
+  if (!option) return null;
+  const relaxedRequirements = (option.uncoveredNeeds || [])
+    .map((need) => need.key)
+    .filter((key) => ['outside_eu_data', 'international_calls'].includes(key));
+  return {
+    ...option,
+    recommendationType,
+    relaxedRequirements: [...new Set(relaxedRequirements)],
+  };
+};
+
+const selectSecondaryOffer = ({ allCandidates, selection, qualification }) => {
+  const bestMatch = selection.bestMatch;
+  if (!bestMatch) return null;
+  const isDistinct = (option) => option && option.planId !== bestMatch.planId;
+
+  if (qualification.internationalTravel !== 'outside_eu') {
+    return isDistinct(selection.lowestEffectiveCost)
+      ? decorateSecondaryOffer(selection.lowestEffectiveCost, 'lowest_effective_cost')
+      : null;
+  }
+
+  const relaxedSelection = selectBestMatches(allCandidates, {
+    ...qualification,
+    internationalTravel: 'none',
+    internationalUsage: null,
+  });
+  const relaxedAlternatives = relaxedSelection.eligible.filter(isDistinct);
+
+  if (qualification.streamingCalculation === 'include') {
+    const streamingAlternative = relaxedAlternatives
+      .filter((option) => Number(option.streamingSavings) > 0)
+      .sort((left, right) => (
+        (Number(right.streamingSavings) || 0) - (Number(left.streamingSavings) || 0) ||
+        compareAlternativeCost(left, right)
+      ))[0];
+    if (streamingAlternative) {
+      return decorateSecondaryOffer(streamingAlternative, 'best_streaming_alternative');
+    }
+  }
+
+  if (isDistinct(selection.lowestEffectiveCost)) {
+    return decorateSecondaryOffer(selection.lowestEffectiveCost, 'lowest_effective_cost');
+  }
+  const lowestCostAlternative = relaxedAlternatives.sort(compareAlternativeCost)[0];
+  return decorateSecondaryOffer(lowestCostAlternative, 'lowest_cost_alternative');
+};
+
 const calculateOfferOptions = (qualification = {}) => {
   if (!qualification.readyForOffer) {
     return {
@@ -643,6 +710,7 @@ const calculateOfferOptions = (qualification = {}) => {
       validOfferAvailable: false,
       bestMatch: null,
       lowestEffectiveCost: null,
+      secondaryOffer: null,
       options: [],
     };
   }
@@ -665,6 +733,7 @@ const calculateOfferOptions = (qualification = {}) => {
   const lowestEffectiveCost = selection.lowestEffectiveCost;
   const bestTravelFit = selection.bestTravelFit;
   const bestStreamingFit = selection.bestStreamingFit;
+  const secondaryOffer = selectSecondaryOffer({ allCandidates, selection, qualification });
 
   return {
     readyForOffer: true,
@@ -679,12 +748,14 @@ const calculateOfferOptions = (qualification = {}) => {
       : null,
     bestTravelFit: bestTravelFit ? { ...bestTravelFit, recommendationType: 'best_travel_fit' } : null,
     bestStreamingFit: bestStreamingFit ? { ...bestStreamingFit, recommendationType: 'best_streaming_fit' } : null,
+    secondaryOffer,
     options: options.map((candidate) => ({
       ...candidate,
       recommendationTypes: [
         candidate.id === bestMatch?.id ? 'best_match' : '',
         candidate.id === bestTravelFit?.id ? 'best_travel_fit' : '',
         candidate.id === bestStreamingFit?.id ? 'best_streaming_fit' : '',
+        candidate.id === secondaryOffer?.id ? secondaryOffer.recommendationType : '',
         candidate.id === lowestEffectiveCost?.id ? 'lowest_effective_cost' : '',
       ].filter(Boolean),
     })),
@@ -705,6 +776,7 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
     calculation.bestMatch,
     calculation.bestTravelFit,
     calculation.bestStreamingFit,
+    calculation.secondaryOffer,
     calculation.lowestEffectiveCost,
     ...calculation.options,
   ].filter(Boolean);

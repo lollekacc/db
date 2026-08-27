@@ -106,6 +106,13 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(result.source, 'openai');
   assert.match(result.reply, /Tele2 is the best value/);
   assert.equal(result.offerCards.length, 2);
+  assert.deepEqual(result.offerCards.map((card) => card.planId), [
+    result.offerCalculation.bestMatch.planId,
+    result.offerCalculation.secondaryOffer.planId,
+  ]);
+  assert.equal(result.offerCalculation.secondaryOffer.operator, 'Telia');
+  assert.equal(result.offerCalculation.secondaryOffer.recommendationType, 'best_streaming_alternative');
+  assert.deepEqual(result.offerCalculation.secondaryOffer.relaxedRequirements, ['outside_eu_data']);
   assert.equal(result.offerCalculation.options.length, 2);
   assert.deepEqual(
     new Set(result.offerCalculation.options.map((option) => option.operator)),
@@ -239,6 +246,140 @@ setOpenAiTransportForTests(async (_url, options) => {
   const missingPriceAnswerPayload = JSON.parse(calls.at(-1).input.at(-1).content);
   assert.equal(missingPriceAnswerPayload.adaptiveQuestionPlan.focus, 'streaming_monthly_prices');
   assert.deepEqual(missingPriceAnswerPayload.adaptiveQuestionPlan.missingStreamingPrices, ['hbo']);
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'travel outside the EU',
+        interactionStage: 'understand',
+        desiredOutcome: 'Continue the mobile comparison for travel outside the EU',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'outside EU roaming',
+        qualification: {
+          ...analysisQualification,
+          streamingCalculation: 'none',
+          streamingServices: [],
+          streamingMonthlyCosts: { netflix: null, hbo: null, disney: null, amazon: null, tv4: null },
+          internationalTravel: 'outside_eu',
+          internationalUsage: 'data',
+        },
+      }
+      : {
+        reply: 'Behöver du bara surf, eller både lokala samtal och surf utanför EU/EES?',
+        showOfferCards: false,
+        quickReplies: [{ label: 'AI-generated choice', action: 'send_message' }],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const outsideEuUsageQuestion = await createChatCompletion({
+    message: 'Jag reser utanför EU',
+    language: 'sv',
+    qualification: {
+      ...analysisQualification,
+      streamingCalculation: 'none',
+      streamingServices: [],
+      streamingMonthlyCosts: {},
+      internationalTravel: null,
+      internationalUsage: null,
+    },
+  });
+  assert.equal(outsideEuUsageQuestion.qualification.internationalTravel, 'outside_eu');
+  assert.equal(outsideEuUsageQuestion.qualification.internationalUsage, null);
+  assert.deepEqual(outsideEuUsageQuestion.qualification.missingFields, ['internationalUsage']);
+  assert.equal(outsideEuUsageQuestion.flowState.activeQuestionField, 'internationalUsage');
+  assert.deepEqual(outsideEuUsageQuestion.quickReplies.map((reply) => reply.label), [
+    'Bara surf',
+    'Lokala samtal och surf',
+  ]);
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'travel outside the EU',
+        interactionStage: 'solve',
+        desiredOutcome: 'Compare plans with local calls and data abroad',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'outside EU local calls and data',
+        qualification: {
+          ...analysisQualification,
+          ...outsideEuUsageQuestion.qualification,
+          internationalUsage: 'calls',
+        },
+      }
+      : {
+        reply: 'Då jämför jag alternativ där både lokala samtal och surf ingår.',
+        showOfferCards: false,
+        quickReplies: [],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const outsideEuCallsAnswer = await createChatCompletion({
+    message: 'Lokala samtal och surf',
+    language: 'sv',
+    qualification: outsideEuUsageQuestion.qualification,
+    flowState: outsideEuUsageQuestion.flowState,
+  });
+  assert.equal(outsideEuCallsAnswer.qualification.internationalUsage, 'calls');
+  assert.deepEqual(
+    outsideEuCallsAnswer.offerCalculation.options.map((option) => option.operator),
+    ['Tre']
+  );
+  assert.equal(outsideEuCallsAnswer.offerCalculation.secondaryOffer.operator, 'Tele2');
+  assert.equal(
+    outsideEuCallsAnswer.offerCalculation.secondaryOffer.recommendationType,
+    'lowest_cost_alternative'
+  );
+
+  const outsideEuDataAnswer = await createChatCompletion({
+    message: 'Bara surf',
+    language: 'sv',
+    qualification: outsideEuUsageQuestion.qualification,
+    flowState: outsideEuUsageQuestion.flowState,
+  });
+  assert.equal(outsideEuDataAnswer.qualification.internationalUsage, 'data');
+  assert.equal(outsideEuDataAnswer.offerCalculation.bestMatch.operator, 'Tele2');
+  assert.deepEqual(
+    new Set(outsideEuDataAnswer.offerCalculation.options.map((option) => option.operator)),
+    new Set(['Tele2', 'Tre'])
+  );
 
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);

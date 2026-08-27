@@ -228,6 +228,8 @@ const outsideEuQuestion = getAdaptiveQuestionPlan({
   qualification: outsideEu,
 });
 assert.equal(outsideEuQuestion.qualificationField, 'internationalUsage');
+assert.match(outsideEuQuestion.guidance, /local calls and mobile data/i);
+assert.match(outsideEuQuestion.guidance, /do not ask which one matters most/i);
 
 const noDiscoveryForSupport = getAdaptiveQuestionPlan({
   message: 'Min faktura är fel',

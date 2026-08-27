@@ -402,10 +402,24 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
   }
 };
 
-const cleanAiQualification = (qualification = {}) => ({
+const getExplicitInternationalUsage = (message, activeQuestionField) => {
+  const text = String(message || '').trim().toLocaleLowerCase('sv');
+  if (!text) return null;
+  const dataOnly = /(?:bara|endast|enbart|only)\s+(?:surf|data|mobildata)|(?:surf|data|mobildata)\s+(?:bara|endast|enbart|only)|(?:inga|utan|no)\s+(?:lokala\s+)?(?:samtal|calls?)/i.test(text);
+  if (dataOnly) return 'data';
+  if (/lokala?\s+samtal|\bsamtal\b|\bringa\b|\bcalls?\b|\bcalling\b/i.test(text)) return 'calls';
+  if (activeQuestionField === 'internationalUsage' && /\bb[aå]da\b|\bboth\b/i.test(text)) return 'calls';
+  const mentionsData = /\bsurf(?:a|ar)?\b|\bdata\b|mobildata/i.test(text);
+  const mentionsOutsideEu = /utanf[oö]r\s*(?:eu|ees)|utomlands|outside\s*(?:the\s*)?(?:eu|eea)|abroad/i.test(text);
+  if (mentionsData && (activeQuestionField === 'internationalUsage' || mentionsOutsideEu)) return 'data';
+  return null;
+};
+
+const cleanAiQualification = (qualification = {}, { message = '', activeQuestionField = null } = {}) => ({
   ...qualification,
   familyPriceRange: null,
   familyTotalPrice: null,
+  internationalUsage: getExplicitInternationalUsage(message, activeQuestionField),
   streamingMonthlyCosts: Object.fromEntries(Object.entries(qualification.streamingMonthlyCosts || {})
     .filter(([, value]) => Number(value) > 0)),
 });
@@ -456,6 +470,14 @@ const buildStreamingPriceWidget = (language) => {
     submitLabel: isSwedish ? 'Fortsätt' : 'Continue',
     missingPriceLabel: isSwedish ? 'Pris saknas' : 'Price missing',
   };
+};
+
+const buildInternationalUsageQuickReplies = (language) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  return (isSwedish
+    ? ['Bara surf', 'Lokala samtal och surf']
+    : ['Data only', 'Local calls and data'])
+    .map((label) => ({ label, action: 'send_message' }));
 };
 
 const hasHistoricalQuizAnswers = (context = {}) => (
@@ -599,7 +621,11 @@ const createChatCompletion = async ({
     !historicalQuizDeclined &&
     recommendationInProgress;
   const analyzedQualification = cleanAiQualification(
-    unavailableHistoricalQuizRequested ? {} : analysis.qualification
+    unavailableHistoricalQuizRequested ? {} : analysis.qualification,
+    {
+      message: latestMessage,
+      activeQuestionField: flowBase.activeQuestionField,
+    }
   );
   const analyzedPeopleCount = Number(analyzedQualification.peopleCount || qualificationBase.peopleCount) || 0;
   if (analyzedPeopleCount > 1 && analysis.groupBindingStatus === 'none_have_binding') {
@@ -667,9 +693,11 @@ const createChatCompletion = async ({
     .includes(adaptiveQuestionPlan?.qualificationField);
   const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
     ? ['1', '2', '3'].map((label) => ({ label, action: 'send_message' }))
-    : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
-      ? []
-      : answer.quickReplies);
+    : (adaptiveQuestionPlan?.qualificationField === 'internationalUsage'
+      ? buildInternationalUsageQuickReplies(normalizedLanguage)
+      : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
+        ? []
+        : answer.quickReplies));
   const embeddedWidget = showStreamingWidget
     ? buildStreamingPriceWidget(normalizedLanguage)
     : null;

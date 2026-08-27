@@ -17,7 +17,7 @@ const QUESTION_DEFINITIONS = {
   },
   internationalUsage: {
     focus: 'outside_eu_usage',
-    guidance: 'Ask whether data or calls matter most when the customer is outside the EU/EEA.',
+    guidance: 'Ask whether the customer needs only mobile data outside the EU/EEA, or both local calls and mobile data. Use those two concrete choices; do not ask which one matters most.',
   },
   streamingCalculation: {
     focus: 'paid_streaming',

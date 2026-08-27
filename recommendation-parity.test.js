@@ -138,7 +138,7 @@ const scenarios = [
       assert.deepEqual(chat.offerCalculation, quiz, `${scenario.name}: calculations differ`);
       const expectedPlanIds = new Set([
         quiz.bestMatch?.planId,
-        quiz.lowestEffectiveCost?.planId,
+        (quiz.secondaryOffer || quiz.lowestEffectiveCost)?.planId,
       ].filter(Boolean));
       assert.deepEqual(
         new Set(chat.offerCards.map((card) => card.planId)),

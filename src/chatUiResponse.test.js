@@ -101,6 +101,19 @@ const cards = buildOfferCardsFromOfferCalculation({
     pricePerPerson: 438,
     bindingMonths: 24,
   },
+  secondaryOffer: {
+    planId: 'tele2-alternative',
+    operator: 'Tele2',
+    title: 'Unlimited alternative',
+    data: 'Unlimited',
+    planMonthlyPrice: 958,
+    effectiveMonthlyCost: 758,
+    peopleCount: 2,
+    pricePerPerson: 479,
+    bindingMonths: 24,
+    recommendationType: 'lowest_cost_alternative',
+    relaxedRequirements: ['international_calls'],
+  },
 }, {
   language: 'en',
   copy: {
@@ -132,6 +145,7 @@ const cards = buildOfferCardsFromOfferCalculation({
 });
 
 assert.equal(cards.length, 2);
+assert.deepEqual(cards.map((card) => card.planId), ['telia-best', 'tele2-alternative']);
 assert.deepEqual(cards.map((card) => card.resultLabel), ['Best match', 'Lowest effective cost']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
 assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
