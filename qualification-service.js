@@ -289,6 +289,13 @@ const normalizeQualification = (qualification = {}) => {
   if (streamingCalculation === 'include' && !streamingServices.length) {
     missingFields.push('streamingServices');
   }
+  if (
+    streamingCalculation === 'include' &&
+    streamingServices.length &&
+    streamingServices.some((service) => !streamingMonthlyCosts[service])
+  ) {
+    missingFields.push('streamingPrices');
+  }
   if (!internationalTravel) missingFields.push('internationalTravel');
   if (internationalTravel === 'outside_eu' && !internationalUsage) {
     missingFields.push('internationalUsage');

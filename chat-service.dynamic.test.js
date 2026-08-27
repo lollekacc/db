@@ -97,6 +97,7 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(answerPrompt, /decisive reason/i);
   assert.match(answerPrompt, /Do not restate the operator, data allowance, exact prices/i);
   assert.match(answerPrompt, /only scripted conversational message/i);
+  assert.match(answerPrompt, /deterministic `adaptiveQuestionPlan` controls the default order/i);
   const answerPayload = JSON.parse(calls[1].input.at(-1).content);
   assert.equal(answerPayload.interactionStage, 'solve');
   assert.equal(answerPayload.customerEmotion, 'neutral');
@@ -161,12 +162,83 @@ setOpenAiTransportForTests(async (_url, options) => {
     page: { path: 'mobilabonnemang.html' },
   });
 
-  assert.equal(streamingQuestion.quickReplyMode, 'single');
-  assert.equal(streamingQuestion.quickReplySubmitLabel, '');
+  assert.deepEqual(streamingQuestion.quickReplies, []);
+  assert.equal(streamingQuestion.embeddedWidget.type, 'streaming_prices');
+  assert.equal(streamingQuestion.flowState.inProgress, true);
+  assert.equal(streamingQuestion.flowState.activeQuestionField, 'streamingServices');
+  assert.deepEqual(
+    streamingQuestion.embeddedWidget.services.map((service) => service.label),
+    ['Netflix', 'HBO Max', 'Disney+']
+  );
   assert.equal(streamingQuestion.offerCards.length, 0);
-  assert.ok(streamingQuestion.quickReplies.every((reply) => reply.action === 'send_message'));
   const streamingAnswerPayload = JSON.parse(calls.at(-1).input.at(-1).content);
   assert.equal(streamingAnswerPayload.adaptiveQuestionPlan.focus, 'streaming_services');
+  assert.equal(streamingAnswerPayload.questionFlowState.activeQuestionField, 'streamingServices');
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'streaming prices in mobile comparison',
+        interactionStage: 'understand',
+        desiredOutcome: 'Continue the mobile comparison with streaming costs',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'streaming bundles',
+        qualification: {
+          ...analysisQualification,
+          streamingCalculation: 'none',
+          streamingServices: [],
+          streamingMonthlyCosts: { netflix: null, hbo: null, disney: null, amazon: null, tv4: null },
+        },
+      }
+      : {
+        reply: 'Vad betalar du för HBO Max per månad?',
+        showOfferCards: false,
+        quickReplies: [{ label: 'Vet inte', action: 'send_message' }],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const missingStreamingPriceQuestion = await createChatCompletion({
+    message: 'Netflix: 179 kr/mån, HBO Max: Pris saknas',
+    language: 'sv',
+    qualification: result.qualification,
+    flowState: streamingQuestion.flowState,
+    context: {
+      source: 'streaming_price_widget',
+      qualificationPatch: {
+        streamingCalculation: 'include',
+        streamingServices: ['netflix', 'hbo'],
+        streamingMonthlyCosts: { netflix: 179 },
+      },
+    },
+  });
+  assert.equal(missingStreamingPriceQuestion.qualification.streamingCalculation, 'include');
+  assert.deepEqual(missingStreamingPriceQuestion.qualification.streamingServices, ['netflix', 'hbo']);
+  assert.equal(missingStreamingPriceQuestion.qualification.streamingMonthlyCosts.netflix, 179);
+  assert.deepEqual(missingStreamingPriceQuestion.qualification.missingFields, ['streamingPrices']);
+  assert.deepEqual(missingStreamingPriceQuestion.quickReplies, []);
+  assert.equal(missingStreamingPriceQuestion.embeddedWidget, null);
+  const missingPriceAnswerPayload = JSON.parse(calls.at(-1).input.at(-1).content);
+  assert.equal(missingPriceAnswerPayload.adaptiveQuestionPlan.focus, 'streaming_monthly_prices');
+  assert.deepEqual(missingPriceAnswerPayload.adaptiveQuestionPlan.missingStreamingPrices, ['hbo']);
 
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);

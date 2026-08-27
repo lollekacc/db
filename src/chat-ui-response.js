@@ -34,6 +34,32 @@ const normalizeQuickReplies = (quickReplies = []) => Array.isArray(quickReplies)
   ? quickReplies.map(normalizeQuickReply).filter(Boolean).slice(0, MAX_QUICK_REPLIES)
   : [];
 
+const normalizeEmbeddedWidget = (widget) => {
+  if (!widget || widget.type !== 'streaming_prices') return null;
+  const allowedServices = new Set(['netflix', 'hbo', 'disney']);
+  const services = Array.isArray(widget.services)
+    ? widget.services.map((service) => {
+      const id = String(service?.id || '').trim().toLowerCase();
+      const label = String(service?.label || '').trim();
+      if (!allowedServices.has(id) || !label) return null;
+      return {
+        id,
+        label: label.slice(0, 40),
+        priceLabel: String(service?.priceLabel || '').trim().slice(0, 50),
+        pricePlaceholder: String(service?.pricePlaceholder || '').trim().slice(0, 30),
+      };
+    }).filter(Boolean)
+    : [];
+  if (!services.length) return null;
+  return {
+    type: 'streaming_prices',
+    services,
+    noneLabel: String(widget.noneLabel || '').trim().slice(0, 80),
+    submitLabel: String(widget.submitLabel || '').trim().slice(0, 40),
+    missingPriceLabel: String(widget.missingPriceLabel || '').trim().slice(0, 60),
+  };
+};
+
 const normalizeOfferCard = (card, index) => {
   if (!card || typeof card !== 'object') return null;
   const operator = String(card.operator || '').trim();
@@ -159,18 +185,20 @@ const buildChatResponse = ({
   quickReplyMode = 'single',
   quickReplySubmitLabel = '',
   offerCards = [],
+  embeddedWidget = null,
 }) => ({
   message: String(message || ''),
   quickReplies: normalizeQuickReplies(quickReplies),
   quickReplyMode: quickReplyMode === 'multiple' ? 'multiple' : 'single',
   quickReplySubmitLabel: String(quickReplySubmitLabel || '').trim().slice(0, 40),
   offerCards: normalizeOfferCards(offerCards),
-  embeddedWidget: null,
+  embeddedWidget: normalizeEmbeddedWidget(embeddedWidget),
 });
 
 module.exports = {
   buildChatResponse,
   buildOfferCardsFromOfferCalculation,
   normalizeOfferCards,
+  normalizeEmbeddedWidget,
   normalizeQuickReplies,
 };

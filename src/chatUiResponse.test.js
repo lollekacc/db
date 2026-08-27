@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const {
   buildChatResponse,
   buildOfferCardsFromOfferCalculation,
+  normalizeEmbeddedWidget,
   normalizeQuickReplies,
 } = require('./chat-ui-response');
 
@@ -31,6 +32,24 @@ assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
   offerCards: [],
   embeddedWidget: null,
 });
+
+const streamingWidget = {
+  type: 'streaming_prices',
+  services: [
+    { id: 'netflix', label: 'Netflix', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
+    { id: 'hbo', label: 'HBO Max', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
+    { id: 'disney', label: 'Disney+', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
+    { id: 'unknown', label: 'Unknown', priceLabel: 'Price', pricePlaceholder: 'SEK' },
+  ],
+  noneLabel: 'Inga av dessa',
+  submitLabel: 'Fortsätt',
+  missingPriceLabel: 'Pris saknas',
+};
+assert.equal(normalizeEmbeddedWidget(streamingWidget).services.length, 3);
+assert.deepEqual(buildChatResponse({
+  message: 'Vilka tjänster betalar du för?',
+  embeddedWidget: streamingWidget,
+}).embeddedWidget, normalizeEmbeddedWidget(streamingWidget));
 
 assert.deepEqual(buildChatResponse({
   message: 'Vilka streamingtjänster betalar du för?',

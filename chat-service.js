@@ -9,7 +9,11 @@ const {
   buildOfferCardsFromOfferCalculation,
 } = require('./src/chat-ui-response');
 const { mergeQualificationState } = require('./src/conversation-state');
-const { getAdaptiveQuestionPlan } = require('./src/adaptive-question-policy');
+const {
+  buildNextQuestionFlowState,
+  getAdaptiveQuestionPlan,
+  normalizeQuestionFlowState,
+} = require('./src/adaptive-question-policy');
 
 const OPENAI_ENDPOINT = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = 'gpt-5.6-terra';
@@ -412,6 +416,48 @@ const normalizeChatQualification = (qualification = {}) => normalizeQualificatio
   familyTotalPrice: null,
 });
 
+const applyStreamingWidgetPatch = (qualification, context = {}) => {
+  if (context?.source !== 'streaming_price_widget') return qualification;
+  const patch = context.qualificationPatch;
+  if (!patch || typeof patch !== 'object') return qualification;
+
+  if (patch.streamingCalculation === 'none') {
+    return normalizeChatQualification({
+      ...qualification,
+      streamingCalculation: 'none',
+      streamingServices: [],
+      streamingMonthlyCosts: {},
+    });
+  }
+
+  if (patch.streamingCalculation !== 'include' || !Array.isArray(patch.streamingServices)) {
+    return qualification;
+  }
+  return normalizeChatQualification({
+    ...qualification,
+    streamingCalculation: 'include',
+    streamingServices: patch.streamingServices,
+    streamingMonthlyCosts: patch.streamingMonthlyCosts,
+  });
+};
+
+const buildStreamingPriceWidget = (language) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  const priceLabel = isSwedish ? 'Pris per månad' : 'Monthly price';
+  const pricePlaceholder = isSwedish ? 'kr/mån' : 'SEK/month';
+  return {
+    type: 'streaming_prices',
+    services: [
+      { id: 'netflix', label: 'Netflix', priceLabel, pricePlaceholder },
+      { id: 'hbo', label: 'HBO Max', priceLabel, pricePlaceholder },
+      { id: 'disney', label: 'Disney+', priceLabel, pricePlaceholder },
+    ],
+    noneLabel: isSwedish ? 'Inga av dessa' : 'None of these',
+    submitLabel: isSwedish ? 'Fortsätt' : 'Continue',
+    missingPriceLabel: isSwedish ? 'Pris saknas' : 'Price missing',
+  };
+};
+
 const hasHistoricalQuizAnswers = (context = {}) => (
   context?.quizHandoff !== true &&
   context?.quizAnswersStatus === 'unconfirmed' &&
@@ -463,6 +509,7 @@ const generateAnswer = ({
   websiteKnowledge,
   context,
   adaptiveQuestionPlan,
+  questionFlowState,
 }) => callOpenAi({
   schemaName: 'dealett_adviser_reply',
   schema: answerSchema,
@@ -488,6 +535,7 @@ const generateAnswer = ({
         qualification,
         missingQualificationFields: qualification.missingFields,
         adaptiveQuestionPlan,
+        questionFlowState,
         priorSiteSelection: cart,
         websiteKnowledge,
         mobilePlanCatalog: getPlanCatalog(),
@@ -504,6 +552,7 @@ const createChatCompletion = async ({
   page = {},
   cart = [],
   qualification = {},
+  flowState = {},
   context = {},
 }) => {
   const latestMessage = String(message || '').trim();
@@ -518,7 +567,11 @@ const createChatCompletion = async ({
     ? requestedLanguage
     : 'sv';
   const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
-  const currentQualification = normalizeChatQualification(qualification);
+  const incomingFlowState = normalizeQuestionFlowState(flowState);
+  const currentQualification = applyStreamingWidgetPatch(
+    normalizeChatQualification(qualification),
+    context
+  );
   const analysis = await analyzeCustomerMessage({
     message: latestMessage,
     messages,
@@ -535,7 +588,12 @@ const createChatCompletion = async ({
   const qualificationBase = analysis.resetRequested || historicalQuizDeclined
     ? createEmptyQualification()
     : (historicalQuizAccepted ? getHistoricalQuizQualification(context) : currentQualification);
-  const recommendationInProgress = analysis.recommendationRequested;
+  const flowBase = analysis.resetRequested
+    ? normalizeQuestionFlowState({})
+    : incomingFlowState;
+  const recommendationInProgress = analysis.interactionStage !== 'close' && (
+    analysis.recommendationRequested || flowBase.inProgress || context?.quizHandoff === true
+  );
   const quizConsentRequired = historicalQuizAvailable &&
     !historicalQuizAccepted &&
     !historicalQuizDeclined &&
@@ -552,10 +610,21 @@ const createChatCompletion = async ({
     qualificationBase,
     quizConsentRequired ? {} : analyzedQualification
   );
-  const nextQualification = normalizeChatQualification(mergedQualification);
-  const adaptiveQuestionPlan = getAdaptiveQuestionPlan({
-    message: latestMessage,
-    analysis,
+  const nextQualification = applyStreamingWidgetPatch(
+    normalizeChatQualification(mergedQualification),
+    context
+  );
+  const adaptiveQuestionPlan = quizConsentRequired
+    ? null
+    : getAdaptiveQuestionPlan({
+      message: latestMessage,
+      analysis,
+      qualification: nextQualification,
+      flowState: flowBase,
+    });
+  const nextFlowState = buildNextQuestionFlowState({
+    previousFlowState: flowBase,
+    adaptiveQuestionPlan,
     qualification: nextQualification,
   });
   const offerCalculation = recommendationInProgress &&
@@ -586,6 +655,7 @@ const createChatCompletion = async ({
     offerCalculation,
     websiteKnowledge,
     adaptiveQuestionPlan,
+    questionFlowState: nextFlowState,
   });
   const offerCards = offerCalculation && answer.showOfferCards
     ? buildOfferCardsFromOfferCalculation(offerCalculation, {
@@ -593,15 +663,23 @@ const createChatCompletion = async ({
       copy: answer,
     })
     : [];
+  const showStreamingWidget = ['streamingCalculation', 'streamingServices']
+    .includes(adaptiveQuestionPlan?.qualificationField);
   const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
     ? ['1', '2', '3'].map((label) => ({ label, action: 'send_message' }))
-    : answer.quickReplies;
+    : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
+      ? []
+      : answer.quickReplies);
+  const embeddedWidget = showStreamingWidget
+    ? buildStreamingPriceWidget(normalizedLanguage)
+    : null;
   const ui = buildChatResponse({
     message: answer.reply,
     quickReplies,
     quickReplyMode: 'single',
     quickReplySubmitLabel: '',
     offerCards,
+    embeddedWidget,
   });
   return {
     reply: ui.message,
@@ -609,13 +687,14 @@ const createChatCompletion = async ({
     language: normalizedLanguage,
     topic: analysis.topic,
     qualification: nextQualification,
+    flowState: nextFlowState,
     offerCalculation,
     quickReplies: ui.quickReplies,
     quickReplyMode: ui.quickReplyMode,
     quickReplySubmitLabel: ui.quickReplySubmitLabel,
     suggestions: ui.quickReplies.map((reply) => reply.label),
     offerCards: ui.offerCards,
-    embeddedWidget: null,
+    embeddedWidget: ui.embeddedWidget,
     quizAnswersStatus: context?.quizHandoff === true || historicalQuizAccepted
       ? 'confirmed'
       : (historicalQuizDeclined ? 'ignored' : (historicalQuizAvailable ? 'unconfirmed' : 'none')),
