@@ -586,6 +586,95 @@ setOpenAiTransportForTests(async (_url, options) => {
     'Vet inte',
   ]);
 
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
+    const payload = JSON.parse(request.input.at(-1).content);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'mobile plan comparison for four people',
+        interactionStage: 'understand',
+        desiredOutcome: 'Compare mobile plans for four people',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'family mobile plans',
+        qualification: payload.currentQualification,
+      }
+      : {
+        reply: payload.adaptiveQuestionPlan
+          ? 'Vilken operatör har var och en och när slutar respektive bindningstid?'
+          : 'Tack, då har jag uppgifterna för alla fyra.',
+        showOfferCards: false,
+        quickReplies: [
+          { label: 'Ingen har bindningstid', action: 'send_message' },
+          { label: 'Jag vet inte bindningstiderna', action: 'send_message' },
+        ],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const fourPersonQualification = {
+    peopleCount: 4,
+    operators: [],
+    bindingEnds: [],
+    mobileUsage: 'high',
+    exactMonthlyPrices: [300, 300, 200, 200],
+    streamingCalculation: 'none',
+    internationalTravel: 'none',
+  };
+  const operatorBindingQuestion = await createChatCompletion({
+    message: 'Jag vill ha abonnemang för 4 personer',
+    language: 'sv',
+    qualification: fourPersonQualification,
+  });
+  assert.equal(operatorBindingQuestion.embeddedWidget?.type, 'operator_binding');
+  assert.equal(operatorBindingQuestion.embeddedWidget?.peopleCount, 4);
+  assert.deepEqual(operatorBindingQuestion.quickReplies, []);
+
+  const operatorBindingAnswer = await createChatCompletion({
+    message: 'Person 1: Tele2, ingen bindningstid; Person 2: Telia, 2027-01-15; Person 3: Tre, vet inte; Person 4: Hallon, ingen bindningstid',
+    language: 'sv',
+    qualification: operatorBindingQuestion.qualification,
+    flowState: operatorBindingQuestion.flowState,
+    context: {
+      source: 'operator_binding_widget',
+      qualificationPatch: {
+        operators: ['Tele2', 'Telia', 'Tre', 'Hallon'],
+        bindingEnds: ['Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid'],
+      },
+    },
+  });
+  assert.deepEqual(operatorBindingAnswer.qualification.operators, ['Tele2', 'Telia', 'Tre', 'Hallon']);
+  assert.deepEqual(operatorBindingAnswer.qualification.bindingEnds, [
+    'Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid',
+  ]);
+  assert.deepEqual(
+    operatorBindingAnswer.qualification.people.map((person) => person.currentOperator),
+    ['Tele2', 'Telia', 'Tre', 'Hallon']
+  );
+  assert.deepEqual(
+    operatorBindingAnswer.qualification.people.map((person) => person.bindingEnd),
+    ['Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid']
+  );
+  assert.equal(operatorBindingAnswer.qualification.missingFields.includes('operators'), false);
+  assert.equal(operatorBindingAnswer.qualification.missingFields.includes('bindingEnds'), false);
+  assert.notEqual(operatorBindingAnswer.embeddedWidget?.type, 'operator_binding');
+
   const source = fs.readFileSync(require.resolve('./chat-service'), 'utf8');
   assert.doesNotMatch(source, /fallbackReply|detectIntent|inferQualificationFromText|DEALETT_CHAT_FORCE_FALLBACK/);
   console.log('dynamic chat tests passed');

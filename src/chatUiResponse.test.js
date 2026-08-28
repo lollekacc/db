@@ -56,6 +56,37 @@ assert.deepEqual(buildChatResponse({
   embeddedWidget: streamingWidget,
 }).embeddedWidget, normalizeEmbeddedWidget(streamingWidget));
 
+const operatorBindingWidget = {
+  type: 'operator_binding',
+  peopleCount: 4,
+  operators: ['Telia', 'Tele2', 'Telenor', 'Tre', 'Annan / ingen'],
+  personLabel: 'Person',
+  ofLabel: 'av',
+  operatorLabel: 'Nuvarande operatör',
+  operatorPlaceholder: 'Välj operatör',
+  bindingLabel: 'Bindningstid',
+  bindingPlaceholder: 'Välj bindningsstatus',
+  bindingOptions: [
+    { value: 'Ingen bindningstid', label: 'Ingen bindningstid' },
+    { value: 'Vet inte', label: 'Vet inte' },
+    { value: 'date', label: 'Välj slutdatum' },
+  ],
+  dateLabel: 'Slutdatum',
+  nextLabel: 'Nästa person',
+  submitLabel: 'Fortsätt',
+  requiredLabel: 'Välj ett alternativ',
+};
+assert.deepEqual(buildChatResponse({
+  message: 'Ange operatör och bindningstid för varje person.',
+  quickReplies: ['Ingen har bindningstid'],
+  embeddedWidget: operatorBindingWidget,
+}).embeddedWidget, normalizeEmbeddedWidget(operatorBindingWidget));
+assert.equal(normalizeEmbeddedWidget(operatorBindingWidget).peopleCount, 4);
+assert.equal(normalizeEmbeddedWidget({
+  ...operatorBindingWidget,
+  bindingOptions: [{ value: 'bad', label: 'Bad' }],
+}), null);
+
 assert.deepEqual(buildChatResponse({
   message: 'Vilka streamingtjänster betalar du för?',
   quickReplyMode: 'multiple',

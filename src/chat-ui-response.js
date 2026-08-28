@@ -34,8 +34,7 @@ const normalizeQuickReplies = (quickReplies = []) => Array.isArray(quickReplies)
   ? quickReplies.map(normalizeQuickReply).filter(Boolean).slice(0, MAX_QUICK_REPLIES)
   : [];
 
-const normalizeEmbeddedWidget = (widget) => {
-  if (!widget || widget.type !== 'streaming_prices') return null;
+const normalizeStreamingWidget = (widget) => {
   const allowedServices = new Set(['netflix', 'hbo', 'disney']);
   const services = Array.isArray(widget.services)
     ? widget.services.map((service) => {
@@ -58,6 +57,49 @@ const normalizeEmbeddedWidget = (widget) => {
     submitLabel: String(widget.submitLabel || '').trim().slice(0, 40),
     missingPriceLabel: String(widget.missingPriceLabel || '').trim().slice(0, 60),
   };
+};
+
+const normalizeOperatorBindingWidget = (widget) => {
+  const peopleCount = Math.max(1, Math.min(Number(widget.peopleCount) || 1, 10));
+  const operators = Array.isArray(widget.operators)
+    ? [...new Set(widget.operators
+      .map((operator) => String(operator || '').trim().slice(0, 40))
+      .filter(Boolean))].slice(0, 20)
+    : [];
+  const allowedBindingValues = new Set(['Ingen bindningstid', 'Vet inte', 'date']);
+  const bindingOptions = Array.isArray(widget.bindingOptions)
+    ? widget.bindingOptions.map((option) => {
+      const value = String(option?.value || '').trim();
+      const label = String(option?.label || '').trim();
+      return allowedBindingValues.has(value) && label
+        ? { value, label: label.slice(0, 60) }
+        : null;
+    }).filter(Boolean)
+    : [];
+  if (!operators.length || bindingOptions.length !== 3) return null;
+  return {
+    type: 'operator_binding',
+    peopleCount,
+    operators,
+    bindingOptions,
+    personLabel: String(widget.personLabel || '').trim().slice(0, 30),
+    ofLabel: String(widget.ofLabel || '').trim().slice(0, 20),
+    operatorLabel: String(widget.operatorLabel || '').trim().slice(0, 50),
+    operatorPlaceholder: String(widget.operatorPlaceholder || '').trim().slice(0, 50),
+    bindingLabel: String(widget.bindingLabel || '').trim().slice(0, 50),
+    bindingPlaceholder: String(widget.bindingPlaceholder || '').trim().slice(0, 50),
+    dateLabel: String(widget.dateLabel || '').trim().slice(0, 40),
+    nextLabel: String(widget.nextLabel || '').trim().slice(0, 40),
+    submitLabel: String(widget.submitLabel || '').trim().slice(0, 40),
+    requiredLabel: String(widget.requiredLabel || '').trim().slice(0, 60),
+  };
+};
+
+const normalizeEmbeddedWidget = (widget) => {
+  if (!widget || typeof widget !== 'object') return null;
+  if (widget.type === 'streaming_prices') return normalizeStreamingWidget(widget);
+  if (widget.type === 'operator_binding') return normalizeOperatorBindingWidget(widget);
+  return null;
 };
 
 const normalizeOfferCard = (card, index) => {

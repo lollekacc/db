@@ -164,7 +164,13 @@ const normalizeQualification = (qualification = {}) => {
     ? qualification.operators.map(normalizeOperator).filter(Boolean).slice(0, peopleCount || 10)
     : [];
   const peopleOperators = rawPeopleInput
-    .map((person) => normalizeOperator(person?.currentOperator || person?.operator))
+    .map((person) => {
+      const operator = normalizeOperator(person?.currentOperator || person?.operator);
+      const isGeneratedEmptyOperator = operator === 'Annan / ingen' &&
+        person?.existingCustomer === false &&
+        listedOperators.length === 0;
+      return isGeneratedEmptyOperator ? null : operator;
+    })
     .filter(Boolean)
     .slice(0, peopleCount || 10);
   const rawOperators = peopleCount && listedOperators.length < peopleCount && peopleOperators.length >= peopleCount

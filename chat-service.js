@@ -11,6 +11,7 @@ const {
 const { mergeQualificationState } = require('./src/conversation-state');
 const {
   applyBindingTimeInput,
+  isValidIsoDate,
   isStreamingOnlyBindingMessage,
 } = require('./src/binding-time');
 const {
@@ -460,6 +461,47 @@ const applyStreamingWidgetPatch = (qualification, context = {}) => {
   });
 };
 
+const applyOperatorBindingWidgetPatch = (qualification, context = {}) => {
+  if (context?.source !== 'operator_binding_widget') return qualification;
+  const patch = context.qualificationPatch;
+  const peopleCount = Number(qualification.peopleCount);
+  if (
+    !patch || typeof patch !== 'object' ||
+    !Number.isInteger(peopleCount) || peopleCount < 1 || peopleCount > 10 ||
+    !Array.isArray(patch.operators) || patch.operators.length !== peopleCount ||
+    !Array.isArray(patch.bindingEnds) || patch.bindingEnds.length !== peopleCount
+  ) {
+    return qualification;
+  }
+
+  const operators = patch.operators.map((operator) => String(operator || '').trim().slice(0, 40));
+  const bindingEnds = patch.bindingEnds.map((bindingEnd) => String(bindingEnd || '').trim());
+  const validBindings = bindingEnds.every((bindingEnd) => (
+    bindingEnd === 'Ingen bindningstid' ||
+    bindingEnd === 'Vet inte' ||
+    isValidIsoDate(bindingEnd)
+  ));
+  if (operators.some((operator) => !operator) || !validBindings) return qualification;
+
+  return normalizeChatQualification({
+    ...qualification,
+    operators,
+    bindingEnds,
+    people: Array.from({ length: peopleCount }, (_, index) => ({
+      ...(Array.isArray(qualification.people) ? qualification.people[index] : {}),
+      currentOperator: operators[index],
+      bindingEnd: bindingEnds[index],
+      existingCustomer: operators[index] !== 'Annan / ingen',
+    })),
+    operatorAppliesToAll: peopleCount > 1 && new Set(operators).size === 1,
+    bindingAppliesToAll: peopleCount > 1 && new Set(bindingEnds).size === 1,
+  });
+};
+
+const applyWidgetQualificationPatch = (qualification, context = {}) => (
+  applyOperatorBindingWidgetPatch(applyStreamingWidgetPatch(qualification, context), context)
+);
+
 const buildStreamingPriceWidget = (language) => {
   const isSwedish = String(language || '').toLowerCase().startsWith('sv');
   const priceLabel = isSwedish ? 'Pris per månad' : 'Monthly price';
@@ -474,6 +516,43 @@ const buildStreamingPriceWidget = (language) => {
     noneLabel: isSwedish ? 'Inga av dessa' : 'None of these',
     submitLabel: isSwedish ? 'Fortsätt' : 'Continue',
     missingPriceLabel: isSwedish ? 'Pris saknas' : 'Price missing',
+  };
+};
+
+const buildOperatorBindingWidget = (language, peopleCount) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  return {
+    type: 'operator_binding',
+    peopleCount: Math.max(1, Math.min(Number(peopleCount) || 1, 10)),
+    operators: [
+      'Telia', 'Tele2', 'Telenor', 'Tre', 'Comviq', 'Hallon', 'Vimla',
+      'Fello', 'Chilimobil', 'Fibio', 'Tellus', 'MyBeat', 'Telness',
+      'Lycamobile', 'Annan / ingen',
+    ],
+    personLabel: isSwedish ? 'Person' : 'Person',
+    ofLabel: isSwedish ? 'av' : 'of',
+    operatorLabel: isSwedish ? 'Nuvarande operatör' : 'Current operator',
+    operatorPlaceholder: isSwedish ? 'Välj operatör' : 'Choose operator',
+    bindingLabel: isSwedish ? 'Bindningstid' : 'Binding period',
+    bindingPlaceholder: isSwedish ? 'Välj bindningsstatus' : 'Choose binding status',
+    bindingOptions: [
+      {
+        value: 'Ingen bindningstid',
+        label: isSwedish ? 'Ingen bindningstid' : 'No binding period',
+      },
+      {
+        value: 'Vet inte',
+        label: isSwedish ? 'Vet inte' : "I don't know",
+      },
+      {
+        value: 'date',
+        label: isSwedish ? 'Välj slutdatum' : 'Choose end date',
+      },
+    ],
+    dateLabel: isSwedish ? 'Slutdatum' : 'End date',
+    nextLabel: isSwedish ? 'Nästa person' : 'Next person',
+    submitLabel: isSwedish ? 'Fortsätt' : 'Continue',
+    requiredLabel: isSwedish ? 'Välj ett alternativ' : 'Choose an option',
   };
 };
 
@@ -607,7 +686,7 @@ const createChatCompletion = async ({
     : 'sv';
   const historicalQuizAvailable = hasHistoricalQuizAnswers(context);
   const incomingFlowState = normalizeQuestionFlowState(flowState);
-  const currentQualification = applyStreamingWidgetPatch(
+  const currentQualification = applyWidgetQualificationPatch(
     normalizeChatQualification(qualification),
     context
   );
@@ -658,7 +737,7 @@ const createChatCompletion = async ({
     flowState: flowBase,
     message: latestMessage,
   });
-  const normalizedNextQualification = applyStreamingWidgetPatch(
+  const normalizedNextQualification = applyWidgetQualificationPatch(
     normalizeChatQualification(bindingInput.qualification),
     context
   );
@@ -725,6 +804,9 @@ const createChatCompletion = async ({
     : [];
   const showStreamingWidget = ['streamingCalculation', 'streamingServices']
     .includes(adaptiveQuestionPlan?.qualificationField);
+  const showOperatorBindingWidget = adaptiveQuestionPlan?.focus === 'current_operator_and_binding' &&
+    adaptiveQuestionPlan?.combinedQualificationFields?.includes('operators') &&
+    adaptiveQuestionPlan?.combinedQualificationFields?.includes('bindingEnds');
   const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
     ? Array.from({ length: 10 }, (_, index) => ({
       label: String(index + 1),
@@ -734,12 +816,12 @@ const createChatCompletion = async ({
       ? buildInternationalUsageQuickReplies(normalizedLanguage)
       : (adaptiveQuestionPlan?.qualificationField === 'bindingEnds'
         ? buildBindingQuickReplies(normalizedLanguage, adaptiveQuestionPlan.pendingBindingEnd)
-        : (showStreamingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
+        : (showStreamingWidget || showOperatorBindingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
           ? []
           : answer.quickReplies)));
-  const embeddedWidget = showStreamingWidget
-    ? buildStreamingPriceWidget(normalizedLanguage)
-    : null;
+  const embeddedWidget = showOperatorBindingWidget
+    ? buildOperatorBindingWidget(normalizedLanguage, nextQualification.peopleCount)
+    : (showStreamingWidget ? buildStreamingPriceWidget(normalizedLanguage) : null);
   const ui = buildChatResponse({
     message: answer.reply,
     quickReplies,

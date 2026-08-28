@@ -100,6 +100,7 @@ const scenarios = [
     },
     qualification: { peopleCount: 1 },
     expectedFocus: 'current_operator_and_binding',
+    expectedWidget: 'operator_binding',
     answer: {
       reply: 'Vilken mobiloperatör har du idag, och när upphör bindningstiden för det mobilabonnemanget?',
       quickReplies: [],
@@ -211,8 +212,8 @@ setOpenAiTransportForTests(async (_url, options) => {
 
     assert.match(analysisPrompt, /A greeting alone is not a recommendation request/i);
     assert.match(analysisPrompt, /desiredOutcome.*what the customer wants now/i);
-    assert.match(answerPrompt, /write the best response freely/i);
-    assert.match(answerPrompt, /cannot perform a requested action/i);
+    assert.match(answerPrompt, /write naturally within all supplied constraints/i);
+    assert.match(answerPrompt, /When Dealett cannot perform an action/i);
     assert.equal(answerPayload.interactionStage, scenario.analysis.interactionStage);
     assert.equal(answerPayload.desiredOutcome, scenario.analysis.desiredOutcome);
     assert.equal(answerPayload.customerEmotion, scenario.analysis.customerEmotion);
@@ -222,6 +223,11 @@ setOpenAiTransportForTests(async (_url, options) => {
     }
     if (scenario.expectedQuickReplies) {
       assert.deepEqual(result.quickReplies.map((reply) => reply.label), scenario.expectedQuickReplies);
+    }
+    if (scenario.expectedWidget) {
+      assert.equal(result.embeddedWidget?.type, scenario.expectedWidget);
+      assert.equal(result.embeddedWidget?.peopleCount, scenario.qualification.peopleCount);
+      assert.deepEqual(result.quickReplies, []);
     }
     assert.equal(result.reply, scenario.answer.reply);
     assert.equal(result.offerCalculation, null);
