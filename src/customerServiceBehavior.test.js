@@ -101,6 +101,7 @@ const scenarios = [
     qualification: { peopleCount: 1 },
     expectedFocus: 'current_operator_and_binding',
     expectedWidget: 'operator_binding',
+    expectedQuickReplies: ['Telia', 'Tele2', 'Telenor', 'Tre', 'Annan'],
     answer: {
       reply: 'Vilken mobiloperatör har du idag, och när upphör bindningstiden för det mobilabonnemanget?',
       quickReplies: [],
@@ -227,7 +228,7 @@ setOpenAiTransportForTests(async (_url, options) => {
     if (scenario.expectedWidget) {
       assert.equal(result.embeddedWidget?.type, scenario.expectedWidget);
       assert.equal(result.embeddedWidget?.peopleCount, scenario.qualification.peopleCount);
-      assert.deepEqual(result.quickReplies, []);
+      if (!scenario.expectedQuickReplies) assert.deepEqual(result.quickReplies, []);
     }
     assert.equal(result.reply, scenario.answer.reply);
     assert.equal(result.offerCalculation, null);

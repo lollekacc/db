@@ -141,7 +141,7 @@ const bindingOverlap = calculate({
     keepNumberPreference: 'scheduled_port',
   }],
   operators: ['Tele2'],
-  bindingEnds: ['Vet inte'],
+  bindingEnds: ['2027-08-27'],
   exactMonthlyPrice: null,
   exactMonthlyPrices: [],
   priceRange: null,

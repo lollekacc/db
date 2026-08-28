@@ -88,6 +88,14 @@ const noBindingCorrection = applyBindingTimeInput({
 });
 assert.deepEqual(noBindingCorrection.qualification.bindingEnds, ['Ingen bindningstid']);
 
+const unknownBinding = applyBindingTimeInput({
+  qualification,
+  flowState: { activeQuestionField: 'bindingEnds' },
+  message: 'Vet inte',
+});
+assert.deepEqual(unknownBinding.qualification.bindingEnds, []);
+assert.equal(unknownBinding.qualification.people[0].bindingEnd, null);
+
 const ignoredStreaming = applyBindingTimeInput({
   qualification,
   flowState: { activeQuestionField: 'bindingEnds' },

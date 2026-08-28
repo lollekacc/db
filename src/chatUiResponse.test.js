@@ -28,6 +28,10 @@ assert.deepEqual(normalizeQuickReplies([{
   label: 'Open support',
   action: 'open_contact',
 }]);
+assert.equal(normalizeQuickReplies([{
+  label: 'Hitta bindningstid',
+  action: 'open_binding_lookup',
+}])[0].action, 'open_binding_lookup');
 
 assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
   message: 'Dynamic answer',
@@ -68,7 +72,7 @@ const operatorBindingWidget = {
   bindingPlaceholder: 'Välj bindningsstatus',
   bindingOptions: [
     { value: 'Ingen bindningstid', label: 'Ingen bindningstid' },
-    { value: 'Vet inte', label: 'Vet inte' },
+    { value: 'lookup', label: 'Hitta bindningstid' },
     { value: 'date', label: 'Välj slutdatum' },
   ],
   dateLabel: 'Slutdatum',
@@ -86,6 +90,26 @@ assert.equal(normalizeEmbeddedWidget({
   ...operatorBindingWidget,
   bindingOptions: [{ value: 'bad', label: 'Bad' }],
 }), null);
+
+const bindingLookupWidget = {
+  type: 'binding_lookup',
+  title: 'Hitta bindningstid',
+  description: 'Logga in hos operatören och kom tillbaka med slutdatumet.',
+  operators: [{
+    name: 'Tele2',
+    portalName: 'Mitt Tele2',
+    loginUrl: 'https://www.tele2.se/mitt-tele2',
+    hint: 'Öppna abonnemang.',
+  }],
+  openLabel: 'Öppna här',
+  dateLabel: 'Slutdatum',
+  noBindingLabel: 'Ingen bindningstid',
+  submitLabel: 'Skicka datum',
+};
+assert.deepEqual(buildChatResponse({
+  message: 'Vi hjälper dig hitta bindningstiden.',
+  embeddedWidget: bindingLookupWidget,
+}).embeddedWidget, normalizeEmbeddedWidget(bindingLookupWidget));
 
 assert.deepEqual(buildChatResponse({
   message: 'Vilka streamingtjänster betalar du för?',

@@ -233,7 +233,7 @@ const applyBindingTimeInput = ({
 
   if (isUnknown(message)) {
     return {
-      qualification: replaceBindingValue(qualification, 'Vet inte', { targetIndex, applyToAll }),
+      qualification: clearBindingValue(qualification, { targetIndex, applyToAll }),
       flowState: { ...flowState, pendingBindingEnd: null },
     };
   }

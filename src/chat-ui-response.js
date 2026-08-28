@@ -18,7 +18,7 @@ const normalizeQuickReply = (reply, index) => {
   if (!label) return null;
   const allowedActions = [
     'send_message', 'open_coverage_map', 'open_broadband_page',
-    'open_broadband_address', 'open_cart', 'open_account', 'open_contact',
+    'open_broadband_address', 'open_binding_lookup', 'open_cart', 'open_account', 'open_contact',
   ];
   const action = typeof reply === 'object' && allowedActions.includes(reply?.action)
     ? reply.action
@@ -66,7 +66,7 @@ const normalizeOperatorBindingWidget = (widget) => {
       .map((operator) => String(operator || '').trim().slice(0, 40))
       .filter(Boolean))].slice(0, 20)
     : [];
-  const allowedBindingValues = new Set(['Ingen bindningstid', 'Vet inte', 'date']);
+  const allowedBindingValues = new Set(['Ingen bindningstid', 'lookup', 'date']);
   const bindingOptions = Array.isArray(widget.bindingOptions)
     ? widget.bindingOptions.map((option) => {
       const value = String(option?.value || '').trim();
@@ -95,10 +95,38 @@ const normalizeOperatorBindingWidget = (widget) => {
   };
 };
 
+const normalizeBindingLookupWidget = (widget) => {
+  const operators = Array.isArray(widget.operators)
+    ? widget.operators.map((operator) => {
+      const name = String(operator?.name || '').trim();
+      const loginUrl = String(operator?.loginUrl || '').trim();
+      if (!name || !/^https:\/\//i.test(loginUrl)) return null;
+      return {
+        name: name.slice(0, 40),
+        loginUrl: loginUrl.slice(0, 240),
+        portalName: String(operator?.portalName || name).trim().slice(0, 60),
+        hint: String(operator?.hint || '').trim().slice(0, 180),
+      };
+    }).filter(Boolean).slice(0, 5)
+    : [];
+  if (!operators.length) return null;
+  return {
+    type: 'binding_lookup',
+    title: String(widget.title || '').trim().slice(0, 80),
+    description: String(widget.description || '').trim().slice(0, 220),
+    operators,
+    openLabel: String(widget.openLabel || '').trim().slice(0, 50),
+    dateLabel: String(widget.dateLabel || '').trim().slice(0, 50),
+    noBindingLabel: String(widget.noBindingLabel || '').trim().slice(0, 60),
+    submitLabel: String(widget.submitLabel || '').trim().slice(0, 50),
+  };
+};
+
 const normalizeEmbeddedWidget = (widget) => {
   if (!widget || typeof widget !== 'object') return null;
   if (widget.type === 'streaming_prices') return normalizeStreamingWidget(widget);
   if (widget.type === 'operator_binding') return normalizeOperatorBindingWidget(widget);
+  if (widget.type === 'binding_lookup') return normalizeBindingLookupWidget(widget);
   return null;
 };
 

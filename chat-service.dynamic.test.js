@@ -186,6 +186,62 @@ setOpenAiTransportForTests(async (_url, options) => {
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);
     calls.push(request);
+    const payload = JSON.parse(request.input.at(-1).content);
+    const output = request.text.format.name === 'dealett_customer_need'
+      ? {
+        topic: 'mobile plan comparison',
+        interactionStage: 'understand',
+        desiredOutcome: 'Continue the mobile comparison',
+        customerEmotion: 'neutral',
+        recommendationRequested: true,
+        resetRequested: false,
+        groupBindingStatus: 'not_applicable',
+        quizAnswerDecision: 'unresolved',
+        knowledgeQuery: 'mobile plans',
+        qualification: payload.currentQualification,
+      }
+      : {
+        reply: 'Betalar du för Netflix, HBO Max eller Disney+ idag?',
+        showOfferCards: false,
+        quickReplies: [{ label: 'AI-generated streaming shortcut', action: 'send_message' }],
+        bestMatchReason: '',
+        lowestEffectiveCostReason: '',
+        bestMatchBenefits: [],
+        lowestEffectiveCostBenefits: [],
+        offerCardCopy: {
+          bestMatchLabel: '', lowestEffectiveCostLabel: '', dataTitle: '', monthlyPriceTitle: '',
+          bindingTitle: '', perMonthSuffix: '', bindingMonthsSuffix: '', rewardLabel: '', ctaLabel: '',
+        },
+      };
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ output_text: JSON.stringify(output) }),
+    };
+  });
+
+  const unknownStreamingQuestion = await createChatCompletion({
+    message: 'Okej',
+    language: 'sv',
+    qualification: {
+      ...analysisQualification,
+      streamingCalculation: 'unknown',
+      streamingServices: [],
+      streamingMonthlyCosts: {},
+      internationalTravel: 'none',
+      internationalUsage: null,
+    },
+  });
+  assert.deepEqual(unknownStreamingQuestion.qualification.missingFields, ['streamingCalculation']);
+  assert.equal(unknownStreamingQuestion.offerCalculation, null);
+  assert.deepEqual(unknownStreamingQuestion.quickReplies, []);
+  assert.equal(unknownStreamingQuestion.embeddedWidget?.type, 'streaming_prices');
+  const unknownStreamingPayload = JSON.parse(calls.at(-1).input.at(-1).content);
+  assert.equal(unknownStreamingPayload.adaptiveQuestionPlan.focus, 'paid_streaming');
+
+  setOpenAiTransportForTests(async (_url, options) => {
+    const request = JSON.parse(options.body);
+    calls.push(request);
     const output = request.text.format.name === 'dealett_customer_need'
       ? {
         topic: 'streaming prices in mobile comparison',
@@ -242,7 +298,7 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.deepEqual(missingStreamingPriceQuestion.qualification.streamingServices, ['netflix', 'hbo']);
   assert.equal(missingStreamingPriceQuestion.qualification.streamingMonthlyCosts.netflix, 179);
   assert.deepEqual(missingStreamingPriceQuestion.qualification.missingFields, ['streamingPrices']);
-  assert.deepEqual(missingStreamingPriceQuestion.quickReplies, []);
+  assert.deepEqual(missingStreamingPriceQuestion.quickReplies.map((reply) => reply.label), ['Vet inte']);
   assert.equal(missingStreamingPriceQuestion.embeddedWidget, null);
   const missingPriceAnswerPayload = JSON.parse(calls.at(-1).input.at(-1).content);
   assert.equal(missingPriceAnswerPayload.adaptiveQuestionPlan.focus, 'streaming_monthly_prices');
@@ -505,8 +561,34 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.deepEqual(bindingCorrection.quickReplies.map((reply) => reply.label), [
     'Ja, det stämmer',
     'Nej, annat datum',
-    'Vet inte',
+    'Hitta bindningstid',
   ]);
+  assert.equal(bindingCorrection.quickReplies[2].action, 'open_binding_lookup');
+
+  const unknownBindingLookup = await createChatCompletion({
+    message: 'Vet inte',
+    language: 'sv',
+    qualification: {
+      ...bindingQualification,
+      bindingEnds: [],
+    },
+    flowState: {
+      inProgress: true,
+      activeQuestionField: 'bindingEnds',
+    },
+  });
+  assert.deepEqual(unknownBindingLookup.qualification.bindingEnds, []);
+  assert.deepEqual(unknownBindingLookup.qualification.missingFields, ['bindingEnds']);
+  assert.equal(unknownBindingLookup.embeddedWidget?.type, 'binding_lookup');
+  assert.deepEqual(
+    unknownBindingLookup.embeddedWidget.operators.map((operator) => operator.name),
+    ['Tele2']
+  );
+  assert.deepEqual(unknownBindingLookup.quickReplies.map((reply) => reply.label), [
+    'Ingen bindningstid',
+    'Hitta bindningstid',
+  ]);
+  assert.equal(unknownBindingLookup.quickReplies[1].action, 'open_binding_lookup');
 
   const confirmedBindingCorrection = await createChatCompletion({
     message: 'Ja, det stämmer',
@@ -583,8 +665,9 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(streamingBindingCorrection.reply, /mobilabonnemang/i);
   assert.deepEqual(streamingBindingCorrection.quickReplies.map((reply) => reply.label), [
     'Ingen bindningstid',
-    'Vet inte',
+    'Hitta bindningstid',
   ]);
+  assert.equal(streamingBindingCorrection.quickReplies[1].action, 'open_binding_lookup');
 
   setOpenAiTransportForTests(async (_url, options) => {
     const request = JSON.parse(options.body);
@@ -644,32 +727,37 @@ setOpenAiTransportForTests(async (_url, options) => {
   });
   assert.equal(operatorBindingQuestion.embeddedWidget?.type, 'operator_binding');
   assert.equal(operatorBindingQuestion.embeddedWidget?.peopleCount, 4);
-  assert.deepEqual(operatorBindingQuestion.quickReplies, []);
+  assert.deepEqual(operatorBindingQuestion.embeddedWidget?.operators, [
+    'Telia', 'Tele2', 'Telenor', 'Tre', 'Annan',
+  ]);
+  assert.deepEqual(operatorBindingQuestion.quickReplies.map((reply) => reply.label), [
+    'Telia', 'Tele2', 'Telenor', 'Tre', 'Annan',
+  ]);
 
   const operatorBindingAnswer = await createChatCompletion({
-    message: 'Person 1: Tele2, ingen bindningstid; Person 2: Telia, 2027-01-15; Person 3: Tre, vet inte; Person 4: Hallon, ingen bindningstid',
+    message: 'Person 1: Tele2, ingen bindningstid; Person 2: Telia, 2027-01-15; Person 3: Tre, 2027-03-01; Person 4: Annan, ingen bindningstid',
     language: 'sv',
     qualification: operatorBindingQuestion.qualification,
     flowState: operatorBindingQuestion.flowState,
     context: {
       source: 'operator_binding_widget',
       qualificationPatch: {
-        operators: ['Tele2', 'Telia', 'Tre', 'Hallon'],
-        bindingEnds: ['Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid'],
+        operators: ['Tele2', 'Telia', 'Tre', 'Annan'],
+        bindingEnds: ['Ingen bindningstid', '2027-01-15', '2027-03-01', 'Ingen bindningstid'],
       },
     },
   });
-  assert.deepEqual(operatorBindingAnswer.qualification.operators, ['Tele2', 'Telia', 'Tre', 'Hallon']);
+  assert.deepEqual(operatorBindingAnswer.qualification.operators, ['Tele2', 'Telia', 'Tre', 'Annan / ingen']);
   assert.deepEqual(operatorBindingAnswer.qualification.bindingEnds, [
-    'Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid',
+    'Ingen bindningstid', '2027-01-15', '2027-03-01', 'Ingen bindningstid',
   ]);
   assert.deepEqual(
     operatorBindingAnswer.qualification.people.map((person) => person.currentOperator),
-    ['Tele2', 'Telia', 'Tre', 'Hallon']
+    ['Tele2', 'Telia', 'Tre', 'Annan / ingen']
   );
   assert.deepEqual(
     operatorBindingAnswer.qualification.people.map((person) => person.bindingEnd),
-    ['Ingen bindningstid', '2027-01-15', 'Vet inte', 'Ingen bindningstid']
+    ['Ingen bindningstid', '2027-01-15', '2027-03-01', 'Ingen bindningstid']
   );
   assert.equal(operatorBindingAnswer.qualification.missingFields.includes('operators'), false);
   assert.equal(operatorBindingAnswer.qualification.missingFields.includes('bindingEnds'), false);

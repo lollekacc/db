@@ -43,6 +43,56 @@ const loadWebsiteData = () => Object.fromEntries(
 );
 
 const websiteData = loadWebsiteData();
+const fallbackDealettOperators = ['Telia', 'Tele2', 'Telenor', 'Tre'];
+const otherOperatorChoice = 'Annan';
+const operatorLoginProfiles = {
+  Telia: {
+    portalName: 'Mitt Telia',
+    loginUrl: 'https://www.telia.se/mitt-telia/start',
+    hint: 'Logga in och öppna ditt mobilabonnemang för att se bindningstid eller avtalstid.',
+  },
+  Tele2: {
+    portalName: 'Mitt Tele2',
+    loginUrl: 'https://www.tele2.se/mitt-tele2',
+    hint: 'Logga in och öppna abonnemang eller dina tjänster för att kontrollera bindningstid.',
+  },
+  Telenor: {
+    portalName: 'Mitt Telenor',
+    loginUrl: 'https://www.telenor.se/mitt-telenor/',
+    hint: 'Logga in och öppna abonnemanget för att se detaljer om bindningstid och tjänster.',
+  },
+  Tre: {
+    portalName: 'Mitt3',
+    loginUrl: 'https://www.tre.se/mitt3',
+    hint: 'Logga in, välj abonnemang, gå till Abonnemangsdetaljer och se rutan Uppgifter.',
+  },
+};
+
+const getDealettOperatorChoices = () => {
+  const configuredOperators = Array.isArray(websiteData.dealettProfile?.operators)
+    ? websiteData.dealettProfile.operators
+    : fallbackDealettOperators;
+  return [
+    ...new Set(configuredOperators
+      .map((operator) => String(operator || '').trim())
+      .filter(Boolean)),
+    otherOperatorChoice,
+  ];
+};
+
+const getBindingLookupOperators = (qualification = {}) => {
+  const requestedOperators = Array.isArray(qualification.operators)
+    ? qualification.operators
+    : [];
+  const names = requestedOperators
+    .map((operator) => String(operator || '').trim())
+    .filter((operator) => operatorLoginProfiles[operator]);
+  const selected = names.length ? names : fallbackDealettOperators;
+  return [...new Set(selected)].map((name) => ({
+    name,
+    ...operatorLoginProfiles[name],
+  }));
+};
 
 const toKnowledgeChunks = (value, source, location = source) => {
   if (Array.isArray(value)) {
@@ -305,7 +355,7 @@ const answerSchema = {
             type: 'string',
             enum: [
               'send_message', 'open_coverage_map', 'open_broadband_page',
-              'open_broadband_address', 'open_cart', 'open_account', 'open_contact',
+              'open_broadband_address', 'open_binding_lookup', 'open_cart', 'open_account', 'open_contact',
             ],
           },
         },
@@ -478,7 +528,6 @@ const applyOperatorBindingWidgetPatch = (qualification, context = {}) => {
   const bindingEnds = patch.bindingEnds.map((bindingEnd) => String(bindingEnd || '').trim());
   const validBindings = bindingEnds.every((bindingEnd) => (
     bindingEnd === 'Ingen bindningstid' ||
-    bindingEnd === 'Vet inte' ||
     isValidIsoDate(bindingEnd)
   ));
   if (operators.some((operator) => !operator) || !validBindings) return qualification;
@@ -524,11 +573,7 @@ const buildOperatorBindingWidget = (language, peopleCount) => {
   return {
     type: 'operator_binding',
     peopleCount: Math.max(1, Math.min(Number(peopleCount) || 1, 10)),
-    operators: [
-      'Telia', 'Tele2', 'Telenor', 'Tre', 'Comviq', 'Hallon', 'Vimla',
-      'Fello', 'Chilimobil', 'Fibio', 'Tellus', 'MyBeat', 'Telness',
-      'Lycamobile', 'Annan / ingen',
-    ],
+    operators: getDealettOperatorChoices(),
     personLabel: isSwedish ? 'Person' : 'Person',
     ofLabel: isSwedish ? 'av' : 'of',
     operatorLabel: isSwedish ? 'Nuvarande operatör' : 'Current operator',
@@ -541,8 +586,8 @@ const buildOperatorBindingWidget = (language, peopleCount) => {
         label: isSwedish ? 'Ingen bindningstid' : 'No binding period',
       },
       {
-        value: 'Vet inte',
-        label: isSwedish ? 'Vet inte' : "I don't know",
+        value: 'lookup',
+        label: isSwedish ? 'Hitta bindningstid' : 'Find binding period',
       },
       {
         value: 'date',
@@ -556,6 +601,40 @@ const buildOperatorBindingWidget = (language, peopleCount) => {
   };
 };
 
+const buildOperatorQuickReplies = () => getDealettOperatorChoices().map((operator) => ({
+  label: operator,
+  action: 'send_message',
+}));
+
+const buildStreamingPriceQuickReplies = (language) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  return [{
+    label: isSwedish ? 'Vet inte' : "I don't know",
+    action: 'send_message',
+  }];
+};
+
+const buildBindingLookupWidget = (language, qualification) => {
+  const isSwedish = String(language || '').toLowerCase().startsWith('sv');
+  return {
+    type: 'binding_lookup',
+    title: isSwedish ? 'Hitta bindningstid hos operatören' : 'Find binding period with the operator',
+    description: isSwedish
+      ? 'Logga in hos operatören här, kontrollera bindningstiden och skriv sedan svaret i chatten.'
+      : 'Log in with the operator here, check the binding period, then send the answer in the chat.',
+    operators: getBindingLookupOperators(qualification),
+    openLabel: isSwedish ? 'Öppna här' : 'Open here',
+    dateLabel: isSwedish ? 'Slutdatum' : 'End date',
+    noBindingLabel: isSwedish ? 'Ingen bindningstid' : 'No binding period',
+    submitLabel: isSwedish ? 'Skicka datum' : 'Send date',
+  };
+};
+
+const isBindingLookupRequest = (message) => (
+  /\b(?:vet inte|os[aä]ker|ingen aning|don'?t know|not sure|hitta bindningstid|find binding)\b/i
+    .test(String(message || ''))
+);
+
 const buildInternationalUsageQuickReplies = (language) => {
   const isSwedish = String(language || '').toLowerCase().startsWith('sv');
   return (isSwedish
@@ -568,12 +647,15 @@ const buildBindingQuickReplies = (language, pendingBindingEnd) => {
   const isSwedish = String(language || '').toLowerCase().startsWith('sv');
   const labels = pendingBindingEnd
     ? (isSwedish
-      ? ['Ja, det stämmer', 'Nej, annat datum', 'Vet inte']
-      : ['Yes, that is correct', 'No, different date', "I don't know"])
+      ? ['Ja, det stämmer', 'Nej, annat datum', 'Hitta bindningstid']
+      : ['Yes, that is correct', 'No, different date', 'Find binding period'])
     : (isSwedish
-      ? ['Ingen bindningstid', 'Vet inte']
-      : ['No binding period', "I don't know"]);
-  return labels.map((label) => ({ label, action: 'send_message' }));
+      ? ['Ingen bindningstid', 'Hitta bindningstid']
+      : ['No binding period', 'Find binding period']);
+  return labels.map((label) => ({
+    label,
+    action: /hitta|find/i.test(label) ? 'open_binding_lookup' : 'send_message',
+  }));
 };
 
 const hasHistoricalQuizAnswers = (context = {}) => (
@@ -807,21 +889,37 @@ const createChatCompletion = async ({
   const showOperatorBindingWidget = adaptiveQuestionPlan?.focus === 'current_operator_and_binding' &&
     adaptiveQuestionPlan?.combinedQualificationFields?.includes('operators') &&
     adaptiveQuestionPlan?.combinedQualificationFields?.includes('bindingEnds');
-  const quickReplies = adaptiveQuestionPlan?.qualificationField === 'peopleCount'
-    ? Array.from({ length: 10 }, (_, index) => ({
-      label: String(index + 1),
-      action: 'send_message',
-    }))
-    : (adaptiveQuestionPlan?.qualificationField === 'internationalUsage'
-      ? buildInternationalUsageQuickReplies(normalizedLanguage)
-      : (adaptiveQuestionPlan?.qualificationField === 'bindingEnds'
-        ? buildBindingQuickReplies(normalizedLanguage, adaptiveQuestionPlan.pendingBindingEnd)
-        : (showStreamingWidget || showOperatorBindingWidget || adaptiveQuestionPlan?.qualificationField === 'streamingPrices'
-          ? []
-          : answer.quickReplies)));
+  const showBindingLookupWidget = adaptiveQuestionPlan?.qualificationField === 'bindingEnds' &&
+    isBindingLookupRequest(latestMessage);
+  const quickReplies = (() => {
+    if (adaptiveQuestionPlan?.qualificationField === 'peopleCount') {
+      return Array.from({ length: 10 }, (_, index) => ({
+        label: String(index + 1),
+        action: 'send_message',
+      }));
+    }
+    if (showOperatorBindingWidget || adaptiveQuestionPlan?.qualificationField === 'operators') {
+      return buildOperatorQuickReplies();
+    }
+    if (adaptiveQuestionPlan?.qualificationField === 'internationalUsage') {
+      return buildInternationalUsageQuickReplies(normalizedLanguage);
+    }
+    if (adaptiveQuestionPlan?.qualificationField === 'bindingEnds') {
+      return buildBindingQuickReplies(normalizedLanguage, adaptiveQuestionPlan.pendingBindingEnd);
+    }
+    if (showStreamingWidget) {
+      return [];
+    }
+    if (adaptiveQuestionPlan?.qualificationField === 'streamingPrices') {
+      return buildStreamingPriceQuickReplies(normalizedLanguage);
+    }
+    return answer.quickReplies;
+  })();
   const embeddedWidget = showOperatorBindingWidget
     ? buildOperatorBindingWidget(normalizedLanguage, nextQualification.peopleCount)
-    : (showStreamingWidget ? buildStreamingPriceWidget(normalizedLanguage) : null);
+    : (showBindingLookupWidget
+      ? buildBindingLookupWidget(normalizedLanguage, nextQualification)
+      : (showStreamingWidget ? buildStreamingPriceWidget(normalizedLanguage) : null));
   const ui = buildChatResponse({
     message: answer.reply,
     quickReplies,

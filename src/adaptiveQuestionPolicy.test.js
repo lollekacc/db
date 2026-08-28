@@ -57,7 +57,7 @@ assert.deepEqual(CANONICAL_QUESTION_ORDER.slice(0, 6), [
   'bindingEnds',
   'priceRange',
   'mobileUsage',
-  'internationalTravel',
+  'streamingCalculation',
 ]);
 
 const initialFlow = buildNextQuestionFlowState({
@@ -328,6 +328,18 @@ const resolved = normalizeQualification({
 });
 assert.equal(resolved.readyForOffer, true);
 assert.deepEqual(resolved.missingFields, []);
+
+const unresolvedStreaming = normalizeQualification({
+  peopleCount: 1,
+  operators: ['Tele2'],
+  bindingEnds: ['Ingen bindningstid'],
+  mobileUsage: 'high',
+  exactMonthlyPrice: 499,
+  streamingCalculation: 'unknown',
+  internationalTravel: 'none',
+});
+assert.equal(unresolvedStreaming.readyForOffer, false);
+assert.deepEqual(unresolvedStreaming.missingFields, ['streamingCalculation']);
 
 const missingStreamingPrices = normalizeQualification({
   peopleCount: 1,

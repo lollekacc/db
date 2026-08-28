@@ -35,7 +35,7 @@ const QUESTION_DEFINITIONS = {
   },
   operators: {
     focus: 'current_operator',
-    guidance: 'Ask which operator the customer currently uses.',
+    guidance: 'Ask which operator the customer currently uses. Only present Dealett operators: Telia, Tele2, Telenor, Tre, plus "Annan". Do not list other market operators.',
   },
   bindingEnds: {
     focus: 'binding_status',
@@ -53,11 +53,11 @@ const CANONICAL_QUESTION_ORDER = [
   'bindingEnds',
   'priceRange',
   'mobileUsage',
-  'internationalTravel',
-  'internationalUsage',
   'streamingCalculation',
   'streamingServices',
   'streamingPrices',
+  'internationalTravel',
+  'internationalUsage',
   'people',
 ];
 const MAX_QUESTION_ATTEMPTS = 3;
@@ -225,7 +225,7 @@ const getAdaptiveQuestionPlan = ({
   const questionDefinition = combinesOperatorAndBinding
     ? {
       focus: 'current_operator_and_binding',
-      guidance: 'Ask one combined question, matching the quiz: which mobile operator the customer currently has and when that same mobile subscription\'s binding time ends. For multiple people, ask for both facts per person. Accept an exact date, months remaining, no binding time, or that the customer does not know. Make both requested answers clear, but keep them in one question.',
+      guidance: 'Ask one combined question, matching the quiz: which mobile operator the customer currently has and when that same mobile subscription\'s binding time ends. Only present Dealett operators: Telia, Tele2, Telenor, Tre, plus "Annan". Do not list other market operators. For multiple people, ask for both facts per person. Accept an exact date, months remaining, no binding time, or that the customer does not know. Make both requested answers clear, but keep them in one question.',
     }
     : QUESTION_DEFINITIONS[qualificationField];
   const questionGuidance = pendingBindingEnd

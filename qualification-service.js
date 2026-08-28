@@ -29,7 +29,6 @@ const normalizeBindingEnd = (value) => {
   if (!normalized) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return normalized;
   if (/ingen|no contract|no binding/i.test(normalized)) return 'Ingen bindningstid';
-  if (/vet|don't know|dont know/i.test(normalized)) return 'Vet inte';
   return null;
 };
 
@@ -291,7 +290,7 @@ const normalizeQualification = (qualification = {}) => {
   if (!hasPerPersonPrice) {
     missingFields.push('priceRange');
   }
-  if (!streamingCalculation) missingFields.push('streamingCalculation');
+  if (!streamingCalculation || streamingCalculation === 'unknown') missingFields.push('streamingCalculation');
   if (streamingCalculation === 'include' && !streamingServices.length) {
     missingFields.push('streamingServices');
   }
