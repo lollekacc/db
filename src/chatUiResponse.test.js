@@ -45,7 +45,16 @@ assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
 const streamingWidget = {
   type: 'streaming_prices',
   services: [
-    { id: 'netflix', label: 'Netflix', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
+    {
+      id: 'netflix',
+      label: 'Netflix',
+      priceLabel: 'Pris per månad',
+      pricePlaceholder: 'kr/mån',
+      priceOptions: [
+        { label: 'Basic', amount: 129 },
+        { label: 'Too much', amount: 2500 },
+      ],
+    },
     { id: 'hbo', label: 'HBO Max', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
     { id: 'disney', label: 'Disney+', priceLabel: 'Pris per månad', pricePlaceholder: 'kr/mån' },
     { id: 'unknown', label: 'Unknown', priceLabel: 'Price', pricePlaceholder: 'SEK' },
@@ -55,6 +64,9 @@ const streamingWidget = {
   missingPriceLabel: 'Pris saknas',
 };
 assert.equal(normalizeEmbeddedWidget(streamingWidget).services.length, 3);
+assert.deepEqual(normalizeEmbeddedWidget(streamingWidget).services[0].priceOptions, [
+  { label: 'Basic', amount: 129 },
+]);
 assert.deepEqual(buildChatResponse({
   message: 'Vilka tjänster betalar du för?',
   embeddedWidget: streamingWidget,

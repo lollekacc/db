@@ -10,7 +10,7 @@
         "minUsers": 2,
         "maxUsers": 10,
         "price": {
-          "monthly": 239
+          "monthly": 199
         }
       },
       "plans": [
@@ -136,7 +136,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -171,31 +171,31 @@
               {
                 "service": "Netflix",
                 "price": {
-                  "monthly": 629
+                  "monthly": 469
                 }
               },
               {
                 "service": "Disney+",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "Amazon Prime",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "TV4 Play Plus",
                 "price": {
-                  "monthly": 599
+                  "monthly": 469
                 }
               },
               {
                 "service": "HBO Max",
                 "price": {
-                  "monthly": 609
+                  "monthly": 469
                 }
               }
             ]
@@ -204,7 +204,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -243,7 +243,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 239
+            "monthly": 199
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -275,7 +275,7 @@
         "minUsers": 2,
         "maxUsers": 10,
         "price": {
-          "monthly": 349
+          "monthly": 229
         }
       },
       "plans": [
@@ -296,7 +296,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -326,14 +326,14 @@
             "sharing": "shared"
           },
           "price": {
-            "monthly": 399
+            "monthly": 349
           },
           "familyEligible": true,
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -361,14 +361,14 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 499
+            "monthly": 449
           },
           "familyEligible": true,
           "giftCard": "XXX",
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -396,7 +396,7 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 629
+            "monthly": 529
           },
           "familyEligible": true,
           "internationalCalls": {
@@ -412,7 +412,7 @@
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
-            "monthly": 349
+            "monthly": 229
           },
           "roaming": {
             "euEeaIncluded": true,
@@ -493,7 +493,7 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 479
+            "monthly": 399
           },
           "familyEligible": true,
           "roaming": {
@@ -528,7 +528,7 @@
             "sharing": "per_user"
           },
           "price": {
-            "monthly": 519
+            "monthly": 399
           },
           "familyEligible": true,
           "roaming": {

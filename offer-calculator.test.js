@@ -50,9 +50,9 @@ const streaming = calculate({
 });
 assert.equal(streaming.bestMatch.operator, 'Telia');
 assert.equal(streaming.bestMatch.sourcePlanId, 'telia-unlimited-plus-streaming-bundle');
-assert.equal(streaming.bestMatch.planMonthlyPrice, 1416);
+assert.equal(streaming.bestMatch.planMonthlyPrice, 1296);
 assert.equal(streaming.bestMatch.streamingSavings, 650);
-assert.equal(streaming.bestMatch.effectiveMonthlyCost, 766);
+assert.equal(streaming.bestMatch.effectiveMonthlyCost, 646);
 
 const internationalData = calculate({
   mobileUsage: 'high',
@@ -62,7 +62,7 @@ const internationalData = calculate({
 assert.deepEqual(internationalData.options.map((option) => option.operator), ['Tele2', 'Tre']);
 assert.equal(internationalData.bestMatch.operator, 'Tele2');
 assert.equal(internationalData.bestMatch.match.internationalDataCountries, 170);
-assert.equal(internationalData.lowestEffectiveCost.operator, 'Tre');
+assert.equal(internationalData.lowestEffectiveCost.operator, 'Tele2');
 
 const internationalCalls = calculate({
   peopleCount: 2,

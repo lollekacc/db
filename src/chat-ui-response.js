@@ -46,6 +46,17 @@ const normalizeStreamingWidget = (widget) => {
         label: label.slice(0, 40),
         priceLabel: String(service?.priceLabel || '').trim().slice(0, 50),
         pricePlaceholder: String(service?.pricePlaceholder || '').trim().slice(0, 30),
+        priceOptions: Array.isArray(service?.priceOptions)
+          ? service.priceOptions.map((option) => {
+            const optionLabel = String(option?.label || '').trim();
+            const amount = Number(option?.amount);
+            if (!optionLabel || !Number.isInteger(amount) || amount < 1 || amount > 2000) return null;
+            return {
+              label: optionLabel.slice(0, 40),
+              amount,
+            };
+          }).filter(Boolean).slice(0, 5)
+          : [],
       };
     }).filter(Boolean)
     : [];

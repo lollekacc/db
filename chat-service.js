@@ -554,13 +554,43 @@ const applyWidgetQualificationPatch = (qualification, context = {}) => (
 const buildStreamingPriceWidget = (language) => {
   const isSwedish = String(language || '').toLowerCase().startsWith('sv');
   const priceLabel = isSwedish ? 'Pris per månad' : 'Monthly price';
-  const pricePlaceholder = isSwedish ? 'kr/mån' : 'SEK/month';
+  const pricePlaceholder = isSwedish ? 'Välj/eget' : 'Choose/type';
   return {
     type: 'streaming_prices',
     services: [
-      { id: 'netflix', label: 'Netflix', priceLabel, pricePlaceholder },
-      { id: 'hbo', label: 'HBO Max', priceLabel, pricePlaceholder },
-      { id: 'disney', label: 'Disney+', priceLabel, pricePlaceholder },
+      {
+        id: 'netflix',
+        label: 'Netflix',
+        priceLabel,
+        pricePlaceholder,
+        priceOptions: [
+          { label: 'Basic', amount: 129 },
+          { label: 'Standard', amount: 169 },
+          { label: 'Premium', amount: 219 },
+        ],
+      },
+      {
+        id: 'hbo',
+        label: 'HBO Max',
+        priceLabel,
+        pricePlaceholder,
+        priceOptions: [
+          { label: isSwedish ? 'Basic med reklam' : 'Basic with ads', amount: 89 },
+          { label: 'Standard', amount: 149 },
+          { label: 'Premium', amount: 189 },
+        ],
+      },
+      {
+        id: 'disney',
+        label: 'Disney+',
+        priceLabel,
+        pricePlaceholder,
+        priceOptions: [
+          { label: isSwedish ? 'Standard med reklam' : 'Standard with ads', amount: 69 },
+          { label: 'Standard', amount: 109 },
+          { label: 'Premium', amount: 159 },
+        ],
+      },
     ],
     noneLabel: isSwedish ? 'Inga av dessa' : 'None of these',
     submitLabel: isSwedish ? 'Fortsätt' : 'Continue',
