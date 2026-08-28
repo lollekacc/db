@@ -20,11 +20,20 @@ const hasUnavailableMustHaveNeed = (option = {}) => (
 const isEligible = (option = {}, qualification = {}) => {
   if (hasUnavailableMustHaveNeed(option)) return false;
   if (qualification.internationalTravel === 'eu' && option.international?.euEea !== true) return false;
-  if (qualification.internationalTravel === 'outside_eu' && option.international?.outsideEuData !== true) return false;
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage !== 'family_calls' &&
+    option.international?.outsideEuData !== true
+  ) return false;
   if (
     qualification.internationalTravel === 'outside_eu' &&
     qualification.internationalUsage === 'calls' &&
     option.international?.outsideEuLocalCalls !== true
+  ) return false;
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage === 'family_calls' &&
+    option.international?.worldwideFamilyCalls !== true
   ) return false;
   if (
     qualification.extraSimRequired === true &&
@@ -70,6 +79,7 @@ const decorateMatch = (option = {}) => {
   const matchedCapabilities = [];
   if (option.international?.outsideEuData) matchedCapabilities.push('outside_eu_data');
   if (option.international?.outsideEuLocalCalls) matchedCapabilities.push('local_calls_abroad');
+  if (option.international?.worldwideFamilyCalls) matchedCapabilities.push('worldwide_family_calls');
   if (option.extraSim?.included) matchedCapabilities.push('extra_sim_included');
   else if (option.extraSim?.available) matchedCapabilities.push('extra_sim_available');
   if (option.dataSharing === 'shared') matchedCapabilities.push('shared_data');

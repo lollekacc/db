@@ -302,7 +302,10 @@ const getSelectedNeeds = ({ qualification = {}, capabilities = {}, plan = {}, st
       });
     });
   }
-  if (qualification.internationalTravel === 'outside_eu') {
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage !== 'family_calls'
+  ) {
     needs.push({
       key: 'outside_eu_data',
       importance: getNeedImportance(qualification, 'outsideEuData'),
@@ -318,6 +321,15 @@ const getSelectedNeeds = ({ qualification = {}, capabilities = {}, plan = {}, st
       importance: getNeedImportance(qualification, 'internationalCalls'),
       covered: capabilities.outsideEuLocalCalls === true,
       available: capabilities.outsideEuLocalCalls === true,
+      monthlyCost: qualification.internationalCallsMonthlyCost,
+    });
+  }
+  if (qualification.internationalTravel === 'outside_eu' && qualification.internationalUsage === 'family_calls') {
+    needs.push({
+      key: 'worldwide_family_calls',
+      importance: getNeedImportance(qualification, 'internationalCalls'),
+      covered: capabilities.worldwideFamilyCalls === true,
+      available: capabilities.worldwideFamilyCalls === true,
       monthlyCost: qualification.internationalCallsMonthlyCost,
     });
   }
@@ -657,7 +669,7 @@ const decorateSecondaryOffer = (option, recommendationType) => {
   if (!option) return null;
   const relaxedRequirements = (option.uncoveredNeeds || [])
     .map((need) => need.key)
-    .filter((key) => ['outside_eu_data', 'international_calls'].includes(key));
+    .filter((key) => ['outside_eu_data', 'international_calls', 'worldwide_family_calls'].includes(key));
   return {
     ...option,
     recommendationType,

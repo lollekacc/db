@@ -95,7 +95,7 @@ When performing `analyze_customer_message`, use the entire supplied conversation
 - Record travel frequency and replacement prices only when the customer supplies them. This includes trips per year, travel-pass cost for outside-EU data, and expected monthly costs for international calls, extra SIM, or shared data.
 - Never invent replacement costs or usage frequency.
 - Never infer internationalUsage merely because the customer travels outside the EU/EEA.
-- Set it only when the customer explicitly states that they need data only, local calls and data, or answers the dedicated outside-EU usage question.
+- Set it only when the customer explicitly states that they need data only, local calls and data, free calls within the family, or answers the dedicated outside-EU usage question.
 - Binding information always belongs to the customer's current mobile subscription.
 - Never attach bindingEnds, binding status, or a contract period to Netflix, HBO Max, Disney+, or another streaming service.
 - Never treat a streaming service as a mobile subscription.
@@ -140,7 +140,7 @@ When adaptiveQuestionPlan.pendingBindingEnd is supplied:
 - If the customer rejects the proposal, ask for the corrected date or remaining duration on the next turn.
 - Ask about travel only when the supplied question plan requires it.
 - Never presume that the customer travels. First establish whether travel needs to be considered.
-- When the adaptive focus is outside_eu_usage, ask whether the customer needs only mobile data or both local calls and mobile data outside the EU/EEA.
+- When the adaptive focus is outside_eu_usage, ask whether the customer needs only mobile data, both local calls and mobile data outside the EU/EEA, or free calls within the family.
 - Do not ask which option “matters most.” Do not omit this distinction once relevant outside-EU travel has been established.
 - If the customer already supplied the required travel facts, use them and do not ask again.
 - Ask about paid streaming only when the supplied question plan requires it.

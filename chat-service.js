@@ -261,7 +261,7 @@ const qualificationSchema = {
       required: ['netflix', 'hbo', 'disney', 'amazon', 'tv4'],
     },
     internationalTravel: { type: ['string', 'null'], enum: ['none', 'eu', 'outside_eu', null] },
-    internationalUsage: { type: ['string', 'null'], enum: ['calls', 'data', null] },
+    internationalUsage: { type: ['string', 'null'], enum: ['calls', 'data', 'family_calls', null] },
     extraSimRequired: { type: 'boolean' },
     sharedDataRequired: { type: 'boolean' },
     needImportance: {
@@ -460,6 +460,8 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
 const getExplicitInternationalUsage = (message, activeQuestionField) => {
   const text = String(message || '').trim().toLocaleLowerCase('sv');
   if (!text) return null;
+  const familyCalls = /(?:ringa|samtal|calls?|calling).*(?:familj|family)|(?:familj|family).*(?:ringa|samtal|calls?|calling)/i.test(text);
+  if (familyCalls) return 'family_calls';
   const dataOnly = /(?:bara|endast|enbart|only)\s+(?:surf|data|mobildata)|(?:surf|data|mobildata)\s+(?:bara|endast|enbart|only)|(?:inga|utan|no)\s+(?:lokala\s+)?(?:samtal|calls?)/i.test(text);
   if (dataOnly) return 'data';
   if (/lokala?\s+samtal|\bsamtal\b|\bringa\b|\bcalls?\b|\bcalling\b/i.test(text)) return 'calls';
@@ -668,8 +670,8 @@ const isBindingLookupRequest = (message) => (
 const buildInternationalUsageQuickReplies = (language) => {
   const isSwedish = String(language || '').toLowerCase().startsWith('sv');
   return (isSwedish
-    ? ['Bara surf', 'Lokala samtal och surf']
-    : ['Data only', 'Local calls and data'])
+    ? ['Bara surf', 'Lokala samtal och surf', 'Ringa fritt inom familjen']
+    : ['Data only', 'Local calls and data', 'Free calls within the family'])
     .map((label) => ({ label, action: 'send_message' }));
 };
 

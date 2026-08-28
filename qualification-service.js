@@ -225,7 +225,7 @@ const normalizeQualification = (qualification = {}) => {
   const internationalTravel = ['none', 'eu', 'outside_eu'].includes(qualification.internationalTravel)
     ? qualification.internationalTravel
     : null;
-  const internationalUsage = ['calls', 'data'].includes(qualification.internationalUsage)
+  const internationalUsage = ['calls', 'data', 'family_calls'].includes(qualification.internationalUsage)
     ? qualification.internationalUsage
     : null;
   const extraSimRequired = qualification.extraSimRequired === true;

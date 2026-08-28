@@ -366,6 +366,7 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.deepEqual(outsideEuUsageQuestion.quickReplies.map((reply) => reply.label), [
     'Bara surf',
     'Lokala samtal och surf',
+    'Ringa fritt inom familjen',
   ]);
 
   setOpenAiTransportForTests(async (_url, options) => {
@@ -436,6 +437,22 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.deepEqual(
     new Set(outsideEuDataAnswer.offerCalculation.options.map((option) => option.operator)),
     new Set(['Tele2', 'Tre'])
+  );
+
+  const outsideEuFamilyCallsAnswer = await createChatCompletion({
+    message: 'Ringa fritt inom familjen',
+    language: 'sv',
+    qualification: outsideEuUsageQuestion.qualification,
+    flowState: outsideEuUsageQuestion.flowState,
+  });
+  assert.equal(outsideEuFamilyCallsAnswer.qualification.internationalUsage, 'family_calls');
+  assert.deepEqual(
+    outsideEuFamilyCallsAnswer.offerCalculation.options.map((option) => option.operator),
+    ['Telenor']
+  );
+  assert.equal(
+    outsideEuFamilyCallsAnswer.offerCalculation.bestMatch.sourcePlanId,
+    'telenor-unlimited-plus'
   );
 
   setOpenAiTransportForTests(async (_url, options) => {

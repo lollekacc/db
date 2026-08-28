@@ -97,6 +97,18 @@ const internationalCallsMustHave = calculate({
 assert.equal(internationalCallsMustHave.bestMatch.operator, 'Tre');
 assert.equal(internationalCallsMustHave.secondaryOffer, null);
 
+const worldwideFamilyCalls = calculate({
+  peopleCount: 2,
+  operators: Array(2).fill('Annan / ingen'),
+  bindingEnds: Array(2).fill('Ingen bindningstid'),
+  mobileUsage: 'high',
+  internationalTravel: 'outside_eu',
+  internationalUsage: 'family_calls',
+});
+assert.deepEqual(worldwideFamilyCalls.options.map((option) => option.operator), ['Telenor']);
+assert.equal(worldwideFamilyCalls.bestMatch.sourcePlanId, 'telenor-unlimited-plus');
+assert.ok(worldwideFamilyCalls.bestMatch.match.matchedCapabilities.includes('worldwide_family_calls'));
+
 const internationalCallsWithStreaming = calculate({
   peopleCount: 1,
   operators: ['Annan / ingen'],
