@@ -1,9 +1,20 @@
 {
+  "name": "dealett-backend",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
-    "check": "node --check server.js && node --check data-storage.js && node --check translation-service.js && node --check bankid-service.js && node --check order-service.js && node --check chat-service.js && node --check qualification-service.js && node --check chat-feedback-service.js && node --check offer-service.js && node --check cost-calculator.js && node --check best-match.js && node --check offer-calculator.js && node --check cost-calculator.test.js && node --check best-match.test.js && node --check offer-calculator.test.js && node --check chat-service.dynamic.test.js && node --check quiz-consent.test.js && node --check recommendation-parity.test.js && node --check src/chat-ui-response.js && node --check src/chatUiResponse.test.js && node --check src/chatFeedback.test.js && node --check src/conversation-state.js && node --check src/conversationState.test.js && node --check src/binding-time.js && node --check src/bindingTime.test.js && node --check src/adaptive-question-policy.js && node --check src/adaptiveQuestionPolicy.test.js && node --check src/customerServiceBehavior.test.js",
+    "test": "npm run test:platform && npm run test:migrations && npm run test:legacy",
+    "test:platform": "node --test platform.test.js",
+    "test:migrations": "node --test migration.test.js",
+    "db:migrate": "node scripts/migrate.js up",
+    "db:migrate:down": "node scripts/migrate.js down",
+    "db:seed": "node scripts/seed-demo.js",
+    "db:reset-demo": "node scripts/seed-demo.js --reset",
+    "db:import-legacy": "node scripts/import-legacy-json.js --dry-run",
+    "check": "node scripts/check.js",
+    "test:legacy": "npm run test:translation && npm run test:recommendations && npm run test:cost-calculator && npm run test:best-match && npm run test:chat-dynamic && npm run test:quiz-consent && npm run test:customer-service && npm run test:conversation-state && npm run test:binding-time && npm run test:adaptive-questions && npm run test:recommendation-parity && npm run test:chat-ui-response && npm run test:chat-feedback",
     "test:translation": "node translation-service.test.js",
     "test:recommendations": "node offer-calculator.test.js",
     "test:cost-calculator": "node cost-calculator.test.js",
@@ -16,6 +27,16 @@
     "test:adaptive-questions": "node src/adaptiveQuestionPolicy.test.js",
     "test:recommendation-parity": "node recommendation-parity.test.js",
     "test:chat-ui-response": "node src/chatUiResponse.test.js",
-    "test:chat-feedback": "node src/chatFeedback.test.js"
+    "test:chat-feedback": "node src/chatFeedback.test.js",
+    "test:all": "npm run check && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "pg": "^8.23.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8"
   }
 }

@@ -37,6 +37,11 @@ const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = requir
 const { subscribeToNewsletter } = require('./newsletter-service');
 const { storeCheckoutOrder } = require('./order-service');
 const { translateTexts } = require('./translation-service');
+const { parseOrigins } = require('./platform/config');
+const { SECURITY_HEADERS, getCorrelationId } = require('./platform/http');
+const { RollingWindowRateLimiter } = require('./platform/rate-limiter');
+const { handlePlatformRequest, makeDemoChatResult } = require('./platform/router');
+const { createPlatformRuntime } = require('./platform/runtime');
 
 const ROOT = path.resolve(__dirname, '..', 'df');
 const PORT = process.env.PORT || 3000;
@@ -61,16 +66,16 @@ const sendJson = (response, statusCode, payload) => {
   response.writeHead(statusCode, {
     'Content-Type': 'application/json; charset=utf-8',
     'Content-Length': Buffer.byteLength(body),
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Cache-Control': 'no-store',
   });
   response.end(body);
 };
 
-const sendError = (response, error) => {
+const sendError = (response, error, correlationId) => {
   sendJson(response, error.statusCode || 500, {
     error: error.message || 'Server error',
+    code: error.code || 'REQUEST_ERROR',
+    correlationId,
   });
 };
 
@@ -108,7 +113,7 @@ const requireMethod = (request, response, method) => {
   return false;
 };
 
-const handleApi = async (request, response, requestUrl) => {
+const handleApi = async (request, response, requestUrl, context = {}) => {
   try {
     const { pathname, searchParams } = requestUrl;
 
@@ -156,8 +161,44 @@ const handleApi = async (request, response, requestUrl) => {
 
     if (pathname === '/api/chat') {
       if (!requireMethod(request, response, 'POST')) return true;
+      const rate = context.legacyLimiter.consume(`chat:${request.socket?.remoteAddress || 'unknown'}`, context.platformRuntime?.config.chatRateLimit || 30);
+      if (!rate.allowed) {
+        const error = new Error('Too many chat requests; try again later');
+        error.statusCode = 429;
+        error.code = 'RATE_LIMITED';
+        throw error;
+      }
       const body = await readJsonBody(request);
-      sendJson(response, 200, await createChatCompletion(body));
+      let turn = null;
+      if (context.platformRuntime) {
+        turn = await context.platformRuntime.service.beginChatTurn({
+          ...body,
+          conversationToken: body.conversationToken || request.headers['x-conversation-token'],
+        }, { correlationId: context.correlationId });
+      }
+      let result;
+      try {
+        result = await createChatCompletion(body);
+      } catch (error) {
+        if (!context.platformRuntime?.config.demoMode || error.statusCode !== 503) throw error;
+        result = makeDemoChatResult(body);
+      }
+      if (turn) {
+        const assistant = await context.platformRuntime.service.completeChatTurn(turn, result, {
+          correlationId: context.correlationId,
+        });
+        result.conversationId = turn.conversationId;
+        result.conversationToken = turn.conversationToken;
+        result.messageMetadata = {
+          id: assistant.message.id,
+          sequence: assistant.message.sequence,
+          createdAt: assistant.message.createdAt,
+          model: assistant.message.model || result.model || null,
+          assistant: { id: assistant.message.id, sequence: assistant.message.sequence, createdAt: assistant.message.createdAt },
+        };
+        result.userMessageMetadata = { id: turn.user.id, sequence: turn.user.sequence, createdAt: turn.user.createdAt };
+      }
+      sendJson(response, 200, result);
       return true;
     }
 
@@ -184,6 +225,12 @@ const handleApi = async (request, response, requestUrl) => {
 
     if (pathname === '/api/bankid/start') {
       if (!requireMethod(request, response, 'POST')) return true;
+      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+        const error = new Error('BankID integration is not configured for live mode');
+        error.statusCode = 503;
+        error.code = 'INTEGRATION_NOT_CONFIGURED';
+        throw error;
+      }
       const body = await readJsonBody(request);
       sendJson(response, 200, startBankIdSession(body));
       return true;
@@ -191,6 +238,12 @@ const handleApi = async (request, response, requestUrl) => {
 
     if (pathname === '/api/bankid/collect') {
       if (!requireMethod(request, response, 'POST')) return true;
+      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+        const error = new Error('BankID integration is not configured for live mode');
+        error.statusCode = 503;
+        error.code = 'INTEGRATION_NOT_CONFIGURED';
+        throw error;
+      }
       const body = await readJsonBody(request);
       sendJson(response, 200, collectBankIdSession(body));
       return true;
@@ -198,6 +251,12 @@ const handleApi = async (request, response, requestUrl) => {
 
     if (pathname === '/api/bankid/cancel') {
       if (!requireMethod(request, response, 'POST')) return true;
+      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+        const error = new Error('BankID integration is not configured for live mode');
+        error.statusCode = 503;
+        error.code = 'INTEGRATION_NOT_CONFIGURED';
+        throw error;
+      }
       const body = await readJsonBody(request);
       sendJson(response, 200, cancelBankIdSession(body));
       return true;
@@ -205,6 +264,13 @@ const handleApi = async (request, response, requestUrl) => {
 
     if (pathname === '/api/orders') {
       if (!requireMethod(request, response, 'POST')) return true;
+      const rate = context.legacyLimiter.consume(`order:${request.socket?.remoteAddress || 'unknown'}`, context.platformRuntime?.config.orderRateLimit || 10);
+      if (!rate.allowed) {
+        const error = new Error('Too many order requests; try again later');
+        error.statusCode = 429;
+        error.code = 'RATE_LIMITED';
+        throw error;
+      }
       const body = await readJsonBody(request);
       sendJson(response, 201, storeCheckoutOrder(body));
       return true;
@@ -236,7 +302,7 @@ const handleApi = async (request, response, requestUrl) => {
 
     return false;
   } catch (error) {
-    sendError(response, error);
+    sendError(response, error, context.correlationId);
     return true;
   }
 };
@@ -286,22 +352,69 @@ const sendStaticFile = (request, response, requestUrl) => {
   });
 };
 
-const createServer = () => http.createServer(async (request, response) => {
-  const requestUrl = new URL(request.url, `http://${request.headers.host || `${HOST}:${PORT}`}`);
-
-  if (request.method === 'OPTIONS' && requestUrl.pathname.startsWith('/api/')) {
-    response.writeHead(204, {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    });
-    response.end();
-    return;
+const createServer = (options = {}) => {
+  let platformRuntime = options.platformRuntime || null;
+  let platformError = null;
+  const platformRequested = Boolean(platformRuntime || process.env.DEMO_MODE !== undefined || process.env.DATABASE_URL);
+  if (!platformRuntime && platformRequested) {
+    try {
+      platformRuntime = createPlatformRuntime(options.platformOptions);
+    } catch (error) {
+      platformError = error;
+    }
   }
+  const legacyLimiter = options.legacyLimiter || new RollingWindowRateLimiter();
+  const corsOrigins = platformRuntime?.config.corsOrigins || parseOrigins(process.env.CORS_ORIGINS);
 
-  const handledApi = await handleApi(request, response, requestUrl);
-  if (!handledApi) sendStaticFile(request, response, requestUrl);
-});
+  return http.createServer(async (request, response) => {
+    const correlationId = getCorrelationId(request);
+    response.setHeader('X-Correlation-ID', correlationId);
+    const requestUrl = new URL(request.url, `http://${request.headers.host || `${HOST}:${PORT}`}`);
+    if (requestUrl.pathname.startsWith('/api/')) {
+      Object.entries(SECURITY_HEADERS).forEach(([name, value]) => response.setHeader(name, value));
+    } else {
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+      response.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    }
+    const origin = String(request.headers.origin || '').replace(/\/$/, '');
+    if (origin && corsOrigins.includes(origin)) {
+      response.setHeader('Access-Control-Allow-Origin', origin);
+      response.setHeader('Vary', 'Origin');
+    }
+    const requestsPlatform = /^\/api\/(public|admin|customer|partner)\/v1(?:\/|$)/.test(requestUrl.pathname) ||
+      (platformRequested && requestUrl.pathname === '/api/orders');
+    if (requestsPlatform && platformError) {
+      sendError(response, platformError, correlationId);
+      return;
+    }
+    if (platformRuntime) {
+      const handledPlatform = await handlePlatformRequest(request, response, requestUrl, platformRuntime, correlationId);
+      if (handledPlatform) return;
+    }
+
+    if (request.method === 'OPTIONS' && requestUrl.pathname.startsWith('/api/')) {
+      if (origin && !corsOrigins.includes(origin)) {
+        sendJson(response, 403, { error: 'Origin is not allowed', code: 'CORS_ORIGIN_DENIED', correlationId });
+        return;
+      }
+      response.writeHead(204, {
+        'Access-Control-Allow-Headers': 'Content-Type, Idempotency-Key, X-Conversation-Token, X-Correlation-ID, X-Demo-User',
+        'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+        'Access-Control-Max-Age': '600',
+      });
+      response.end();
+      return;
+    }
+
+    const handledApi = await handleApi(request, response, requestUrl, {
+      platformRuntime,
+      platformError,
+      correlationId,
+      legacyLimiter,
+    });
+    if (!handledApi) sendStaticFile(request, response, requestUrl);
+  });
+};
 
 if (require.main === module) {
   const server = createServer();
