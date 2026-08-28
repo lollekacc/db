@@ -20,7 +20,7 @@ const calculate = (overrides) => calculateOfferOptions(qualify(overrides));
 
 const individual = calculate({});
 assert.equal(individual.options.length, 4);
-assert.equal(individual.bestMatch.operator, 'Tele2');
+assert.equal(individual.bestMatch.operator, 'Tre');
 assert.equal(individual.lowestEffectiveCost.operator, 'Tre');
 assert.equal('bestValue' in individual, false);
 assert.equal('lowestMonthlyPrice' in individual, false);
@@ -33,9 +33,9 @@ const family = calculate({
   exactMonthlyPrice: 350,
 });
 assert.equal(family.options.length, 4);
-assert.equal(family.bestMatch.operator, 'Tele2');
-assert.equal(family.bestMatch.planMonthlyPrice, 836);
-assert.equal(family.lowestEffectiveCost.operator, 'Tele2');
+assert.equal(family.bestMatch.operator, 'Tre');
+assert.equal(family.bestMatch.planMonthlyPrice, 876);
+assert.equal(family.lowestEffectiveCost.operator, 'Tre');
 assert.ok(family.options.every((option) => option.familyEligible));
 
 const streaming = calculate({

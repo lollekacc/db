@@ -158,7 +158,7 @@
         },
         {
           "id": "telia-unlimited-plus-one-streaming",
-          "name": "Obegränsad Plus med valfri streamingtjänst",
+          "name": "Obegränsad Plus",
           "data": {
             "type": "unlimited",
             "sharing": "per_user"
@@ -450,11 +450,11 @@
       },
       "plans": [
         {
-          "id": "tele2-30gb",
-          "name": "30 GB",
+          "id": "tele2-15gb",
+          "name": "15 GB",
           "data": {
             "type": "limited",
-            "gb": 30,
+            "gb": 15,
             "sharing": "per_user"
           },
           "price": {
