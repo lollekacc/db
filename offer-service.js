@@ -183,6 +183,11 @@ const formatBinding = (plan) => (
   `${Number(plan.bindingMonths) || 24} mån bindningstid`
 );
 
+const getRoamingServiceLabel = (plan = {}) => {
+  const serviceName = String(plan.roaming?.serviceName || '').trim();
+  return serviceName ? `${serviceName} ingår` : '';
+};
+
 const getMobileOperatorOffers = (operator) => {
   const plans = getPlans();
   const provider = mobileOperatorMeta[operator];
@@ -306,6 +311,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     features: [
       'Fria samtal och sms',
       '5G & eSIM',
+      getRoamingServiceLabel(plan),
       addonPlan ? `${addonPlan.title} ${formatCurrency(addonPrice)} kr/mån` : '',
     ].filter(Boolean),
   };

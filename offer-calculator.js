@@ -1,6 +1,6 @@
 const { getPlanCatalog } = require('./offer-service');
 const { DEFAULT_TERM_MONTHS, calculateCost, roundMoney } = require('./cost-calculator');
-const { selectBestMatches } = require('./best-match');
+const { selectAvailableMatches, selectBestMatches } = require('./best-match');
 
 const PRICE_RANGE_MIDPOINTS = {
   under300: 275,
@@ -132,6 +132,7 @@ const getInternationalCapabilities = (operator = {}, plan = {}) => {
   const operatorRoaming = operator.internationalRoaming || {};
   const planRoaming = plan.roaming || {};
   return {
+    serviceName: String(planRoaming.serviceName || '').trim() || null,
     euEea: operator.euEeaRoamingCallsSmsIncluded === true,
     outsideEuData: operatorRoaming.dataIncluded === true ||
       planRoaming.outsideEuDataIncluded === true ||
@@ -143,6 +144,8 @@ const getInternationalCapabilities = (operator = {}, plan = {}) => {
     countries: Number(operatorRoaming.countries || planRoaming.internationalDataCountries) || 0,
     internationalDataGb: Number(planRoaming.internationalDataGb) || null,
     euEeaDataGb: Number(planRoaming.euEeaDataGb) || null,
+    samePriceAsSweden: planRoaming.samePriceAsSweden === true,
+    maximumConsecutiveDays: Number(planRoaming.maximumConsecutiveDays) || null,
   };
 };
 
@@ -521,6 +524,7 @@ const buildBenefits = ({ operator, plan, peopleCount, capabilities, includedStre
     ? 'Obegränsad data'
     : `${plan.data.gb} GB ${((plan.data?.sharing === 'shared' || operator.familyDataModel === 'shared_on_limited_plans') && peopleCount > 1) ? 'delas i familjen' : 'per användare'}`,
   peopleCount > 1 ? `${peopleCount} användare med tilläggspris` : '',
+  capabilities.serviceName ? `${capabilities.serviceName} ingår` : '',
   capabilities.euEea ? 'Samtal, sms och roaming inom EU/EES' : '',
   capabilities.countries ? `Utlandsdata i ${capabilities.countries} länder` : '',
   capabilities.outsideEuLocalCalls ? 'Lokala samtal ingår utomlands' : '',
@@ -647,71 +651,121 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
   };
 };
 
-const getComparableEffectiveCost = (option = {}) => {
-  if (option.effectiveMonthlyCost !== null && option.effectiveMonthlyCost !== undefined) {
-    const effective = Number(option.effectiveMonthlyCost);
-    if (Number.isFinite(effective)) return effective;
-  }
-  if (option.knownEffectiveMonthlyCost !== null && option.knownEffectiveMonthlyCost !== undefined) {
-    const known = Number(option.knownEffectiveMonthlyCost);
-    if (Number.isFinite(known)) return known;
-  }
-  return Number.POSITIVE_INFINITY;
-};
+const getRelaxedRequirements = (option = {}, qualification = {}) => {
+  const requirements = [];
+  const unmetMustHaveRequirements = (option.selectedNeeds || [])
+    .filter((need) => (
+      need.importance === 'must_have' && need.covered !== true && need.available !== true
+    ))
+    .map((need) => need.key);
 
-const compareAlternativeCost = (left, right) => (
-  getComparableEffectiveCost(left) - getComparableEffectiveCost(right) ||
-  (Number(left.planMonthlyPrice) || 0) - (Number(right.planMonthlyPrice) || 0) ||
-  String(left.planId || '').localeCompare(String(right.planId || ''), 'sv')
-);
+  requirements.push(...unmetMustHaveRequirements);
+  if (qualification.internationalTravel === 'eu' && option.international?.euEea !== true) {
+    requirements.push('eu_eea_roaming');
+  }
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage !== 'family_calls' &&
+    option.international?.outsideEuData !== true
+  ) {
+    requirements.push('outside_eu_data');
+  }
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage === 'calls' &&
+    option.international?.outsideEuLocalCalls !== true
+  ) {
+    requirements.push('international_calls');
+  }
+  if (
+    qualification.internationalTravel === 'outside_eu' &&
+    qualification.internationalUsage === 'family_calls' &&
+    option.international?.worldwideFamilyCalls !== true
+  ) {
+    requirements.push('worldwide_family_calls');
+  }
+  if (
+    qualification.extraSimRequired === true &&
+    option.extraSim?.available !== true &&
+    option.extraSim?.included !== true
+  ) {
+    requirements.push('extra_sim');
+  }
+  if (qualification.sharedDataRequired === true && option.dataSharing !== 'shared') {
+    requirements.push('shared_data');
+  }
 
-const decorateSecondaryOffer = (option, recommendationType) => {
-  if (!option) return null;
-  const relaxedRequirements = (option.uncoveredNeeds || [])
-    .map((need) => need.key)
-    .filter((key) => ['outside_eu_data', 'international_calls', 'worldwide_family_calls'].includes(key));
   return {
-    ...option,
-    recommendationType,
-    relaxedRequirements: [...new Set(relaxedRequirements)],
+    relaxedRequirements: [...new Set(requirements)],
+    unmetMustHaveRequirements: [...new Set(unmetMustHaveRequirements)],
   };
 };
 
-const selectSecondaryOffer = ({ allCandidates, selection, qualification }) => {
-  const bestMatch = selection.bestMatch;
-  if (!bestMatch) return null;
-  const isDistinct = (option) => option && option.planId !== bestMatch.planId;
+const decorateRecommendedOffer = (option, recommendationType, qualification, strictPlanIds) => {
+  if (!option) return null;
+  const { relaxedRequirements, unmetMustHaveRequirements } = getRelaxedRequirements(option, qualification);
+  return {
+    ...option,
+    recommendationType,
+    strictMatch: strictPlanIds.has(option.planId),
+    relaxedRequirements,
+    unmetMustHaveRequirements,
+  };
+};
 
-  if (qualification.internationalTravel !== 'outside_eu') {
-    return isDistinct(selection.lowestEffectiveCost)
-      ? decorateSecondaryOffer(selection.lowestEffectiveCost, 'lowest_effective_cost')
-      : null;
+const getOfferKey = (option = {}) => String(option.planId || option.id || '');
+const getOperatorKey = (option = {}) => String(option.operatorId || option.operator || '').toLowerCase();
+
+const findDistinctOffer = (candidates, selected, { preferDifferentOperator = true } = {}) => {
+  const selectedKeys = new Set(selected.map(getOfferKey));
+  const selectedOperators = new Set(selected.map(getOperatorKey));
+  const distinct = candidates.filter((candidate) => candidate && !selectedKeys.has(getOfferKey(candidate)));
+  if (!preferDifferentOperator) return distinct[0] || null;
+  return distinct.find((candidate) => !selectedOperators.has(getOperatorKey(candidate))) || distinct[0] || null;
+};
+
+const selectFeaturedOffers = ({ allCandidates, selection, qualification }) => {
+  const availableSelection = selectAvailableMatches(allCandidates, qualification);
+  const strictPlanIds = new Set(selection.eligible.map(getOfferKey));
+  const primary = selection.bestMatch || availableSelection.options[0] || null;
+  if (!primary) return [];
+
+  const featured = [decorateRecommendedOffer(
+    primary,
+    selection.bestMatch ? 'best_match' : 'best_available_match',
+    qualification,
+    strictPlanIds
+  )];
+  const strictSecondaryCandidates = [selection.lowestEffectiveCost, ...selection.ranked];
+  let secondary = findDistinctOffer(strictSecondaryCandidates, featured);
+  let recommendationType = secondary === selection.lowestEffectiveCost
+    ? 'lowest_effective_cost'
+    : 'next_best_match';
+
+  if (!secondary) {
+    secondary = findDistinctOffer(availableSelection.options, featured);
+    recommendationType = qualification.streamingCalculation === 'include' && Number(secondary?.streamingSavings) > 0
+      ? 'best_streaming_alternative'
+      : 'lowest_cost_alternative';
+  }
+  if (!secondary) {
+    secondary = findDistinctOffer(
+      availableSelection.ranked,
+      featured,
+      { preferDifferentOperator: false }
+    );
+    recommendationType = 'lowest_cost_alternative';
+  }
+  if (secondary) {
+    featured.push(decorateRecommendedOffer(
+      secondary,
+      recommendationType,
+      qualification,
+      strictPlanIds
+    ));
   }
 
-  const relaxedSelection = selectBestMatches(allCandidates, {
-    ...qualification,
-    internationalTravel: 'none',
-    internationalUsage: null,
-  });
-  const relaxedAlternatives = relaxedSelection.eligible.filter(isDistinct);
-
-  if (qualification.streamingCalculation === 'include') {
-    const streamingAlternative = relaxedAlternatives
-      .filter((option) => Number(option.streamingSavings) > 0)
-      .sort((left, right) => (
-        (Number(right.streamingSavings) || 0) - (Number(left.streamingSavings) || 0) ||
-        compareAlternativeCost(left, right)
-      ))[0];
-    if (streamingAlternative) {
-      return decorateSecondaryOffer(streamingAlternative, 'best_streaming_alternative');
-    }
-  }
-
-  if (isDistinct(selection.lowestEffectiveCost)) {
-    return decorateSecondaryOffer(selection.lowestEffectiveCost, 'lowest_effective_cost');
-  }
-  const lowestCostAlternative = relaxedAlternatives.sort(compareAlternativeCost)[0];
-  return decorateSecondaryOffer(lowestCostAlternative, 'lowest_cost_alternative');
+  return featured.slice(0, 2);
 };
 
 const calculateOfferOptions = (qualification = {}) => {
@@ -720,9 +774,11 @@ const calculateOfferOptions = (qualification = {}) => {
       readyForOffer: false,
       missingFields: qualification.missingFields || [],
       validOfferAvailable: false,
+      strictOfferAvailable: false,
       bestMatch: null,
       lowestEffectiveCost: null,
       secondaryOffer: null,
+      featuredOffers: [],
       options: [],
     };
   }
@@ -741,26 +797,29 @@ const calculateOfferOptions = (qualification = {}) => {
     .filter(Boolean));
   const selection = selectBestMatches(allCandidates, qualification);
   const options = selection.options;
-  const bestMatch = selection.bestMatch;
+  const featuredOffers = selectFeaturedOffers({ allCandidates, selection, qualification });
+  const bestMatch = featuredOffers[0] || null;
   const lowestEffectiveCost = selection.lowestEffectiveCost;
   const bestTravelFit = selection.bestTravelFit;
   const bestStreamingFit = selection.bestStreamingFit;
-  const secondaryOffer = selectSecondaryOffer({ allCandidates, selection, qualification });
+  const secondaryOffer = featuredOffers[1] || null;
 
   return {
     readyForOffer: true,
     missingFields: [],
-    validOfferAvailable: options.length > 0,
-    noOfferReason: options.length
+    validOfferAvailable: featuredOffers.length > 0,
+    strictOfferAvailable: options.length > 0,
+    noOfferReason: featuredOffers.length
       ? null
       : 'Inget abonnemang i mobilplansdatan matchar alla angivna behov.',
-    bestMatch: bestMatch ? { ...bestMatch, recommendationType: 'best_match' } : null,
+    bestMatch,
     lowestEffectiveCost: lowestEffectiveCost
       ? { ...lowestEffectiveCost, recommendationType: 'lowest_effective_cost' }
       : null,
     bestTravelFit: bestTravelFit ? { ...bestTravelFit, recommendationType: 'best_travel_fit' } : null,
     bestStreamingFit: bestStreamingFit ? { ...bestStreamingFit, recommendationType: 'best_streaming_fit' } : null,
     secondaryOffer,
+    featuredOffers,
     options: options.map((candidate) => ({
       ...candidate,
       recommendationTypes: [

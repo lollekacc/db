@@ -99,10 +99,19 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.match(answerPrompt, /Do not restate the operator, data allowance, exact prices/i);
   assert.match(answerPrompt, /only scripted conversational message/i);
   assert.match(answerPrompt, /deterministic `adaptiveQuestionPlan` controls the default order/i);
+  assert.match(answerPrompt, /exact branded service name/i);
   const answerPayload = JSON.parse(calls[1].input.at(-1).content);
   assert.equal(answerPayload.interactionStage, 'solve');
   assert.equal(answerPayload.customerEmotion, 'neutral');
   assert.match(answerPayload.desiredOutcome, /best-value mobile plan/i);
+  const treCatalog = answerPayload.mobilePlanCatalog.operators.find((operator) => operator.id === 'tre');
+  assert.deepEqual(
+    treCatalog.plans
+      .filter((plan) => plan.roaming?.serviceName === '3Världen')
+      .map((plan) => plan.id),
+    ['tre-6gb', 'tre-25gb', 'tre-unlimited']
+  );
+  assert.match(answerPayload.websiteKnowledge, /3Världen/);
   assert.doesNotMatch(answerPrompt, /explain both best total value and lowest monthly price, including the 24-month formula/i);
   assert.equal(result.source, 'openai');
   assert.match(result.reply, /Tele2 is the best value/);
@@ -111,9 +120,11 @@ setOpenAiTransportForTests(async (_url, options) => {
     result.offerCalculation.bestMatch.planId,
     result.offerCalculation.secondaryOffer.planId,
   ]);
-  assert.equal(result.offerCalculation.secondaryOffer.operator, 'Telia');
-  assert.equal(result.offerCalculation.secondaryOffer.recommendationType, 'best_streaming_alternative');
-  assert.deepEqual(result.offerCalculation.secondaryOffer.relaxedRequirements, ['outside_eu_data']);
+  assert.ok(result.offerCards.find((card) => card.operator === 'Tre').benefits.includes('3Världen ingår'));
+  assert.equal(result.offerCalculation.secondaryOffer.operator, 'Tre');
+  assert.equal(result.offerCalculation.secondaryOffer.recommendationType, 'next_best_match');
+  assert.equal(result.offerCalculation.secondaryOffer.strictMatch, true);
+  assert.deepEqual(result.offerCalculation.secondaryOffer.relaxedRequirements, []);
   assert.equal(result.offerCalculation.options.length, 2);
   assert.deepEqual(
     new Set(result.offerCalculation.options.map((option) => option.operator)),
@@ -747,9 +758,8 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.deepEqual(operatorBindingQuestion.embeddedWidget?.operators, [
     'Telia', 'Tele2', 'Telenor', 'Tre', 'Annan',
   ]);
-  assert.deepEqual(operatorBindingQuestion.quickReplies.map((reply) => reply.label), [
-    'Telia', 'Tele2', 'Telenor', 'Tre', 'Annan',
-  ]);
+  assert.deepEqual(operatorBindingQuestion.quickReplies, []);
+  assert.deepEqual(operatorBindingQuestion.suggestions, []);
 
   const operatorBindingAnswer = await createChatCompletion({
     message: 'Person 1: Tele2, ingen bindningstid; Person 2: Telia, 2027-01-15; Person 3: Tre, 2027-03-01; Person 4: Annan, ingen bindningstid',

@@ -156,7 +156,7 @@ const normalizeOfferCard = (card, index) => {
     dataLabel: String(card.dataLabel || '').trim().slice(0, 80),
     monthlyPriceLabel: String(card.monthlyPriceLabel || '').trim().slice(0, 80),
     monthlyPriceSubLabel: String(card.monthlyPriceSubLabel || '').trim().slice(0, 100),
-    bindingLabel: String(card.bindingLabel || '').trim().slice(0, 100),
+    bindingLabel: '24 mån bindningstid',
     reason: String(card.reason || '').trim().slice(0, 400),
     ctaLabel: String(card.ctaLabel || '').trim().slice(0, 80),
     ctaUrl: String(card.ctaUrl || '').trim().slice(0, 240),
@@ -165,6 +165,14 @@ const normalizeOfferCard = (card, index) => {
     effectiveCostLabel: String(card.effectiveCostLabel || '').trim().slice(0, 80),
     savingsLabel: String(card.savingsLabel || '').trim().slice(0, 100),
     rewardLabel: String(card.rewardLabel || '').trim().slice(0, 80),
+    recommendationType: String(card.recommendationType || '').trim().slice(0, 80),
+    strictMatch: card.strictMatch !== false,
+    relaxedRequirements: Array.isArray(card.relaxedRequirements)
+      ? card.relaxedRequirements.map((requirement) => String(requirement || '').trim()).filter(Boolean).slice(0, 10)
+      : [],
+    unmetMustHaveRequirements: Array.isArray(card.unmetMustHaveRequirements)
+      ? card.unmetMustHaveRequirements.map((requirement) => String(requirement || '').trim()).filter(Boolean).slice(0, 10)
+      : [],
     benefits: Array.isArray(card.benefits)
       ? card.benefits.map((benefit) => String(benefit || '').trim()).filter(Boolean).slice(0, 5)
       : [],
@@ -205,25 +213,37 @@ const removeRepeatedCardFacts = (benefits = [], option = {}) => {
   });
 };
 
+const includeNamedServiceBenefits = (benefits = [], option = {}) => {
+  const serviceName = String(option.international?.serviceName || '').trim();
+  const required = serviceName ? [`${serviceName} ingår`] : [];
+  return [...required, ...(Array.isArray(benefits) ? benefits : [])]
+    .filter((benefit, index, all) => {
+      const normalized = String(benefit || '').trim().toLocaleLowerCase('sv');
+      return normalized && all.findIndex((candidate) => (
+        String(candidate || '').trim().toLocaleLowerCase('sv') === normalized
+      )) === index;
+    });
+};
+
 const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language = 'sv', copy = {} } = {}) => {
   if (!offerCalculation.validOfferAvailable) return [];
   const cardCopy = copy.offerCardCopy || {};
-  const entries = [
-    {
-      option: offerCalculation.bestMatch,
-      resultLabel: cardCopy.bestMatchLabel,
-      reason: copy.bestMatchReason,
-      benefits: copy.bestMatchBenefits,
-    },
-    {
-      option: offerCalculation.secondaryOffer || offerCalculation.lowestEffectiveCost,
-      resultLabel: cardCopy.lowestEffectiveCostLabel,
-      reason: copy.lowestEffectiveCostReason,
-      benefits: copy.lowestEffectiveCostBenefits,
-    },
-  ].filter((entry, index, all) => entry.option && all.findIndex((candidate) => (
-    candidate.option?.planId === entry.option.planId
-  )) === index);
+  const selectedOffers = [
+    ...(Array.isArray(offerCalculation.featuredOffers) ? offerCalculation.featuredOffers : []),
+    offerCalculation.bestMatch,
+    offerCalculation.secondaryOffer,
+    offerCalculation.lowestEffectiveCost,
+    ...(Array.isArray(offerCalculation.options) ? offerCalculation.options : []),
+  ];
+  const distinctOffers = selectedOffers.filter((option, index, all) => (
+    option && all.findIndex((candidate) => candidate?.planId === option.planId) === index
+  ));
+  const entries = distinctOffers.slice(0, MAX_OFFER_CARDS).map((option, index) => ({
+    option,
+    resultLabel: index === 0 ? cardCopy.bestMatchLabel : cardCopy.lowestEffectiveCostLabel,
+    reason: index === 0 ? copy.bestMatchReason : copy.lowestEffectiveCostReason,
+    benefits: index === 0 ? copy.bestMatchBenefits : copy.lowestEffectiveCostBenefits,
+  }));
 
   return normalizeOfferCards(entries.map(({ option, resultLabel, reason, benefits }) => {
     const isGroupOffer = Number(option.peopleCount) > 1;
@@ -249,11 +269,15 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
       savingsLabel: '',
       rewardLabel: cardCopy.rewardLabel,
+      recommendationType: option.recommendationType,
+      strictMatch: option.strictMatch !== false,
+      relaxedRequirements: option.relaxedRequirements,
+      unmetMustHaveRequirements: option.unmetMustHaveRequirements,
       bindingLabel: Number(option.bindingMonths) > 0
         ? `${option.bindingMonths}${cardCopy.bindingMonthsSuffix}`
         : '',
       reason,
-      benefits: removeRepeatedCardFacts(benefits, option),
+      benefits: removeRepeatedCardFacts(includeNamedServiceBenefits(benefits, option), option),
       ctaLabel: cardCopy.ctaLabel,
       ctaUrl: 'varukorg.html',
     };

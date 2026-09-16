@@ -101,7 +101,7 @@ const scenarios = [
     qualification: { peopleCount: 1 },
     expectedFocus: 'current_operator_and_binding',
     expectedWidget: 'operator_binding',
-    expectedQuickReplies: ['Telia', 'Tele2', 'Telenor', 'Tre', 'Annan'],
+    expectedQuickReplies: [],
     answer: {
       reply: 'Vilken mobiloperatör har du idag, och när upphör bindningstiden för det mobilabonnemanget?',
       quickReplies: [],

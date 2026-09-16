@@ -42,6 +42,16 @@ assert.deepEqual(buildChatResponse({ message: 'Dynamic answer' }), {
   embeddedWidget: null,
 });
 
+assert.equal(buildChatResponse({
+  message: 'Här är ditt erbjudande.',
+  offerCards: [{
+    id: 'chat-offer',
+    operator: 'Tre',
+    planName: 'Obegränsad',
+    bindingLabel: 'Model-generated binding copy',
+  }],
+}).offerCards[0].bindingLabel, '24 mån bindningstid');
+
 const streamingWidget = {
   type: 'streaming_prices',
   services: [
@@ -147,20 +157,36 @@ assert.deepEqual(buildChatResponse({
   embeddedWidget: null,
 });
 
+const bestFeaturedOffer = {
+  planId: 'telia-best',
+  operator: 'Telia',
+  title: 'Unlimited streaming',
+  data: 'Unlimited',
+  planMonthlyPrice: 1196,
+  effectiveMonthlyCost: 656,
+  monthlySavings: 944,
+  peopleCount: 2,
+  pricePerPerson: 598,
+  bindingMonths: 24,
+};
+const secondaryFeaturedOffer = {
+  planId: 'tele2-alternative',
+  operator: 'Tele2',
+  title: 'Unlimited alternative',
+  data: 'Unlimited',
+  planMonthlyPrice: 958,
+  effectiveMonthlyCost: 758,
+  peopleCount: 2,
+  pricePerPerson: 479,
+  bindingMonths: 24,
+  recommendationType: 'lowest_cost_alternative',
+  relaxedRequirements: ['international_calls'],
+};
+
 const cards = buildOfferCardsFromOfferCalculation({
   validOfferAvailable: true,
-  bestMatch: {
-    planId: 'telia-best',
-    operator: 'Telia',
-    title: 'Unlimited streaming',
-    data: 'Unlimited',
-    planMonthlyPrice: 1196,
-    effectiveMonthlyCost: 656,
-    monthlySavings: 944,
-    peopleCount: 2,
-    pricePerPerson: 598,
-    bindingMonths: 24,
-  },
+  featuredOffers: [bestFeaturedOffer, secondaryFeaturedOffer],
+  bestMatch: bestFeaturedOffer,
   lowestEffectiveCost: {
     planId: 'tre-low',
     operator: 'Tre',
@@ -174,17 +200,8 @@ const cards = buildOfferCardsFromOfferCalculation({
     bindingMonths: 24,
   },
   secondaryOffer: {
-    planId: 'tele2-alternative',
-    operator: 'Tele2',
-    title: 'Unlimited alternative',
-    data: 'Unlimited',
-    planMonthlyPrice: 958,
-    effectiveMonthlyCost: 758,
-    peopleCount: 2,
-    pricePerPerson: 479,
-    bindingMonths: 24,
-    recommendationType: 'lowest_cost_alternative',
-    relaxedRequirements: ['international_calls'],
+    ...secondaryFeaturedOffer,
+    planId: 'legacy-secondary-must-not-win',
   },
 }, {
   language: 'en',
@@ -224,9 +241,42 @@ assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
 assert.equal(cards[0].monthlyPriceTitle, 'Price per person');
 assert.equal(cards[0].monthlyPriceLabel, 'SEK 598/person/month');
 assert.equal(cards[0].monthlyPriceSubLabel, 'Total price: SEK 1,196/month');
+assert.deepEqual(cards.map((card) => card.bindingLabel), [
+  '24 mån bindningstid',
+  '24 mån bindningstid',
+]);
 assert.deepEqual(cards[0].benefits, [
   'Save SEK 944/month compared with today',
   'Streaming replacement',
 ]);
+
+const treServiceCards = buildOfferCardsFromOfferCalculation({
+  validOfferAvailable: true,
+  featuredOffers: [{
+    planId: 'tre-25gb',
+    operator: 'Tre',
+    title: '25 GB',
+    international: { serviceName: '3Världen' },
+  }],
+}, {
+  copy: {
+    bestMatchBenefits: ['Fria samtal och sms'],
+  },
+});
+assert.deepEqual(treServiceCards[0].benefits, ['3Världen ingår', 'Fria samtal och sms']);
+
+const deduplicatedFeaturedCards = buildOfferCardsFromOfferCalculation({
+  validOfferAvailable: true,
+  featuredOffers: [
+    { planId: 'same-offer', operator: 'Tre', title: '25 GB' },
+    { planId: 'same-offer', operator: 'Tre', title: '25 GB duplicate' },
+    { planId: 'next-offer', operator: 'Telenor', title: '25 GB' },
+  ],
+});
+assert.deepEqual(
+  deduplicatedFeaturedCards.map((card) => card.planId),
+  ['same-offer', 'next-offer']
+);
+assert.equal(new Set(deduplicatedFeaturedCards.map((card) => card.planId)).size, 2);
 
 console.log('chat UI response tests passed');

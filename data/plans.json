@@ -606,12 +606,15 @@
             "monthly": 149
           },
           "roaming": {
+            "serviceName": "3Världen",
             "euEeaIncluded": true,
             "euEeaDataGb": null,
-            "internationalDataCountries": 0,
-            "internationalDataGb": null,
+            "internationalDataCountries": 100,
+            "internationalDataGb": 6,
             "outsideEuDataIncluded": true,
-            "localCallsIncludedAbroad": true
+            "localCallsIncludedAbroad": true,
+            "samePriceAsSweden": true,
+            "maximumConsecutiveDays": 30
           },
           "internationalCalls": {
             "freeCallsWithinFamilyWorldwide": false,
@@ -643,12 +646,15 @@
             "monthly": 149
           },
           "roaming": {
+            "serviceName": "3Världen",
             "euEeaIncluded": true,
             "euEeaDataGb": null,
-            "internationalDataCountries": 0,
-            "internationalDataGb": null,
+            "internationalDataCountries": 100,
+            "internationalDataGb": 25,
             "outsideEuDataIncluded": true,
-            "localCallsIncludedAbroad": true
+            "localCallsIncludedAbroad": true,
+            "samePriceAsSweden": true,
+            "maximumConsecutiveDays": 30
           },
           "internationalCalls": {
             "freeCallsWithinFamilyWorldwide": false,
@@ -678,12 +684,15 @@
             "monthly": 149
           },
           "roaming": {
+            "serviceName": "3Världen",
             "euEeaIncluded": true,
             "euEeaDataGb": null,
-            "internationalDataCountries": 0,
-            "internationalDataGb": null,
+            "internationalDataCountries": 100,
+            "internationalDataGb": 60,
             "outsideEuDataIncluded": true,
-            "localCallsIncludedAbroad": true
+            "localCallsIncludedAbroad": true,
+            "samePriceAsSweden": true,
+            "maximumConsecutiveDays": 30
           },
           "internationalCalls": {
             "freeCallsWithinFamilyWorldwide": false,

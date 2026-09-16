@@ -91,6 +91,7 @@ const postJson = async (baseUrl, route, body) => {
 const scenarios = [
   {
     name: 'family streaming replacement',
+    expectedPlanIds: ['telia-unlimited-plus-streaming-bundle', 'tre-unlimited'],
     qualification: {
       peopleCount: 4,
       operators: Array(4).fill('Annan / ingen'),
@@ -105,6 +106,7 @@ const scenarios = [
   },
   {
     name: 'international data and calls',
+    expectedPlanIds: ['tre-unlimited', 'tele2-unlimited-plus'],
     qualification: {
       peopleCount: 2,
       operators: Array(2).fill('Annan / ingen'),
@@ -116,6 +118,55 @@ const scenarios = [
       streamingMonthlyCosts: {},
       internationalTravel: 'outside_eu',
       internationalUsage: 'calls',
+    },
+  },
+  {
+    name: 'international data uses the second strict match',
+    expectedPlanIds: ['tele2-unlimited-plus', 'tre-unlimited'],
+    qualification: {
+      peopleCount: 1,
+      operators: ['Annan / ingen'],
+      bindingEnds: ['Ingen bindningstid'],
+      mobileUsage: 'high',
+      exactMonthlyPrice: 500,
+      streamingCalculation: 'none',
+      streamingServices: [],
+      streamingMonthlyCosts: {},
+      internationalTravel: 'outside_eu',
+      internationalUsage: 'data',
+    },
+  },
+  {
+    name: 'international calls with streaming fallback',
+    expectedPlanIds: ['tre-unlimited', 'telia-unlimited-plus-streaming-bundle'],
+    qualification: {
+      peopleCount: 1,
+      operators: ['Annan / ingen'],
+      bindingEnds: ['Ingen bindningstid'],
+      mobileUsage: 'high',
+      exactMonthlyPrice: 499,
+      streamingCalculation: 'include',
+      streamingServices: ['netflix', 'hbo', 'disney'],
+      streamingMonthlyCosts: { netflix: 179, hbo: 129, disney: 119 },
+      internationalTravel: 'outside_eu',
+      internationalUsage: 'calls',
+    },
+  },
+  {
+    name: 'flexible needs use best available fallbacks when no strict match exists',
+    expectedPlanIds: ['tele2-unlimited-plus', 'tre-unlimited'],
+    qualification: {
+      peopleCount: 1,
+      operators: ['Annan / ingen'],
+      bindingEnds: ['Ingen bindningstid'],
+      mobileUsage: 'high',
+      exactMonthlyPrice: 500,
+      streamingCalculation: 'none',
+      streamingServices: [],
+      streamingMonthlyCosts: {},
+      internationalTravel: 'outside_eu',
+      internationalUsage: 'calls',
+      extraSimRequired: true,
     },
   },
 ];
@@ -136,14 +187,19 @@ const scenarios = [
         qualification: scenario.qualification,
       });
       assert.deepEqual(chat.offerCalculation, quiz, `${scenario.name}: calculations differ`);
-      const expectedPlanIds = new Set([
-        quiz.bestMatch?.planId,
-        (quiz.secondaryOffer || quiz.lowestEffectiveCost)?.planId,
-      ].filter(Boolean));
+      const featuredPlanIds = quiz.featuredOffers.map((offer) => offer.planId);
+      const chatPlanIds = chat.offerCards.map((card) => card.planId);
+      assert.deepEqual(featuredPlanIds, scenario.expectedPlanIds, `${scenario.name}: wrong featured pair`);
+      assert.equal(featuredPlanIds.length, 2, `${scenario.name}: calculation did not return two offers`);
+      assert.equal(new Set(featuredPlanIds).size, 2, `${scenario.name}: calculation duplicated an offer`);
       assert.deepEqual(
-        new Set(chat.offerCards.map((card) => card.planId)),
-        expectedPlanIds
+        [quiz.bestMatch?.planId, quiz.secondaryOffer?.planId],
+        featuredPlanIds,
+        `${scenario.name}: legacy aliases differ from the authoritative pair`
       );
+      assert.deepEqual(chatPlanIds, featuredPlanIds, `${scenario.name}: chat did not use featuredOffers`);
+      assert.equal(chatPlanIds.length, 2, `${scenario.name}: chat did not render two cards`);
+      assert.equal(new Set(chatPlanIds).size, 2, `${scenario.name}: chat duplicated an offer card`);
     }
     console.log('recommendation parity tests passed');
   } finally {

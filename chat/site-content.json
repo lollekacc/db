@@ -43,6 +43,13 @@
       "nextAction": "Ange ingen bindningstid, vet inte, antal månader kvar eller datum."
     },
     {
+      "term": "3Världen",
+      "synonyms": ["3 världen", "Tre världen", "Tre utomlands", "Tre roaming", "surfa utomlands"],
+      "meaningSv": "3Världen är Tres kostnadsfria utlandstjänst. Den ingår i de aktuella privata Tre-abonnemangen 6 GB, 25 GB och Obegränsad och låter kunden surfa, ringa och sms:a till samma pris som i Sverige i totalt 100 länder vid tillfälliga resor i upp till 30 dagar. Obegränsad har 60 GB surf per månad utomlands. Extra familjeanvändare omfattas när huvudabonnemanget har tjänsten. För företagskunder heter tjänsten 3Världen Företag och ingår i 3Företag Obegränsad Max, inte i 3Företag Obegränsad.",
+      "meaningEn": "3Världen is Tre's included roaming service. It is included with the current private Tre plans with 6 GB, 25 GB, and unlimited data and lets customers use data, calls, and texts at the same price as in Sweden in a total of 100 countries during temporary trips of up to 30 days. Unlimited plans include 60 GB of data per month abroad. Extra family users are covered when the main plan has the service. For business customers it is called 3Världen Företag and is included with 3Företag Obegränsad Max, not 3Företag Obegränsad.",
+      "nextAction": "Kontrollera 3Världen-markeringen på erbjudandekortet; befintliga Tre-kunder kan kontrollera sin tjänst i Mitt3."
+    },
+    {
       "term": "nummerflytt",
       "synonyms": ["flytta nummer", "transfer number", "portering"],
       "meaningSv": "Nummerflytt betyder att kunden vill ta med sitt befintliga mobilnummer till det nya abonnemanget. Det hanteras i varukorgen, inte i chatten.",

@@ -75,6 +75,30 @@ const compareLowestEffectiveCost = (left, right) => (
   compareText(left.planId, right.planId)
 );
 
+const getUnmetNeedCounts = (option = {}, qualification = {}) => {
+  const counts = (option.selectedNeeds || []).reduce((result, need) => {
+    if (need.covered === true || need.available === true) return result;
+    if (need.importance === 'must_have') result.mustHave += 1;
+    else result.flexible += 1;
+    return result;
+  }, { mustHave: 0, flexible: 0 });
+  if (qualification.internationalTravel === 'eu' && option.international?.euEea !== true) {
+    counts.flexible += 1;
+  }
+  return counts;
+};
+
+const compareAvailableMatch = (qualification = {}) => {
+  const compare = compareBestMatch(qualification);
+  return (left, right) => {
+    const leftGaps = getUnmetNeedCounts(left, qualification);
+    const rightGaps = getUnmetNeedCounts(right, qualification);
+    return leftGaps.mustHave - rightGaps.mustHave ||
+      leftGaps.flexible - rightGaps.flexible ||
+      compare(left, right);
+  };
+};
+
 const decorateMatch = (option = {}) => {
   const matchedCapabilities = [];
   if (option.international?.outsideEuData) matchedCapabilities.push('outside_eu_data');
@@ -112,8 +136,9 @@ const selectBestMatches = (candidates = [], qualification = {}) => {
     .filter((candidate) => isEligible(candidate, qualification))
     .map(decorateMatch);
   const compare = compareBestMatch(qualification);
-  const options = bestPerOperator(eligible, compare);
-  const bestMatch = options[0] || null;
+  const ranked = [...eligible].sort(compare);
+  const options = bestPerOperator(ranked, compare);
+  const bestMatch = ranked[0] || null;
   const lowestEffectiveCost = [...eligible].sort(compareLowestEffectiveCost)[0] || null;
   const bestTravelFit = qualification.internationalTravel && qualification.internationalTravel !== 'none'
     ? [...eligible].sort(compare)[0] || null
@@ -128,6 +153,7 @@ const selectBestMatches = (candidates = [], qualification = {}) => {
 
   return {
     eligible,
+    ranked,
     options,
     bestMatch,
     lowestEffectiveCost,
@@ -136,6 +162,18 @@ const selectBestMatches = (candidates = [], qualification = {}) => {
   };
 };
 
+const selectAvailableMatches = (candidates = [], qualification = {}) => {
+  const compare = compareAvailableMatch(qualification);
+  const available = (Array.isArray(candidates) ? candidates : []).map(decorateMatch);
+  const ranked = [...available].sort(compare);
+  return {
+    available,
+    ranked,
+    options: bestPerOperator(ranked, compare),
+  };
+};
+
 module.exports = {
+  selectAvailableMatches,
   selectBestMatches,
 };

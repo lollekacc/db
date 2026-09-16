@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 
 const { calculateOfferOptions } = require('./offer-calculator');
+const { getPlanCatalog } = require('./offer-service');
 const { normalizeQualification } = require('./qualification-service');
 
 const qualify = (overrides = {}) => normalizeQualification({
@@ -18,6 +19,30 @@ const qualify = (overrides = {}) => normalizeQualification({
 
 const calculate = (overrides) => calculateOfferOptions(qualify(overrides));
 
+const catalog = getPlanCatalog();
+const treCatalog = catalog.operators.find((operator) => operator.id === 'tre');
+const brandedTrePlans = treCatalog.plans.filter((plan) => plan.roaming?.serviceName === '3Världen');
+assert.deepEqual(brandedTrePlans.map((plan) => plan.id), ['tre-6gb', 'tre-25gb', 'tre-unlimited']);
+assert.ok(brandedTrePlans.every((plan) => (
+  plan.roaming.internationalDataCountries === 100 &&
+  plan.roaming.maximumConsecutiveDays === 30
+)));
+assert.ok(catalog.operators
+  .filter((operator) => operator.id !== 'tre')
+  .flatMap((operator) => operator.plans)
+  .every((plan) => !plan.roaming?.serviceName));
+
+const assertFeaturedPlanIds = (calculation, expectedPlanIds) => {
+  const planIds = calculation.featuredOffers.map((offer) => offer.planId);
+  assert.equal(planIds.length, 2);
+  assert.equal(new Set(planIds).size, 2);
+  assert.deepEqual(planIds, expectedPlanIds);
+  assert.deepEqual(
+    [calculation.bestMatch?.planId, calculation.secondaryOffer?.planId],
+    expectedPlanIds
+  );
+};
+
 const individual = calculate({});
 assert.equal(individual.options.length, 4);
 assert.equal(individual.bestMatch.operator, 'Tre');
@@ -25,6 +50,11 @@ assert.equal(individual.lowestEffectiveCost.operator, 'Tre');
 assert.equal('bestValue' in individual, false);
 assert.equal('lowestMonthlyPrice' in individual, false);
 assert.equal(individual.bestMatch.effectiveMonthlyCost, 329);
+assert.equal(individual.bestMatch.international.serviceName, '3Världen');
+assert.ok(individual.bestMatch.benefits.includes('3Världen ingår'));
+assertFeaturedPlanIds(individual, ['tre-25gb', 'telenor-25gb']);
+assert.equal(individual.featuredOffers[1].strictMatch, true);
+assert.equal(individual.featuredOffers[1].recommendationType, 'next_best_match');
 
 const family = calculate({
   peopleCount: 4,
@@ -53,6 +83,10 @@ assert.equal(streaming.bestMatch.sourcePlanId, 'telia-unlimited-plus-streaming-b
 assert.equal(streaming.bestMatch.planMonthlyPrice, 1296);
 assert.equal(streaming.bestMatch.streamingSavings, 650);
 assert.equal(streaming.bestMatch.effectiveMonthlyCost, 646);
+assertFeaturedPlanIds(streaming, [
+  'telia-unlimited-plus-streaming-bundle',
+  'tre-unlimited',
+]);
 
 const internationalData = calculate({
   mobileUsage: 'high',
@@ -63,6 +97,10 @@ assert.deepEqual(internationalData.options.map((option) => option.operator), ['T
 assert.equal(internationalData.bestMatch.operator, 'Tele2');
 assert.equal(internationalData.bestMatch.match.internationalDataCountries, 170);
 assert.equal(internationalData.lowestEffectiveCost.operator, 'Tele2');
+assertFeaturedPlanIds(internationalData, ['tele2-unlimited-plus', 'tre-unlimited']);
+assert.ok(internationalData.featuredOffers.every((offer) => offer.strictMatch));
+assert.equal(internationalData.secondaryOffer.international.serviceName, '3Världen');
+assert.equal(internationalData.secondaryOffer.international.internationalDataGb, 60);
 
 const internationalCalls = calculate({
   peopleCount: 2,
@@ -77,10 +115,16 @@ assert.equal(internationalCalls.bestMatch.operator, 'Tre');
 assert.ok(internationalCalls.bestMatch.match.matchedCapabilities.includes('local_calls_abroad'));
 assert.equal(internationalCalls.secondaryOffer.operator, 'Tele2');
 assert.equal(internationalCalls.secondaryOffer.recommendationType, 'lowest_cost_alternative');
-assert.deepEqual(internationalCalls.secondaryOffer.relaxedRequirements, [
-  'outside_eu_data',
-  'international_calls',
-]);
+assert.deepEqual(internationalCalls.secondaryOffer.relaxedRequirements, ['international_calls']);
+assertFeaturedPlanIds(internationalCalls, ['tre-unlimited', 'tele2-unlimited-plus']);
+
+const internationalCallsWithTwoStrictPlans = calculate({
+  mobileUsage: 'medium',
+  internationalTravel: 'outside_eu',
+  internationalUsage: 'calls',
+});
+assertFeaturedPlanIds(internationalCallsWithTwoStrictPlans, ['tre-25gb', 'tre-unlimited']);
+assert.ok(internationalCallsWithTwoStrictPlans.featuredOffers.every((offer) => offer.strictMatch));
 
 const internationalCallsMustHave = calculate({
   peopleCount: 2,
@@ -95,7 +139,14 @@ const internationalCallsMustHave = calculate({
   },
 });
 assert.equal(internationalCallsMustHave.bestMatch.operator, 'Tre');
-assert.equal(internationalCallsMustHave.secondaryOffer, null);
+assertFeaturedPlanIds(internationalCallsMustHave, ['tre-unlimited', 'tele2-unlimited-plus']);
+assert.equal(internationalCallsMustHave.secondaryOffer.strictMatch, false);
+assert.deepEqual(internationalCallsMustHave.secondaryOffer.relaxedRequirements, [
+  'international_calls',
+]);
+assert.deepEqual(internationalCallsMustHave.secondaryOffer.unmetMustHaveRequirements, [
+  'international_calls',
+]);
 
 const worldwideFamilyCalls = calculate({
   peopleCount: 2,
@@ -132,6 +183,15 @@ assert.equal(
   'best_streaming_alternative'
 );
 assert.ok(internationalCallsWithStreaming.secondaryOffer.streamingSavings > 0);
+assertFeaturedPlanIds(internationalCallsWithStreaming, [
+  'tre-unlimited',
+  'telia-unlimited-plus-streaming-bundle',
+]);
+assert.equal(internationalCallsWithStreaming.secondaryOffer.strictMatch, false);
+assert.deepEqual(internationalCallsWithStreaming.secondaryOffer.relaxedRequirements, [
+  'outside_eu_data',
+  'international_calls',
+]);
 
 const extraSim = calculate({
   mobileUsage: 'high',
@@ -164,13 +224,20 @@ assert.equal(bindingOverlap.bestMatch.total24MonthCost, 9696);
 assert.equal(bindingOverlap.bestMatch.effectiveMonthlyCost, 404);
 assert.equal(bindingOverlap.bestMatch.switchAction, 'delay_switch');
 
-const unavailable = calculate({
+const flexibleFallback = calculate({
   mobileUsage: 'high',
   extraSimRequired: true,
   internationalTravel: 'outside_eu',
   internationalUsage: 'calls',
 });
-assert.equal(unavailable.validOfferAvailable, false);
-assert.equal(unavailable.bestMatch, null);
+assert.equal(flexibleFallback.validOfferAvailable, true);
+assert.equal(flexibleFallback.strictOfferAvailable, false);
+assert.equal(flexibleFallback.options.length, 0);
+assertFeaturedPlanIds(flexibleFallback, ['tele2-unlimited-plus', 'tre-unlimited']);
+assert.ok(flexibleFallback.featuredOffers.every((offer) => offer.strictMatch === false));
+assert.deepEqual(flexibleFallback.featuredOffers[0].relaxedRequirements, [
+  'international_calls',
+]);
+assert.deepEqual(flexibleFallback.featuredOffers[1].relaxedRequirements, ['extra_sim']);
 
 console.log('offer calculator tests passed');

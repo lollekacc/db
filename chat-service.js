@@ -930,7 +930,10 @@ const createChatCompletion = async ({
         action: 'send_message',
       }));
     }
-    if (showOperatorBindingWidget || adaptiveQuestionPlan?.qualificationField === 'operators') {
+    if (showOperatorBindingWidget) {
+      return [];
+    }
+    if (adaptiveQuestionPlan?.qualificationField === 'operators') {
       return buildOperatorQuickReplies();
     }
     if (adaptiveQuestionPlan?.qualificationField === 'internationalUsage') {
