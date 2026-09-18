@@ -6,7 +6,7 @@
     "start": "node server.js",
     "dev": "node server.js",
     "test": "npm run test:platform && npm run test:migrations && npm run test:legacy",
-    "test:platform": "node --test platform.test.js",
+    "test:platform": "node --test platform.test.js platform/config.test.js",
     "test:migrations": "node --test migration.test.js",
     "db:migrate": "node scripts/migrate.js up",
     "db:migrate:down": "node scripts/migrate.js down",

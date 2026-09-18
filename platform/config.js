@@ -26,7 +26,7 @@ const parsePositiveInteger = (value, fallback, name) => {
 };
 
 const parseOrigins = (value) => {
-  const origins = String(value || 'http://localhost:3000,http://127.0.0.1:3000')
+  const origins = String(value || 'https://lollekacc.github.io,http://localhost:3000,http://127.0.0.1:3000,http://localhost:5500,http://127.0.0.1:5500,http://[::1]:5500')
     .split(',')
     .map((origin) => origin.trim().replace(/\/$/, ''))
     .filter(Boolean);
