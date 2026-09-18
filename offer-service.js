@@ -6,13 +6,13 @@ const DATA_DIR = path.join(__dirname, 'data');
 const mobileOperatorMeta = {
   Telia: {
     provider: 'Telia',
-    logo: 'images/telia.png',
+    logo: 'images/telia.webp',
     accent: '#6E2380',
     reward: 0,
   },
   Telenor: {
     provider: 'Telenor',
-    logo: 'images/telenor.jpg',
+    logo: 'images/telenor.svg',
     accent: '#00437E',
     reward: 0,
   },
@@ -24,17 +24,17 @@ const mobileOperatorMeta = {
   },
   Tele2: {
     provider: 'Tele2',
-    logo: 'images/tele2.png',
+    logo: 'images/tele2.webp',
     accent: '#003A6E',
     reward: 0,
   },
 };
 
 const providerLogos = {
-  Telia: 'images/telia.png',
-  Tele2: 'images/tele2.png',
+  Telia: 'images/telia.webp',
+  Tele2: 'images/tele2.webp',
   Tre: 'images/tre.jpg',
-  Telenor: 'images/telenor.jpg',
+  Telenor: 'images/telenor.svg',
 };
 
 let planCatalogCache = null;
