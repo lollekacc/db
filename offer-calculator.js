@@ -207,6 +207,15 @@ const calculatePlanMonthlyPrice = ({ operator, plan, baseMonthlyPrice, peopleCou
 };
 
 const getActivePeople = (qualification = {}, peopleCount = 1) => {
+  if (qualification.recommendationMode === 'preview') {
+    return Array.from({ length: peopleCount }, (_, index) => ({
+      currentOperator: qualification.operators?.[index] || 'Annan / ingen',
+      bindingEnd: qualification.bindingEnds?.[index] || null,
+      dataNeed: qualification.mobileUsage,
+      requiredDataGb: qualification.requiredDataGb,
+      ...qualification.people?.[index],
+    })).filter((person) => person.excluded !== true);
+  }
   const source = Array.isArray(qualification.people) && qualification.people.length
     ? qualification.people
     : Array.from({ length: peopleCount }, (_, index) => ({
@@ -468,6 +477,18 @@ const chooseSwitchScenario = ({
   peopleCount,
   selectedNeeds,
 }) => {
+  if (qualification.recommendationMode === 'preview') {
+    return createSwitchScenario({
+      operator,
+      plan,
+      baseMonthlyPrice,
+      qualification,
+      participantPeople: people,
+      peopleCount,
+      selectedNeeds,
+      switchAction: 'review_before_switch',
+    });
+  }
   const { eligiblePeople, readyPeople, delayedPeople } = splitSwitchPeople(people);
   const fullScenario = createSwitchScenario({
     operator,
@@ -765,11 +786,32 @@ const selectFeaturedOffers = ({ allCandidates, selection, qualification }) => {
     ));
   }
 
+  const needsUnlimited = [qualification, ...(qualification.people || [])].some((person) => (
+    person.excluded !== true &&
+    (person.dataNeed || person.mobileUsage) === 'high' &&
+    !(Number(person.requiredDataGb) > 0)
+  ));
+  if (needsUnlimited && !featured.some((offer) => offer.dataType === 'unlimited')) {
+    const unlimited = findDistinctOffer(
+      [...selection.ranked, ...availableSelection.ranked].filter((offer) => offer.dataType === 'unlimited'),
+      featured
+    );
+    if (unlimited) {
+      featured[1] = decorateRecommendedOffer(
+        unlimited,
+        strictPlanIds.has(getOfferKey(unlimited)) ? 'next_best_match' : 'lowest_cost_alternative',
+        qualification,
+        strictPlanIds
+      );
+    }
+  }
+
   return featured.slice(0, 2);
 };
 
 const calculateOfferOptions = (qualification = {}) => {
-  if (!qualification.readyForOffer) {
+  const isPreview = qualification.recommendationMode === 'preview';
+  if (!qualification.readyForOffer && !isPreview) {
     return {
       readyForOffer: false,
       missingFields: qualification.missingFields || [],
@@ -794,7 +836,32 @@ const calculateOfferOptions = (qualification = {}) => {
         qualification,
         peopleCount,
       })))
-    .filter(Boolean));
+    .filter(Boolean))
+    .filter((option) => {
+      const budget = qualification.monthlyBudget;
+      if (!(Number(budget?.amount) > 0)) return true;
+      const price = budget.scope === 'per_person' ? option.pricePerPerson : option.planMonthlyPrice;
+      return budget.inclusive === true ? price <= budget.amount : price < budget.amount;
+    })
+    .map((option) => isPreview ? {
+      ...option,
+      personalized: false,
+      switchNowPeopleCount: 0,
+      effectiveMonthlyCost: null,
+      knownEffectiveMonthlyCost: null,
+      effectivePricePerPerson: null,
+      currentMonthlyTotal: null,
+      currentMonthlyTotalIsEstimate: false,
+      monthlySavings: null,
+      savingsVsStaying: null,
+      current24MonthCost: null,
+      remainingOldCosts: null,
+      total24MonthCost: null,
+      knownTotal24MonthCost: null,
+      total24MonthResult: null,
+      totalResultBeneficial: null,
+      eligibleForOffer: null,
+    } : option);
   const selection = selectBestMatches(allCandidates, qualification);
   const options = selection.options;
   const featuredOffers = selectFeaturedOffers({ allCandidates, selection, qualification });
@@ -806,12 +873,17 @@ const calculateOfferOptions = (qualification = {}) => {
 
   return {
     readyForOffer: true,
+    recommendationMode: isPreview ? 'preview' : qualification.recommendationMode,
+    personalized: !isPreview,
+    missingPersonalizationFields: isPreview ? qualification.missingFields || [] : [],
+    assumedPeopleCount: isPreview && !qualification.peopleCount ? peopleCount : null,
+    monthlyBudget: qualification.monthlyBudget || null,
     missingFields: [],
     validOfferAvailable: featuredOffers.length > 0,
     strictOfferAvailable: options.length > 0,
     noOfferReason: featuredOffers.length
       ? null
-      : 'Inget abonnemang i mobilplansdatan matchar alla angivna behov.',
+      : 'Inget abonnemang i mobilplansdatan matchar alla angivna behov och eventuell budget.',
     bestMatch,
     lowestEffectiveCost: lowestEffectiveCost
       ? { ...lowestEffectiveCost, recommendationType: 'lowest_effective_cost' }
@@ -833,7 +905,7 @@ const calculateOfferOptions = (qualification = {}) => {
     assumptions: {
       planDataSource: 'data/plans.json',
       requiredDataGb: getRequiredDataGb(qualification),
-      calculationId: 'effective_monthly_cost_24_months',
+      calculationId: isPreview ? 'catalog_monthly_price' : 'effective_monthly_cost_24_months',
       termMonths: getCalculationTermMonths(),
       readyToSwitchRemainingMonths: getReadyToSwitchMonths(),
       currentMonthlyTotalIsEstimate: getCurrentMonthlyTotal(qualification, peopleCount).estimated,

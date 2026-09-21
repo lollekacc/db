@@ -68,6 +68,33 @@ assert.equal(family.bestMatch.planMonthlyPrice, 876);
 assert.equal(family.lowestEffectiveCost.operator, 'Tre');
 assert.ok(family.options.every((option) => option.familyEligible));
 
+for (const remainingBindingMonths of [0, 24]) {
+  const mixedDataNeeds = calculate({
+    peopleCount: 2,
+    operators: ['Annan / ingen', 'Annan / ingen'],
+    bindingEnds: ['Ingen bindningstid', 'Ingen bindningstid'],
+    people: [
+      { dataNeed: 'low', currentMonthlyCost: 500, remainingBindingMonths: 0 },
+      { dataNeed: 'high', requiredDataGb: null, currentMonthlyCost: 100, remainingBindingMonths },
+    ],
+  });
+  assert.equal(mixedDataNeeds.featuredOffers.length, 2);
+  assert.ok(mixedDataNeeds.featuredOffers.some((offer) => offer.dataType === 'unlimited'));
+  if (remainingBindingMonths === 24) {
+    assert.equal(mixedDataNeeds.bestMatch.dataType, 'limited');
+    assert.equal(mixedDataNeeds.secondaryOffer.dataType, 'unlimited');
+  }
+}
+
+const unlimitedWithSmallerPersonAllowances = calculate({
+  peopleCount: 2,
+  operators: ['Annan / ingen', 'Annan / ingen'],
+  bindingEnds: ['Ingen bindningstid', 'Ingen bindningstid'],
+  mobileUsage: 'high',
+  people: [{ dataNeed: 'low', requiredDataGb: 10 }, { dataNeed: 'medium', requiredDataGb: 20 }],
+});
+assert.ok(unlimitedWithSmallerPersonAllowances.featuredOffers.some((offer) => offer.dataType === 'unlimited'));
+
 const streaming = calculate({
   peopleCount: 4,
   operators: Array(4).fill('Annan / ingen'),

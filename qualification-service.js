@@ -144,6 +144,7 @@ const createEmptyQualification = () => ({
   people: [],
   customerSegment: null,
   familyTotalPrice: null,
+  monthlyBudget: null,
   readyForOffer: false,
   missingFields: [
     'peopleCount', 'operators', 'bindingEnds', 'mobileUsage', 'priceRange',
@@ -152,7 +153,7 @@ const createEmptyQualification = () => ({
 });
 
 const normalizeQualification = (qualification = {}) => {
-  const recommendationMode = ['initial', 'refined'].includes(qualification.recommendationMode)
+  const recommendationMode = ['initial', 'refined', 'preview'].includes(qualification.recommendationMode)
     ? qualification.recommendationMode
     : (qualification.initialRecommendation === true || qualification.allowInitialRecommendation === true ? 'initial' : 'refined');
   const peopleCount = Number.isFinite(Number(qualification.peopleCount)) && Number(qualification.peopleCount) > 0
@@ -309,6 +310,13 @@ const normalizeQualification = (qualification = {}) => {
 
   return {
     peopleCount,
+    monthlyBudget: Number(qualification.monthlyBudget?.amount) > 0
+      ? {
+        amount: Number(qualification.monthlyBudget.amount),
+        scope: qualification.monthlyBudget.scope === 'per_person' ? 'per_person' : 'total',
+        inclusive: qualification.monthlyBudget.inclusive === true,
+      }
+      : null,
     operators,
     bindingEnds,
     mobileUsage,

@@ -8,7 +8,7 @@ const mergeQualificationState = (current = {}, analyzed = {}) => {
     'extraSimRequired', 'sharedDataRequired', 'exactMonthlyPrice',
     'internationalTripsPerYear', 'internationalDataPassCost',
     'internationalCallsMonthlyCost', 'extraSimMonthlyCost', 'sharedDataMonthlyCost',
-    'customerSegment', 'familyTotalPrice', 'recommendationMode',
+    'customerSegment', 'familyTotalPrice', 'recommendationMode', 'monthlyBudget',
   ];
   const arrayFields = [
     'people', 'operators', 'bindingEnds', 'streamingServices', 'exactMonthlyPrices',

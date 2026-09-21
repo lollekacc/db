@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "test:featured-offers": "node --test featured-offers.test.js",
     "start": "node server.js",
     "dev": "node server.js",
     "test": "npm run test:platform && npm run test:migrations && npm run test:legacy",
@@ -19,7 +20,7 @@
     "test:recommendations": "node offer-calculator.test.js",
     "test:cost-calculator": "node cost-calculator.test.js",
     "test:best-match": "node best-match.test.js",
-    "test:chat-dynamic": "node chat-service.dynamic.test.js",
+    "test:chat-dynamic": "node chat-service.dynamic.test.js && node chat-service.preview.test.js",
     "test:quiz-consent": "node quiz-consent.test.js",
     "test:customer-service": "node src/customerServiceBehavior.test.js",
     "test:conversation-state": "node src/conversationState.test.js",

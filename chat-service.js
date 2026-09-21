@@ -239,6 +239,16 @@ const qualificationSchema = {
     mobileUsage: { type: ['string', 'null'], enum: ['low', 'medium', 'high', null] },
     requiredDataGb: nullableNumber,
     priceRange: { type: ['string', 'null'], enum: ['under300', '300-400', '400-500', 'no_limit', null] },
+    monthlyBudget: {
+      type: ['object', 'null'],
+      additionalProperties: false,
+      properties: {
+        amount: nullableNumber,
+        scope: { type: 'string', enum: ['total', 'per_person'] },
+        inclusive: { type: 'boolean' },
+      },
+      required: ['amount', 'scope', 'inclusive'],
+    },
     familyPriceRange: {
       type: ['string', 'null'],
       enum: ['under1000', '1000-1500', '1500-2000', 'over2000', 'unknown', null],
@@ -299,7 +309,7 @@ const qualificationSchema = {
     'needImportance', 'internationalTripsPerYear', 'internationalDataPassCost',
     'internationalCallsMonthlyCost', 'extraSimMonthlyCost', 'sharedDataMonthlyCost',
     'exactMonthlyPrice', 'exactMonthlyPrices', 'customerSegment',
-    'familyTotalPrice', 'operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll',
+    'familyTotalPrice', 'monthlyBudget', 'operatorAppliesToAll', 'bindingAppliesToAll', 'priceAppliesToAll',
   ],
 };
 
@@ -318,6 +328,7 @@ const analysisSchema = {
       enum: ['neutral', 'confused', 'frustrated', 'angry', 'anxious'],
     },
     recommendationRequested: { type: 'boolean' },
+    offerPreference: { type: ['string', 'null'], enum: ['preview', 'personalized', null] },
     resetRequested: { type: 'boolean' },
     groupBindingStatus: {
       type: 'string',
@@ -332,7 +343,7 @@ const analysisSchema = {
   },
   required: [
     'topic', 'interactionStage', 'desiredOutcome', 'customerEmotion',
-    'recommendationRequested', 'resetRequested', 'groupBindingStatus', 'quizAnswerDecision',
+    'recommendationRequested', 'offerPreference', 'resetRequested', 'groupBindingStatus', 'quizAnswerDecision',
     'knowledgeQuery', 'qualification',
   ],
 };
@@ -703,7 +714,7 @@ const getHistoricalQuizQualification = (context = {}) => normalizeChatQualificat
 const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
-  maxOutputTokens: 900,
+  maxOutputTokens: 4500,
   model: process.env.OPENAI_ANALYSIS_MODEL || DEFAULT_ANALYSIS_MODEL,
   reasoningEffort: 'none',
   input: [
@@ -824,9 +835,13 @@ const createChatCompletion = async ({
     ? normalizeQuestionFlowState({})
     : incomingFlowState;
   const recommendationInProgress = analysis.interactionStage !== 'close' && (
-    analysis.recommendationRequested || flowBase.inProgress || context?.quizHandoff === true
+    analysis.recommendationRequested || analysis.offerPreference === 'preview' || flowBase.inProgress || context?.quizHandoff === true
+  );
+  const previewRequested = analysis.offerPreference === 'preview' || (
+    analysis.offerPreference !== 'personalized' && qualificationBase.recommendationMode === 'preview'
   );
   const quizConsentRequired = historicalQuizAvailable &&
+    !previewRequested &&
     !historicalQuizAccepted &&
     !historicalQuizDeclined &&
     recommendationInProgress;
@@ -846,6 +861,8 @@ const createChatCompletion = async ({
     qualificationBase,
     quizConsentRequired ? {} : analyzedQualification
   );
+  if (previewRequested) mergedQualification.recommendationMode = 'preview';
+  else if (analysis.offerPreference === 'personalized') mergedQualification.recommendationMode = 'refined';
   const bindingInput = applyBindingTimeInput({
     qualification: mergedQualification,
     flowState: flowBase,
@@ -866,7 +883,7 @@ const createChatCompletion = async ({
       ])],
     }
     : normalizedNextQualification;
-  const adaptiveQuestionPlan = quizConsentRequired
+  const adaptiveQuestionPlan = quizConsentRequired || previewRequested
     ? null
     : getAdaptiveQuestionPlan({
       message: latestMessage,
@@ -882,7 +899,7 @@ const createChatCompletion = async ({
   const offerCalculation = recommendationInProgress &&
     !quizConsentRequired &&
     !adaptiveQuestionPlan &&
-    nextQualification.missingFields.length === 0
+    (previewRequested || nextQualification.missingFields.length === 0)
     ? calculateOfferOptions(nextQualification)
     : null;
   const websiteKnowledge = retrieveWebsiteKnowledge({
@@ -910,7 +927,7 @@ const createChatCompletion = async ({
     adaptiveQuestionPlan,
     questionFlowState: nextFlowState,
   });
-  const offerCards = offerCalculation && answer.showOfferCards
+  const offerCards = offerCalculation && (answer.showOfferCards || previewRequested)
     ? buildOfferCardsFromOfferCalculation(offerCalculation, {
       language: normalizedLanguage,
       copy: answer,

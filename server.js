@@ -32,6 +32,7 @@ const {
 } = require('./offer-service');
 const { createChatCompletion } = require('./chat-service');
 const { normalizeQualification } = require('./qualification-service');
+const { buildFeaturedCartItem, getFeaturedOffers } = require('./featured-offers');
 const { appendChatFeedback } = require('./chat-feedback-service');
 const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
 const { subscribeToNewsletter } = require('./newsletter-service');
@@ -120,6 +121,18 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
     if (pathname === '/api/health') {
       if (!requireMethod(request, response, 'GET')) return true;
       sendJson(response, 200, { ok: true });
+      return true;
+    }
+
+    if (pathname === '/api/featured-offers') {
+      if (!requireMethod(request, response, 'GET')) return true;
+      sendJson(response, 200, getFeaturedOffers());
+      return true;
+    }
+
+    if (pathname === '/api/featured-offers/cart-item') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      sendJson(response, 200, buildFeaturedCartItem(await readJsonBody(request)));
       return true;
     }
 

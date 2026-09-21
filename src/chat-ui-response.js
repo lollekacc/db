@@ -258,7 +258,9 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
         ? (cardCopy.perPersonPriceTitle || cardCopy.monthlyPriceTitle)
         : cardCopy.monthlyPriceTitle,
       bindingTitle: cardCopy.bindingTitle,
-      resultLabel,
+      resultLabel: offerCalculation.recommendationMode === 'preview'
+        ? (String(language).startsWith('sv') ? 'Exempel – inte skräddarsytt' : 'Example – not personalized')
+        : resultLabel,
       monthlyPriceLabel: `${formatMoney(
         isGroupOffer ? option.pricePerPerson : option.planMonthlyPrice,
         language
@@ -266,10 +268,12 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
       monthlyPriceSubLabel: isGroupOffer
         ? `${cardCopy.totalPriceTitle || cardCopy.monthlyPriceTitle}: ${formatMoney(option.planMonthlyPrice, language)}${cardCopy.perMonthSuffix}`
         : '',
-      effectiveCostLabel: `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
+      effectiveCostLabel: offerCalculation.recommendationMode === 'preview'
+        ? ''
+        : `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
       savingsLabel: '',
       rewardLabel: cardCopy.rewardLabel,
-      recommendationType: option.recommendationType,
+      recommendationType: offerCalculation.recommendationMode === 'preview' ? 'example_offer' : option.recommendationType,
       strictMatch: option.strictMatch !== false,
       relaxedRequirements: option.relaxedRequirements,
       unmetMustHaveRequirements: option.unmetMustHaveRequirements,

@@ -2,6 +2,7 @@ const crypto = require('node:crypto');
 
 const { buildBroadbandCartItem, getBroadbandPlans, getPlans } = require('../offer-service');
 const { calculateOfferOptions } = require('../offer-calculator');
+const { buildFeaturedCartItem, isFeaturedOffer } = require('../featured-offers');
 const { normalizeQualification } = require('../qualification-service');
 const { PlatformError, assertPlatform } = require('./errors');
 const { requirePermission } = require('./permissions');
@@ -428,6 +429,27 @@ const buildAuthoritativeSnapshot = (payload = {}) => {
   const calculation = calculateOfferOptions(qualification);
   let selected = calculation.readyForOffer ? findCalculatedOffer(calculation, selectedOfferId) : null;
   let productType = 'mobile';
+
+  if (isFeaturedOffer(selectedOfferId)) {
+    if (submittedCartItems.length > 1) {
+      throw new PlatformError('MULTI_OFFER_CONSENT_REQUIRED', 'Fixed packages require separate checkout', 409);
+    }
+    const { cartItem } = buildFeaturedCartItem({ offerId: selectedOfferId });
+    selected = {
+      planId: cartItem.offerId,
+      sourcePlanId: cartItem.sourcePlanId,
+      operator: cartItem.operator,
+      operatorId: cartItem.operator.toLowerCase(),
+      title: cartItem.title,
+      data: cartItem.data,
+      peopleCount: cartItem.persons,
+      planMonthlyPrice: cartItem.monthlyPrice,
+      bindingMonths: cartItem.bindingMonths,
+      giftCardValue: cartItem.rewardTotal,
+      benefits: cartItem.features,
+    };
+    productType = cartItem.productType;
+  }
 
   if (!selected) {
     const catalogPlan = getPlans().find((plan) => plan.id === selectedOfferId || plan.sourcePlanId === selectedOfferId);
