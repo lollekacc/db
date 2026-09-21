@@ -55,8 +55,37 @@ const assertPreview = (response) => {
 };
 
 (async () => {
+  const familyQuestion = 'Vi är fyra i familjen och har idag olika operatörer. Två använder mycket surf och streamar mycket, en använder nästan inget och en reser ganska ofta utomlands. Vi vill helst samla allt på en faktura och hålla oss under 1 500 kr i månaden. Vi behöver inga nya telefoner. Vilket abonnemang eller familjeupplägg passar oss bäst, och vilket alternativ ger mest värde totalt?';
+  const familyNeeds = {
+    peopleCount: 4,
+    mobileUsage: 'high',
+    monthlyBudget: { amount: 1500, scope: 'total', inclusive: false },
+    people: [
+      { dataNeed: 'high' }, { dataNeed: 'high' }, { dataNeed: 'low' }, {},
+    ],
+  };
+  analyzed = { offerPreference: null, qualification: familyNeeds };
+  const family = await createChatCompletion({ message: familyQuestion });
+  assertPreview(family);
+  assert.equal(family.offerCards.length, 2);
+  assert.ok(family.offerCalculation.featuredOffers.every((offer) => offer.peopleCount === 4 && offer.planMonthlyPrice < 1500));
+  assert.equal(family.qualification.monthlyBudget.amount, 1500);
+  assert.equal(family.qualification.exactMonthlyPrice, null);
+  assert.deepEqual(family.qualification.operators, []);
+  assert.deepEqual(family.qualification.bindingEnds, []);
+  assert.equal(family.qualification.internationalTravel, null);
+  assert.deepEqual(family.qualification.streamingServices, []);
+  for (const activeQuestionField of ['priceRange', 'bindingEnds', 'streamingPrices', 'internationalTravel']) {
+    const resumed = await createChatCompletion({
+      message: familyQuestion,
+      flowState: { inProgress: true, activeQuestionField, attempts: { [activeQuestionField]: 2 } },
+    });
+    assertPreview(resumed);
+    assert.equal(resumed.offerCards.length, 2);
+  }
+
   const known = { peopleCount: 3, mobileUsage: 'high', monthlyBudget: { amount: 1500, scope: 'total', inclusive: false } };
-  analyzed = { qualification: known };
+  analyzed = { offerPreference: 'preview', qualification: known };
   const first = await createChatCompletion({ message: 'Jag vill ha abonnemang för 3 personer med obegränsad surf under 1500 kr.' });
   assertPreview(first);
   assert.equal(first.offerCards.length, 2);
