@@ -12,6 +12,7 @@ setOpenAiTransportForTests(async (_url, options) => {
   let output;
   if (request.text.format.name === 'dealett_customer_need') {
     assert.ok(request.text.format.schema.required.includes('offerPreference'));
+    assert.match(request.input[0].content, /Treat streaming, watching streaming, and streamar as interest in streaming services/);
     assert.ok(request.text.format.schema.properties.qualification.required.includes('monthlyBudget'));
     output = {
       interactionStage: 'solve', recommendationRequested: true,
@@ -59,6 +60,7 @@ const assertPreview = (response) => {
   const familyNeeds = {
     peopleCount: 4,
     mobileUsage: 'high',
+    streamingCalculation: 'include',
     monthlyBudget: { amount: 1500, scope: 'total', inclusive: false },
     people: [
       { dataNeed: 'high' }, { dataNeed: 'high' }, { dataNeed: 'low' }, {},
@@ -75,6 +77,24 @@ const assertPreview = (response) => {
   assert.deepEqual(family.qualification.bindingEnds, []);
   assert.equal(family.qualification.internationalTravel, null);
   assert.deepEqual(family.qualification.streamingServices, []);
+  assert.equal(family.qualification.streamingCalculation, 'include');
+  const streamingAlternative = family.offerCalculation.featuredOffers.find((offer) => offer.operator === 'Telia');
+  assert.ok(streamingAlternative);
+  assert.equal(streamingAlternative.sourcePlanId, 'telia-unlimited-plus-streaming-bundle');
+  assert.equal(streamingAlternative.streamingSavings, 0);
+  assert.equal(streamingAlternative.effectiveMonthlyCost, null);
+  assert.equal(streamingAlternative.recommendationType, 'best_streaming_alternative');
+  const previewStreaming = (overrides) => calculateOfferOptions(normalizeQualification({
+    ...familyNeeds, recommendationMode: 'preview', ...overrides,
+  }));
+  const rejectedStreaming = previewStreaming({ streamingCalculation: 'none' });
+  assert.ok(rejectedStreaming.featuredOffers.every((offer) => offer.recommendationType !== 'best_streaming_alternative'));
+  const constrainedStreaming = previewStreaming({ monthlyBudget: { amount: 900, scope: 'total', inclusive: false } });
+  assert.ok(constrainedStreaming.featuredOffers.every((offer) => offer.planMonthlyPrice < 900));
+  assert.ok(constrainedStreaming.featuredOffers.every((offer) => offer.operator !== 'Telia'));
+  const namedStreaming = previewStreaming({ streamingServices: ['netflix'] });
+  assert.ok(namedStreaming.featuredOffers.some((offer) => offer.includedStreamingServices.includes('Netflix')));
+  assert.ok(namedStreaming.featuredOffers.every((offer) => offer.streamingSavings === 0));
   for (const activeQuestionField of ['priceRange', 'bindingEnds', 'streamingPrices', 'internationalTravel']) {
     const resumed = await createChatCompletion({
       message: familyQuestion,

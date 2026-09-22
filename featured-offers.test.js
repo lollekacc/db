@@ -5,10 +5,10 @@ const { buildAuthoritativeSnapshot } = require('./platform/service');
 const { createServer } = require('./server');
 
 const expected = [
-  ['featured-family-4', 'Telenor', 4, 1136, 4000],
+  ['featured-family-4', 'Telia', 4, 1166, 4000],
   ['featured-family-3', 'Tele2', 3, 737, 3000],
   ['featured-duo-2', 'Tre', 2, 578, 2000],
-  ['featured-single-1', 'Telia', 1, 499, 1000],
+  ['featured-single-1', 'Telenor', 1, 449, 1000],
 ];
 for (const [id, operator, persons, price, reward] of expected) {
   test(`${id} uses authoritative package quantities, pricing and rewards`, () => {

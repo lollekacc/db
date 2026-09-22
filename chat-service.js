@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { readEvents, replyPrefix } = require('./chat-stream');
 
 const { calculateOfferOptions } = require('./offer-calculator');
 const { getPlanCatalog } = require('./offer-service');
@@ -37,6 +38,16 @@ let openAiTransport = (...args) => fetch(...args);
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
 const chatInstructions = fs.readFileSync(CHAT_INSTRUCTIONS_PATH, 'utf8');
+const instructionSections = chatInstructions.split(/(?=^## )/m);
+const analysisInstructions = 'Task: analyze_customer_message. Return only the required structured analysis.\n\n' + instructionSections.filter(section =>
+  /^(?:# Dealett|## (?:Role|Source authority|Truthfulness and scope|Message analysis)\n)/.test(section)
+).join('\n');
+const replyInstructions = 'Task: generate_customer_reply. Write naturally within all supplied constraints and return only the required structured output.\n\n' + instructionSections.filter(section =>
+  !/^## (?:Task modes|Message analysis)\n/.test(section)
+).join('\n');
+const ordinaryReplyInstructions = replyInstructions.split(/(?=^## )/m).filter(section =>
+  !/^## (?:Recommendation calculation|Decision support and tradeoffs|Secondary offer)\n/.test(section)
+).join('\n');
 
 const loadWebsiteData = () => Object.fromEntries(
   Object.entries(WEBSITE_SOURCES).map(([name, filePath]) => [name, readJson(filePath)])
@@ -411,7 +422,21 @@ const answerSchema = {
   ],
 };
 
-const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, reasoningEffort = 'low' }) => {
+const plainAnswerSchema = {
+  type: 'object', additionalProperties: false,
+  properties: {
+    reply: answerSchema.properties.reply,
+    showOfferCards: { type: 'boolean', enum: [false] },
+    quickReplies: answerSchema.properties.quickReplies,
+  },
+  required: ['reply', 'showOfferCards', 'quickReplies'],
+};
+
+const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, reasoningEffort = 'low', onReplyDelta, onMetric, signal }) => {
+  const started = performance.now();
+  let firstTextMs = null;
+  let usage = null;
+  let succeeded = false;
   if (!process.env.OPENAI_API_KEY) {
     const error = new Error('AI chat is unavailable because OPENAI_API_KEY is not configured');
     error.statusCode = 503;
@@ -427,12 +452,13 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      signal: controller.signal,
+      signal: signal ? AbortSignal.any([controller.signal, signal]) : controller.signal,
       body: JSON.stringify({
         model: model || process.env.OPENAI_MODEL || DEFAULT_MODEL,
         input,
         max_output_tokens: maxOutputTokens,
         store: false,
+        ...(onReplyDelta ? { stream: true } : {}),
         reasoning: { effort: reasoningEffort },
         text: {
           verbosity: 'low',
@@ -445,7 +471,32 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
         },
       }),
     });
-    const body = await response.json().catch(() => ({}));
+    let body;
+    if (response.ok && onReplyDelta) {
+      let output = '';
+      let emitted = '';
+      await readEvents(response.body, event => {
+        if (event.type === 'response.output_text.delta') {
+          output += event.delta;
+          if (output.length > 2_000_000) throw new Error('Response too large');
+          const prefix = replyPrefix(output);
+          if (prefix.length > emitted.length) {
+            if (firstTextMs === null) firstTextMs = Math.round(performance.now() - started);
+            onReplyDelta(prefix.slice(emitted.length));
+            emitted = prefix;
+          }
+        } else if (event.type === 'response.completed') {
+          body = event.response;
+        } else if (['error', 'response.failed', 'response.incomplete'].includes(event.type)) {
+          throw new Error('AI response did not complete');
+        }
+      });
+      if (!body || body.status !== 'completed') throw new Error('Interrupted AI response');
+    } else {
+      body = await response.json().catch(() => ({}));
+    }
+    usage = body?.usage || null;
+    if (body?.status === 'incomplete') throw new Error('AI response exceeded its output limit');
     if (!response.ok) {
       const error = new Error(`OpenAI request failed with status ${response.status}`);
       error.statusCode = 502;
@@ -458,7 +509,12 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
       error.statusCode = 502;
       throw error;
     }
-    return JSON.parse(outputText);
+    const parsed = JSON.parse(outputText);
+    if (schemaName === 'dealett_adviser_reply' && (typeof parsed.reply !== 'string' || !parsed.reply.trim())) {
+      throw new Error('AI response has no reply');
+    }
+    succeeded = true;
+    return parsed;
   } catch (error) {
     if (error.name === 'AbortError') {
       const timeoutError = new Error('OpenAI request timed out');
@@ -469,6 +525,17 @@ const callOpenAi = async ({ schemaName, schema, input, maxOutputTokens, model, r
     throw error;
   } finally {
     clearTimeout(timeout);
+    onMetric?.({
+      stage: schemaName === 'dealett_customer_need' ? 'analysis' : 'answer',
+      durationMs: Math.round(performance.now() - started), firstTextMs,
+      model: model || process.env.OPENAI_MODEL || DEFAULT_MODEL,
+      inputCharacters: input.reduce((total, item) => total + String(item.content || '').length, 0),
+      inputTokens: usage?.input_tokens ?? null,
+      cachedInputTokens: usage?.input_tokens_details?.cached_tokens ?? null,
+      outputTokens: usage?.output_tokens ?? null,
+      reasoningTokens: usage?.output_tokens_details?.reasoning_tokens ?? null,
+      succeeded,
+    });
   }
 };
 
@@ -715,7 +782,8 @@ const getHistoricalQuizQualification = (context = {}) => normalizeChatQualificat
   context?.historicalQuizQualification || context?.qualification || {}
 );
 
-const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context }) => callOpenAi({
+const analyzeCustomerMessage = ({ message, messages, qualification, language, page, context, onMetric, signal }) => callOpenAi({
+  onMetric, signal,
   schemaName: 'dealett_customer_need',
   schema: analysisSchema,
   maxOutputTokens: 4500,
@@ -724,7 +792,7 @@ const analyzeCustomerMessage = ({ message, messages, qualification, language, pa
   input: [
     {
       role: 'system',
-      content: chatInstructions,
+      content: analysisInstructions,
     },
     ...trimMessages(messages),
     {
@@ -757,14 +825,16 @@ const generateAnswer = ({
   context,
   adaptiveQuestionPlan,
   questionFlowState,
+  onReplyDelta, onMetric, signal,
 }) => callOpenAi({
+  onReplyDelta, onMetric, signal,
   schemaName: 'dealett_adviser_reply',
-  schema: answerSchema,
+  schema: offerCalculation ? answerSchema : plainAnswerSchema,
   maxOutputTokens: 700,
   input: [
     {
       role: 'system',
-      content: chatInstructions,
+      content: offerCalculation ? replyInstructions : ordinaryReplyInstructions,
     },
     ...trimMessages(messages),
     {
@@ -785,7 +855,7 @@ const generateAnswer = ({
         questionFlowState,
         priorSiteSelection: cart,
         websiteKnowledge,
-        mobilePlanCatalog: getPlanCatalog(),
+        ...(!offerCalculation && interactionStage !== 'greeting' ? { mobilePlanCatalog: getPlanCatalog() } : {}),
         exactMobileRecommendationCalculation: getCalculationFacts(offerCalculation),
       }),
     },
@@ -801,7 +871,7 @@ const createChatCompletion = async ({
   qualification = {},
   flowState = {},
   context = {},
-}) => {
+}, { onReplyDelta, onMetric, signal } = {}) => {
   const latestMessage = String(message || '').trim();
   if (!latestMessage && context?.quizHandoff !== true) {
     const error = new Error('Message is required');
@@ -820,6 +890,7 @@ const createChatCompletion = async ({
     context
   );
   const analysis = await analyzeCustomerMessage({
+    onMetric, signal,
     message: latestMessage,
     messages,
     qualification: currentQualification,
@@ -827,6 +898,7 @@ const createChatCompletion = async ({
     page,
     context,
   });
+  const preparationStarted = performance.now();
   const unavailableHistoricalQuizRequested = !historicalQuizAvailable &&
     analysis.quizAnswerDecision === 'use';
   const historicalQuizAccepted = historicalQuizAvailable && analysis.quizAnswerDecision === 'use';
@@ -915,11 +987,14 @@ const createChatCompletion = async ({
     (previewRequested || nextQualification.missingFields.length === 0)
     ? calculateOfferOptions(nextQualification)
     : null;
-  const websiteKnowledge = retrieveWebsiteKnowledge({
-    query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
-    page,
-  });
+  const websiteKnowledge = analysis.interactionStage === 'greeting' && !recommendationInProgress
+    ? '' : retrieveWebsiteKnowledge({
+      query: `${latestMessage} ${analysis.knowledgeQuery || ''} ${analysis.topic || ''}`,
+      page,
+    });
+  onMetric?.({ stage: 'preparation', durationMs: Math.round(performance.now() - preparationStarted) });
   const answer = await generateAnswer({
+    onReplyDelta, onMetric, signal,
     message: latestMessage,
     messages,
     language: normalizedLanguage,

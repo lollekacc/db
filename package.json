@@ -20,7 +20,7 @@
     "test:recommendations": "node offer-calculator.test.js",
     "test:cost-calculator": "node cost-calculator.test.js",
     "test:best-match": "node best-match.test.js",
-    "test:chat-dynamic": "node chat-service.dynamic.test.js && node chat-service.preview.test.js",
+    "test:chat-dynamic": "node chat-service.dynamic.test.js && node chat-service.preview.test.js && npm run test:chat-stream",
     "test:quiz-consent": "node quiz-consent.test.js",
     "test:customer-service": "node src/customerServiceBehavior.test.js",
     "test:conversation-state": "node src/conversationState.test.js",
@@ -29,7 +29,9 @@
     "test:recommendation-parity": "node recommendation-parity.test.js",
     "test:chat-ui-response": "node src/chatUiResponse.test.js",
     "test:chat-feedback": "node src/chatFeedback.test.js",
-    "test:all": "npm run check && npm test"
+    "test:all": "npm run check && npm test",
+    "test:chat-stream": "node --test chat-stream.test.js",
+    "benchmark:chat": "node scripts/benchmark-chat.js"
   },
   "engines": {
     "node": ">=20"

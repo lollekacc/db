@@ -1,6 +1,6 @@
 [
-  { "id": "featured-family-4", "operator": "Telenor", "planId": "telenor-unlimited", "addonPlanId": "telenor-additional-user", "persons": 4, "rewardTotal": 4000 },
+  { "id": "featured-family-4", "operator": "Telia", "planId": "telia-unlimited-plus", "addonPlanId": "telia-additional-user", "persons": 4, "rewardTotal": 4000 },
   { "id": "featured-family-3", "operator": "Tele2", "planId": "tele2-unlimited", "addonPlanId": "tele2-additional-user", "persons": 3, "rewardTotal": 3000 },
   { "id": "featured-duo-2", "operator": "Tre", "planId": "tre-unlimited", "addonPlanId": "tre-additional-user", "persons": 2, "rewardTotal": 2000 },
-  { "id": "featured-single-1", "operator": "Telia", "planId": "telia-unlimited", "persons": 1, "rewardTotal": 1000 }
+  { "id": "featured-single-1", "operator": "Telenor", "planId": "telenor-unlimited", "persons": 1, "rewardTotal": 1000 }
 ]

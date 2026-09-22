@@ -806,6 +806,22 @@ const selectFeaturedOffers = ({ allCandidates, selection, qualification }) => {
     }
   }
 
+  if (qualification.recommendationMode === 'preview' && qualification.streamingCalculation === 'include') {
+    const selectedServices = getSelectedStreamingKeys(qualification);
+    const relevance = (offer) => (offer.includedStreamingServices || [])
+      .filter((service) => !selectedServices.size || selectedServices.has(getStreamingServiceKey(service))).length;
+    if (!featured.some((offer) => relevance(offer) > 0)) {
+      const streamingAlternative = [...selection.ranked, ...availableSelection.ranked]
+        .filter((offer) => relevance(offer) > 0 && (!needsUnlimited || offer.dataType === 'unlimited'))
+        .sort((left, right) => relevance(right) - relevance(left) || left.planMonthlyPrice - right.planMonthlyPrice)[0];
+      if (streamingAlternative) {
+        featured[1] = decorateRecommendedOffer(
+          streamingAlternative, 'best_streaming_alternative', qualification, strictPlanIds
+        );
+      }
+    }
+  }
+
   return featured.slice(0, 2);
 };
 

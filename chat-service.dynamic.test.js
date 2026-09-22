@@ -104,13 +104,10 @@ setOpenAiTransportForTests(async (_url, options) => {
   assert.equal(answerPayload.interactionStage, 'solve');
   assert.equal(answerPayload.customerEmotion, 'neutral');
   assert.match(answerPayload.desiredOutcome, /best-value mobile plan/i);
-  const treCatalog = answerPayload.mobilePlanCatalog.operators.find((operator) => operator.id === 'tre');
-  assert.deepEqual(
-    treCatalog.plans
-      .filter((plan) => plan.roaming?.serviceName === '3Världen')
-      .map((plan) => plan.id),
-    ['tre-6gb', 'tre-25gb', 'tre-unlimited']
-  );
+  assert.equal(answerPayload.mobilePlanCatalog, undefined);
+  assert.ok(answerPayload.exactMobileRecommendationCalculation.options.some(
+    option => option.operator === 'Tre' && option.international.serviceName === '3Världen'
+  ));
   assert.match(answerPayload.websiteKnowledge, /3Världen/);
   assert.doesNotMatch(answerPrompt, /explain both best total value and lowest monthly price, including the 24-month formula/i);
   assert.equal(result.source, 'openai');

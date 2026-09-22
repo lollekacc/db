@@ -182,36 +182,94 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
         throw error;
       }
       const body = await readJsonBody(request);
-      let turn = null;
-      if (context.platformRuntime) {
-        turn = await context.platformRuntime.service.beginChatTurn({
-          ...body,
-          conversationToken: body.conversationToken || request.headers['x-conversation-token'],
-        }, { correlationId: context.correlationId });
-      }
-      let result;
-      try {
-        result = await createChatCompletion(body);
-      } catch (error) {
-        if (!context.platformRuntime?.config.demoMode || error.statusCode !== 503) throw error;
-        result = makeDemoChatResult(body);
-      }
-      if (turn) {
-        const assistant = await context.platformRuntime.service.completeChatTurn(turn, result, {
-          correlationId: context.correlationId,
+      const streaming = String(request.headers.accept || '').includes('text/event-stream');
+      const started = performance.now();
+      const metrics = [];
+      let firstTextMs = null;
+      let succeeded = false;
+      const chatController = new AbortController();
+      const disconnect = () => { if (!response.writableEnded) chatController.abort(); };
+      response.on('close', disconnect);
+      const emit = (event, data) => {
+        if (!response.destroyed && !response.writableEnded) {
+          response.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        }
+      };
+      let heartbeat;
+      if (streaming) {
+        response.writeHead(200, {
+          'Content-Type': 'text/event-stream; charset=utf-8',
+          'Cache-Control': 'no-cache, no-transform',
+          'X-Accel-Buffering': 'no',
         });
-        result.conversationId = turn.conversationId;
-        result.conversationToken = turn.conversationToken;
-        result.messageMetadata = {
-          id: assistant.message.id,
-          sequence: assistant.message.sequence,
-          createdAt: assistant.message.createdAt,
-          model: assistant.message.model || result.model || null,
-          assistant: { id: assistant.message.id, sequence: assistant.message.sequence, createdAt: assistant.message.createdAt },
-        };
-        result.userMessageMetadata = { id: turn.user.id, sequence: turn.user.sequence, createdAt: turn.user.createdAt };
+        response.flushHeaders();
+        heartbeat = setInterval(() => {
+          if (!response.destroyed) response.write(': keepalive\n\n');
+        }, 15000);
       }
-      sendJson(response, 200, result);
+      try {
+        let turn = null;
+        const persistenceStarted = performance.now();
+        if (context.platformRuntime) {
+          turn = await context.platformRuntime.service.beginChatTurn({
+            ...body,
+            conversationToken: body.conversationToken || request.headers['x-conversation-token'],
+          }, { correlationId: context.correlationId });
+        }
+        metrics.push({ stage: 'loadConversation', durationMs: Math.round(performance.now() - persistenceStarted) });
+        let result;
+        try {
+          result = await createChatCompletion(body, {
+            signal: chatController.signal,
+            onMetric: metric => metrics.push(metric),
+            onReplyDelta: streaming ? delta => {
+              if (firstTextMs === null) firstTextMs = Math.round(performance.now() - started);
+              emit('delta', { text: delta });
+            } : undefined,
+          });
+        } catch (error) {
+          if (!context.platformRuntime?.config.demoMode || error.statusCode !== 503) throw error;
+          result = makeDemoChatResult(body);
+        }
+        const saveStarted = performance.now();
+        if (turn) {
+          const assistant = await context.platformRuntime.service.completeChatTurn(turn, result, {
+            correlationId: context.correlationId,
+          });
+          result.conversationId = turn.conversationId;
+          result.conversationToken = turn.conversationToken;
+          result.messageMetadata = {
+            id: assistant.message.id,
+            sequence: assistant.message.sequence,
+            createdAt: assistant.message.createdAt,
+            model: assistant.message.model || result.model || null,
+            assistant: { id: assistant.message.id, sequence: assistant.message.sequence, createdAt: assistant.message.createdAt },
+          };
+          result.userMessageMetadata = { id: turn.user.id, sequence: turn.user.sequence, createdAt: turn.user.createdAt };
+        }
+        metrics.push({ stage: 'saveConversation', durationMs: Math.round(performance.now() - saveStarted) });
+        const totalMs = Math.round(performance.now() - started);
+        result.performance = { totalMs, firstTextMs, stages: metrics };
+        if (streaming) {
+          emit('done', result);
+          response.end();
+        } else {
+          response.setHeader('Server-Timing', `chat;dur=${totalMs}`);
+          sendJson(response, 200, result);
+        }
+        succeeded = true;
+      } catch (error) {
+        if (!streaming) throw error;
+        emit('error', { error: 'Chat response failed. Please try again.', status: error.statusCode || 500 });
+        response.end();
+      } finally {
+        clearInterval(heartbeat);
+        response.removeListener('close', disconnect);
+        console.log(JSON.stringify({
+          event: 'chat_performance', correlationId: context.correlationId,
+          totalMs: Math.round(performance.now() - started), firstTextMs, succeeded, stages: metrics,
+        }));
+      }
       return true;
     }
 
