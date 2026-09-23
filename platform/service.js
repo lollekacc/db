@@ -92,7 +92,8 @@ const normalizeParticipants = (payload = {}, selectedOffer = {}) => {
     label: trimText(participant?.label, 100) || `Person ${index + 1}`,
     givenName: trimText(participant?.givenName, 100),
     familyName: trimText(participant?.familyName || participant?.surname, 100),
-    phoneNumber: trimText(participant?.phoneNumber || participant?.number || participant?.numberPorting?.phoneNumber || getPhoneValue(phoneNumbers[index]), 40),
+    phoneNumber: ['new_number', 'not_applicable'].includes(participant?.numberHandling || participant?.numberPorting)
+      ? '' : trimText(participant?.phoneNumber || participant?.number || participant?.numberPorting?.phoneNumber || getPhoneValue(phoneNumbers[index]), 40),
     currentOperator: trimText(participant?.currentOperator || participant?.numberPorting?.currentOperator, 80),
     numberHandling: trimText(
       participant?.numberHandling || participant?.keepNumberPreference ||
@@ -341,7 +342,7 @@ const normalizeSubmittedEvidence = (payload = {}) => {
   const participants = (Array.isArray(payload.participants) ? payload.participants : []).slice(0, 10).map((participant) => ({
     ...pickEvidence(participant, [
       'id', 'participantId', 'subscriptionId', 'label', 'currentOperator',
-      'numberHandling', 'keepNumberPreference', 'requestedActivationDate', 'activationDate', 'bindingEnd',
+      'numberHandling', 'keepNumberPreference', 'requestedActivationDate', 'activationDate', 'bindingEnd', 'demoNumberPreference',
     ], 20_000),
     phoneNumberMask: maskSubmittedNumber(participant?.phoneNumber || participant?.number || participant?.numberPorting?.phoneNumber),
     numberPorting: typeof participant?.numberPorting === 'string'

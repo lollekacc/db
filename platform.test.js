@@ -420,6 +420,23 @@ test('conversation IDOR and truncated fallbacks are rejected before order/idempo
   assert.equal(retry.order.conversationArchive.messageCount, 1);
 });
 
+test('mixed number choices never assign a transferred number to a new-number participant', async () => {
+  const runtime = makeRuntime();
+  const result = await runtime.service.createOrder(orderPayload({
+    cartItems: [{ id: 'family-line', planId: 'telia-10gb', persons: 2 }],
+    phoneNumbers: ['0701234567'],
+    participants: [
+      { participantId: 'new', numberHandling: 'new_number', phoneNumber: null, demoNumberPreference: '0700000003' },
+      { participantId: 'transfer', numberHandling: 'number_transfer', phoneNumber: '0701234567' },
+    ],
+  }), 'mixed-numbers-regression-0001');
+  const stored = runtime.repository.getOrder(result.order.id);
+  assert.equal(stored.participants[0].numberHandling, 'new_number');
+  assert.equal(stored.participants[0].phoneNumber, '');
+  assert.equal(stored.participants[1].phoneNumber, '0701234567');
+  assert.equal(stored.snapshot.submittedEvidence.participants[0].demoNumberPreference, '0700000003');
+});
+
 test('conversation collisions, empty chat associations, and unsupported multi-offer carts fail safely', async () => {
   const runtime = makeRuntime();
   const first = await runtime.service.createConversation({ conversationId: 'collision-test' });
