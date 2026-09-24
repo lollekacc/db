@@ -56,6 +56,20 @@ const assertPreview = (response) => {
 };
 
 (async () => {
+  for (const message of ['tack, jag vill ha abonnemang', 'Jag vill ha ett abonnemang', 'Vi vill ha abonnemang', 'I want a subscription']) {
+    for (const interactionStage of ['understand', 'solve']) {
+      analyzed = { interactionStage, offerPreference: null, qualification: {} };
+      const result = await createChatCompletion({ message });
+      assert.equal(result.qualification.peopleCount, null);
+      assert.equal(result.offerCalculation, null);
+      assert.deepEqual(result.offerCards, []);
+      assert.equal(result.flowState.activeQuestionField, 'peopleCount');
+      assert.deepEqual(result.quickReplies.map((reply) => reply.label), Array.from({ length: 10 }, (_, index) => String(index + 1)));
+      assert.ok(result.quickReplies.every((reply) => reply.action === 'send_message'));
+      assert.equal(replyPayload.adaptiveQuestionPlan.qualificationField, 'peopleCount');
+    }
+  }
+
   const familyQuestion = 'Vi är fyra i familjen och har idag olika operatörer. Två använder mycket surf och streamar mycket, en använder nästan inget och en reser ganska ofta utomlands. Vi vill helst samla allt på en faktura och hålla oss under 1 500 kr i månaden. Vi behöver inga nya telefoner. Vilket abonnemang eller familjeupplägg passar oss bäst, och vilket alternativ ger mest värde totalt?';
   const familyNeeds = {
     peopleCount: 4,
@@ -66,7 +80,7 @@ const assertPreview = (response) => {
       { dataNeed: 'high' }, { dataNeed: 'high' }, { dataNeed: 'low' }, {},
     ],
   };
-  analyzed = { offerPreference: null, qualification: familyNeeds };
+  analyzed = { offerPreference: 'preview', qualification: familyNeeds };
   const family = await createChatCompletion({ message: familyQuestion });
   assertPreview(family);
   assert.equal(family.offerCards.length, 2);

@@ -342,7 +342,7 @@ const analysisSchema = {
     offerPreference: {
       type: ['string', 'null'],
       enum: ['preview', 'personalized', null],
-      description: 'Use preview to answer a request for suitable plans or best value from available facts, including when details are missing or unavailable. Use personalized only for an explicit request for a guided detailed assessment, never merely because the customer asks what suits them best.',
+      description: 'A generic request to get a subscription is not a preview request: leave this null and ask about missing needs, starting with peopleCount. Use preview for explicitly requested examples or immediate offers, or a recommendation based on stated concrete needs. Use personalized only for an explicit request for a guided detailed assessment, never merely because the customer asks what suits them best.',
     },
     resetRequested: { type: 'boolean' },
     groupBindingStatus: {
@@ -913,7 +913,7 @@ const createChatCompletion = async ({
   const recommendationInProgress = analysis.interactionStage !== 'close' && (
     analysis.recommendationRequested || analysis.offerPreference === 'preview' || flowBase.inProgress || context?.quizHandoff === true
   );
-  let previewRequested = analysis.offerPreference === 'preview' || (
+  const previewRequested = analysis.offerPreference === 'preview' || (
     analysis.offerPreference !== 'personalized' && qualificationBase.recommendationMode === 'preview'
   );
   const quizConsentRequired = historicalQuizAvailable &&
@@ -937,15 +937,6 @@ const createChatCompletion = async ({
     qualificationBase,
     quizConsentRequired ? {} : analyzedQualification
   );
-  if (
-    !quizConsentRequired &&
-    analysis.recommendationRequested &&
-    analysis.interactionStage === 'solve' &&
-    analysis.offerPreference !== 'personalized' &&
-    normalizeChatQualification(mergedQualification).missingFields.length > 0
-  ) {
-    previewRequested = true;
-  }
   if (previewRequested) mergedQualification.recommendationMode = 'preview';
   else if (analysis.offerPreference === 'personalized') mergedQualification.recommendationMode = 'refined';
   const bindingInput = applyBindingTimeInput({
