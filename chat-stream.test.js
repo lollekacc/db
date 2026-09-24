@@ -125,3 +125,34 @@ test('client cancellation reaches the AI request', async () => {
   await assert.rejects(createChatCompletion({ message: 'Hej' }, { signal: controller.signal }));
   setOpenAiTransportForTests();
 });
+
+test('conversation-only storage saves chat without enabling platform routes or changing BankID', async () => {
+  const { createPlatformRuntime } = require('./platform/runtime');
+  const runtime = createPlatformRuntime({ environment: { DEMO_MODE: 'true' } });
+  runtime.config = { ...runtime.config, demoMode: false };
+  const server = createServer({ platformRuntime: runtime, conversationStorageOnly: true });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    setOpenAiTransportForTests(transport());
+    const response = await fetch(`${base}/api/chat`, {
+      method: 'POST', headers: { Accept: 'text/event-stream', 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Hej' }),
+    });
+    assert.equal(response.status, 200);
+    const events = await response.text();
+    const result = JSON.parse(events.split('event: done\ndata: ')[1].split('\n')[0]);
+    const conversation = await runtime.repository.getConversation(result.conversationId, { token: result.conversationToken, requireToken: true });
+    assert.deepEqual(conversation.messages.map(m => m.role), ['user', 'assistant']);
+    assert.equal(conversation.messages[1].content, answer.reply);
+    const bankId = await fetch(`${base}/api/bankid/start`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+    });
+    assert.notEqual(bankId.status, 503);
+    const platform = await fetch(`${base}/api/admin/v1/conversations`);
+    assert.equal(platform.status, 404);
+  } finally {
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    setOpenAiTransportForTests(null);
+  }
+});

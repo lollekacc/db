@@ -31,7 +31,8 @@
     "test:chat-feedback": "node src/chatFeedback.test.js",
     "test:all": "npm run check && npm test",
     "test:chat-stream": "node --test chat-stream.test.js",
-    "benchmark:chat": "node scripts/benchmark-chat.js"
+    "benchmark:chat": "node scripts/benchmark-chat.js",
+    "export:conversations": "node scripts/export-conversations.js"
   },
   "engines": {
     "node": ">=20"

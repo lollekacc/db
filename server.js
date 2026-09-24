@@ -174,7 +174,8 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
 
     if (pathname === '/api/chat') {
       if (!requireMethod(request, response, 'POST')) return true;
-      const rate = context.legacyLimiter.consume(`chat:${request.socket?.remoteAddress || 'unknown'}`, context.platformRuntime?.config.chatRateLimit || 30);
+      if (context.platformError) throw context.platformError;
+      const rate = context.legacyLimiter.consume(`chat:${request.socket?.remoteAddress || 'unknown'}`, context.chatRuntime?.config.chatRateLimit || 30);
       if (!rate.allowed) {
         const error = new Error('Too many chat requests; try again later');
         error.statusCode = 429;
@@ -210,8 +211,8 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
       try {
         let turn = null;
         const persistenceStarted = performance.now();
-        if (context.platformRuntime) {
-          turn = await context.platformRuntime.service.beginChatTurn({
+        if (context.chatRuntime) {
+          turn = await context.chatRuntime.service.beginChatTurn({
             ...body,
             conversationToken: body.conversationToken || request.headers['x-conversation-token'],
           }, { correlationId: context.correlationId });
@@ -228,12 +229,12 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
             } : undefined,
           });
         } catch (error) {
-          if (!context.platformRuntime?.config.demoMode || error.statusCode !== 503) throw error;
+          if (!context.chatRuntime?.config.demoMode || error.statusCode !== 503) throw error;
           result = makeDemoChatResult(body);
         }
         const saveStarted = performance.now();
         if (turn) {
-          const assistant = await context.platformRuntime.service.completeChatTurn(turn, result, {
+          const assistant = await context.chatRuntime.service.completeChatTurn(turn, result, {
             correlationId: context.correlationId,
           });
           result.conversationId = turn.conversationId;
@@ -455,6 +456,7 @@ const createServer = (options = {}) => {
       platformError = error;
     }
   }
+  const conversationStorageOnly = options.conversationStorageOnly ?? process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true';
   const legacyLimiter = options.legacyLimiter || new RollingWindowRateLimiter();
   const corsOrigins = platformRuntime?.config.corsOrigins || parseOrigins(process.env.CORS_ORIGINS);
 
@@ -497,12 +499,12 @@ const createServer = (options = {}) => {
       }
     }
     const requestsPlatform = /^\/api\/(public|admin|customer|partner)\/v1(?:\/|$)/.test(requestUrl.pathname) ||
-      (platformRequested && requestUrl.pathname === '/api/orders');
+      (platformRequested && !conversationStorageOnly && requestUrl.pathname === '/api/orders');
     if (requestsPlatform && platformError) {
       sendError(response, platformError, correlationId);
       return;
     }
-    if (platformRuntime) {
+    if (platformRuntime && !conversationStorageOnly) {
       const handledPlatform = await handlePlatformRequest(request, response, requestUrl, platformRuntime, correlationId);
       if (handledPlatform) return;
     }
@@ -522,7 +524,8 @@ const createServer = (options = {}) => {
     }
 
     const handledApi = await handleApi(request, response, requestUrl, {
-      platformRuntime,
+      platformRuntime: conversationStorageOnly ? null : platformRuntime,
+      chatRuntime: platformRuntime,
       platformError,
       correlationId,
       legacyLimiter,
@@ -532,9 +535,27 @@ const createServer = (options = {}) => {
 };
 
 if (require.main === module) {
-  const server = createServer();
-  server.listen(PORT, HOST, () => {
-    console.log(`Dealett backend running on port ${PORT}`);
+  const start = async () => {
+    if (process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true') {
+      const { Pool } = require('pg');
+      const { loadPlatformConfig } = require('./platform/config');
+      const { migrateUp } = require('./platform/migrations');
+      const config = loadPlatformConfig();
+      const pool = new Pool({
+        connectionString: config.databaseUrl,
+        ssl: config.databaseSsl ? { rejectUnauthorized: true } : false,
+        connectionTimeoutMillis: 10000,
+      });
+      try { await migrateUp(pool); } finally { await pool.end(); }
+    }
+    const server = createServer();
+    server.listen(PORT, HOST, () => {
+      console.log(`Dealett backend running on port ${PORT}`);
+    });
+  };
+  start().catch(() => {
+    console.error('Backend startup failed. Check conversation database configuration and migrations.');
+    process.exitCode = 1;
   });
 }
 
