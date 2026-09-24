@@ -74,7 +74,7 @@ const sendJson = (response, statusCode, payload) => {
 
 const sendError = (response, error, correlationId) => {
   sendJson(response, error.statusCode || 500, {
-    error: error.message || 'Server error',
+    error: (error.statusCode || 500) >= 500 ? 'Service temporarily unavailable' : (error.message || 'Request failed'),
     code: error.code || 'REQUEST_ERROR',
     correlationId,
   });
@@ -391,7 +391,22 @@ const sendStaticFile = (request, response, requestUrl) => {
     return;
   }
 
-  const decodedPath = decodeURIComponent(requestUrl.pathname);
+  let decodedPath;
+  try {
+    decodedPath = decodeURIComponent(requestUrl.pathname);
+  } catch {
+    response.writeHead(400);
+    response.end('Invalid path');
+    return;
+  }
+  const segments = decodedPath.split(/[\\/]/);
+  const publicExtensions = new Set(['.html', '.css', '.js', '.json', '.geojson', '.jpg', '.jpeg', '.png', '.svg', '.webp', '.gif', '.ico', '.mp4', '.webm', '.woff', '.woff2', '.ttf', '.pdf']);
+  if (decodedPath.includes('\0') || segments.some((segment) => segment.startsWith('.') || ['scripts', 'node_modules', 'backend'].includes(segment)) ||
+      (decodedPath !== '/' && (!publicExtensions.has(path.extname(decodedPath)) || /^package(?:-lock)?\.json$/.test(path.basename(decodedPath))))) {
+    response.writeHead(404);
+    response.end('Not found');
+    return;
+  }
   const relativePath = decodedPath === '/' ? '/index.html' : decodedPath;
   const filePath = path.resolve(ROOT, `.${relativePath}`);
 
@@ -402,7 +417,13 @@ const sendStaticFile = (request, response, requestUrl) => {
   }
 
   fs.stat(filePath, (error, stat) => {
-    if (error || !stat.isFile()) {
+    let realPath;
+    try {
+      realPath = fs.realpathSync(filePath);
+    } catch {
+      realPath = null;
+    }
+    if (error || !stat.isFile() || !realPath || !isInsideRoot(realPath)) {
       response.writeHead(404);
       response.end('Not found');
       return;
@@ -419,7 +440,7 @@ const sendStaticFile = (request, response, requestUrl) => {
       return;
     }
 
-    fs.createReadStream(filePath).pipe(response);
+    fs.createReadStream(filePath).on('error', () => response.destroy()).pipe(response);
   });
 };
 
@@ -440,17 +461,40 @@ const createServer = (options = {}) => {
   return http.createServer(async (request, response) => {
     const correlationId = getCorrelationId(request);
     response.setHeader('X-Correlation-ID', correlationId);
-    const requestUrl = new URL(request.url, `http://${request.headers.host || `${HOST}:${PORT}`}`);
+    let requestUrl;
+    try {
+      requestUrl = new URL(request.url, 'http://localhost');
+    } catch {
+      sendJson(response, 400, { error: 'Invalid request URL' });
+      return;
+    }
     if (requestUrl.pathname.startsWith('/api/')) {
       Object.entries(SECURITY_HEADERS).forEach(([name, value]) => response.setHeader(name, value));
     } else {
       response.setHeader('X-Content-Type-Options', 'nosniff');
       response.setHeader('X-Frame-Options', 'SAMEORIGIN');
+      response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+      response.setHeader('Content-Security-Policy', "frame-ancestors 'self'; base-uri 'self'; object-src 'none'");
     }
     const origin = String(request.headers.origin || '').replace(/\/$/, '');
     if (origin && corsOrigins.includes(origin)) {
       response.setHeader('Access-Control-Allow-Origin', origin);
       response.setHeader('Vary', 'Origin');
+    }
+    if (requestUrl.pathname.startsWith('/api/')) {
+      response.setHeader('Vary', 'Origin');
+      if (origin && !corsOrigins.includes(origin)) {
+        sendJson(response, 403, { error: 'Origin is not allowed', code: 'CORS_ORIGIN_DENIED', correlationId });
+        return;
+      }
+      if (request.method !== 'OPTIONS' && !['GET', 'HEAD'].includes(request.method)) {
+        const rate = legacyLimiter.consume(`submission:${request.socket?.remoteAddress || 'unknown'}`, 120);
+        if (!rate.allowed) {
+          response.setHeader('Retry-After', String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))));
+          sendJson(response, 429, { error: 'Too many requests; try again later', code: 'RATE_LIMITED', correlationId });
+          return;
+        }
+      }
     }
     const requestsPlatform = /^\/api\/(public|admin|customer|partner)\/v1(?:\/|$)/.test(requestUrl.pathname) ||
       (platformRequested && requestUrl.pathname === '/api/orders');

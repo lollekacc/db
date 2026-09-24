@@ -6,12 +6,15 @@ class RollingWindowRateLimiter {
   }
 
   consume(key, limit, now = Date.now()) {
-    if (this.entries.size > this.maxEntries) {
+    if (this.entries.size >= this.maxEntries) {
       for (const [entryKey, entry] of this.entries) {
         if (entry.resetAt <= now) this.entries.delete(entryKey);
       }
     }
     let entry = this.entries.get(key);
+    if (!entry && this.entries.size >= this.maxEntries) {
+      return { allowed: false, limit, remaining: 0, resetAt: now + this.windowMs };
+    }
     if (!entry || entry.resetAt <= now) {
       entry = { count: 0, resetAt: now + this.windowMs };
       this.entries.set(key, entry);

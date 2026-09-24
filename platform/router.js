@@ -3,8 +3,7 @@ const { buildHeaders, readJsonBody, sendCsv, sendJson, sendPlatformError } = req
 const { requirePermission, resolveAuthContext } = require('./permissions');
 
 const getClientKey = (request) => {
-  const forwarded = String(request.headers['x-forwarded-for'] || '').split(',')[0].trim();
-  return forwarded || request.socket?.remoteAddress || 'unknown';
+  return request.socket?.remoteAddress || 'unknown';
 };
 
 const consumeRateLimit = (runtime, request, kind) => {

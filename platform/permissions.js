@@ -102,6 +102,11 @@ const resolveAuthContext = (request, config, users, audience) => {
       503
     );
   }
+  const address = request.socket?.remoteAddress;
+  if (config.nodeEnv === 'production' || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(address) ||
+      request.headers['x-forwarded-for'] || request.headers.forwarded) {
+    throw new PlatformError('DEMO_ACCESS_DENIED', 'Demo identities are available only on this computer', 403);
+  }
   const requestedUser = String(request.headers['x-demo-user'] || '').trim();
   const defaultUser = audience === 'admin' ? 'demo-admin' : '';
   const user = users[requestedUser || defaultUser];

@@ -46,7 +46,7 @@ const sendJson = (request, response, config, correlationId, statusCode, payload,
 
 const sendPlatformError = (request, response, config, correlationId, error) => {
   const statusCode = Number(error.statusCode) || 500;
-  const safeMessage = statusCode >= 500 && !error.code
+  const safeMessage = statusCode >= 500
     ? 'An unexpected server error occurred'
     : String(error.message || 'Request failed');
   sendJson(request, response, config, correlationId, statusCode, {
