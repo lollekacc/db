@@ -26,7 +26,7 @@
             "monthly": 299
           },
           "familyEligible": false,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 1,
           "extraUserPrice": {
@@ -62,7 +62,7 @@
             "monthly": 399
           },
           "familyEligible": false,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 1,
           "extraUserPrice": {
@@ -97,7 +97,7 @@
             "monthly": 499
           },
           "familyEligible": false,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 1,
           "extraUserPrice": {
@@ -132,7 +132,7 @@
             "monthly": 569
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -200,7 +200,7 @@
               }
             ]
           },
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -239,7 +239,7 @@
             ],
             "options": []
           },
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -292,7 +292,7 @@
             "monthly": 299
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -329,7 +329,7 @@
             "monthly": 349
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -364,7 +364,7 @@
             "monthly": 449
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -408,7 +408,7 @@
             "included": false,
             "dataGb": null
           },
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -461,7 +461,7 @@
             "monthly": 329
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -504,7 +504,7 @@
             "outsideEuDataIncluded": false,
             "localCallsIncludedAbroad": false
           },
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -544,7 +544,7 @@
             "included": true,
             "dataGb": 50
           },
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -599,7 +599,7 @@
             "monthly": 229
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -639,7 +639,7 @@
             "monthly": 329
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {
@@ -677,7 +677,7 @@
             "monthly": 429
           },
           "familyEligible": true,
-          "giftCard": "XXX",
+          "giftCard": null,
           "minUsers": 1,
           "maxUsers": 10,
           "extraUserPrice": {

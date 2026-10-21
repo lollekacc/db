@@ -25,6 +25,7 @@ const buildFeaturedCartItem = ({ offerId } = {}) => {
     offerId: offer.id,
     sourcePlanId: plan.id,
     featuredOfferId: offer.id,
+    operatorDocuments: offer.operatorDocuments || result.cartItem.operatorDocuments || null,
     price,
     monthlyPrice: price,
     regularMonthlyPrice: price,

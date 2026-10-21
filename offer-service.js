@@ -94,7 +94,9 @@ const normalizeCatalogPlan = (operator, plan, price, suffix = '', includedStream
   price: getMonthlyPrice(price),
   monthlyPrice: getMonthlyPrice(price),
   bindingMonths: Number(operator.bindingMonths) || 0,
-  giftCard: plan.giftCard || 'XXX',
+  giftCard: plan.giftCard ?? null,
+  rewardTotal: Math.max(Number(plan.giftCardValue ?? plan.giftCard) || 0, 0),
+  operatorDocuments: plan.operatorDocuments || null,
   minUsers: Number(plan.minUsers) || 1,
   maxUsers: Number(plan.maxUsers) || (plan.familyEligible === true ? 10 : 1),
   familyEligible: plan.familyEligible === true,
@@ -171,16 +173,8 @@ const getPlanDataLabel = (plan = {}) => {
 const isMobilePlan = (plan = {}) => ['mobil', 'mobile_subscription'].includes(plan.category);
 const isRuntimeSellablePlan = (plan = {}) => plan.runtimeSellable !== false;
 
-const calculateBroadbandReward = (price) => {
-  if (price < 299) return 1000;
-  if (price < 399) return 2000;
-  if (price < 499) return 3000;
-  if (price < 699) return 4000;
-  return 5000;
-};
-
 const formatBinding = (plan) => (
-  `${Number(plan.bindingMonths) || 24} mån bindningstid`
+  Number(plan.bindingMonths) > 0 ? `${plan.bindingMonths} mån bindningstid` : 'Ingen bindningstid'
 );
 
 const getRoamingServiceLabel = (plan = {}) => {
@@ -204,8 +198,8 @@ const getMobileOperatorOffers = (operator) => {
     .map((plan) => ({
       ...plan,
       data: getPlanDataLabel(plan),
-      reward: provider.reward,
-      giftCard: plan.giftCard || 'XXX',
+      reward: plan.rewardTotal,
+      giftCard: plan.giftCard ?? null,
       accent: provider.accent,
     }));
 
@@ -274,7 +268,7 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
   const basePrice = Number(plan.price ?? plan.monthlyPrice) || 0;
   const monthlyPrice = basePrice + addonPrice;
   const regularMonthlyPrice = monthlyPrice;
-  const rewardTotal = Number(provider.reward) || 0;
+  const rewardTotal = Number(plan.rewardTotal) || 0;
   const normalizedRewards = normalizeRewards(rewards, rewardTotal);
 
   const cartItem = {
@@ -298,7 +292,8 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
     productType: 'mobile',
     unitLabel: 'abonnemang',
     rewardTotal,
-    rewardMixLabel: rewardTotal ? 'Presentkort: XXX kr' : '',
+    rewardMixLabel: rewardTotal ? `Presentkort: ${formatCurrency(rewardTotal)} kr` : 'Presentkort ej fastställt',
+    operatorDocuments: plan.operatorDocuments || null,
     rewards: normalizedRewards,
     addon: addonPlan ? {
       id: addonPlan.id,
@@ -330,8 +325,8 @@ const buildMobileCartItem = ({ planId, addonPlanId, rewards, answers = {} }) => 
 const getBroadbandOffers = ({ tech = 'all', minSpeed = 0, sort = 'price' } = {}) => {
   let offers = getBroadbandPlans().map((plan) => ({
     ...plan,
-    bindingMonths: 24,
-    rewardTotal: calculateBroadbandReward(plan.price),
+    bindingMonths: Math.max(Number(plan.bindingMonths) || 0, 0),
+    rewardTotal: Math.max(Number(plan.rewardTotal) || 0, 0),
   }));
 
   if (tech !== 'all') {
@@ -365,9 +360,9 @@ const buildBroadbandCartItem = ({ planId, address }) => {
 
   const normalizedPlan = {
     ...plan,
-    bindingMonths: 24,
+    bindingMonths: Math.max(Number(plan.bindingMonths) || 0, 0),
   };
-  const reward = calculateBroadbandReward(normalizedPlan.price);
+  const reward = Math.max(Number(normalizedPlan.rewardTotal) || 0, 0);
   const logo = providerLogos[plan.operator] || '';
   const normalizedAddress = String(address || '').trim().slice(0, 120);
   const cartItem = {
@@ -377,6 +372,8 @@ const buildBroadbandCartItem = ({ planId, address }) => {
     title: normalizedPlan.title || normalizedPlan.speed || '5G-bredband',
     logo,
     data: normalizedPlan.speed,
+    speed: normalizedPlan.speed,
+    speedMbps: normalizedPlan.speedMbps,
     price: normalizedPlan.price || 0,
     pricePerPerson: 0,
     persons: 1,
@@ -384,8 +381,10 @@ const buildBroadbandCartItem = ({ planId, address }) => {
     productType: 'broadband',
     unitLabel: 'bredband',
     rewardTotal: reward,
-    rewardMixLabel: reward ? 'Presentkort: XXX kr' : '',
-    rewards: { Presentkort: reward },
+    rewardMixLabel: reward ? `Presentkort: ${formatCurrency(reward)} kr` : 'Presentkort ej fastställt',
+    bindingMonths: normalizedPlan.bindingMonths,
+    operatorDocuments: normalizedPlan.operatorDocuments || null,
+    rewards: reward ? { Presentkort: reward } : {},
     answers: {
       broadbandAddress: normalizedAddress || null,
     },

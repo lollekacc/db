@@ -20,7 +20,7 @@
     "test:recommendations": "node offer-calculator.test.js",
     "test:cost-calculator": "node cost-calculator.test.js",
     "test:best-match": "node best-match.test.js",
-    "test:chat-dynamic": "node chat-service.dynamic.test.js && node chat-service.preview.test.js && npm run test:chat-stream",
+    "test:chat-dynamic": "node --test chat-instructions.test.js && node chat-service.dynamic.test.js && node chat-service.preview.test.js && npm run test:chat-stream",
     "test:quiz-consent": "node quiz-consent.test.js",
     "test:customer-service": "node src/customerServiceBehavior.test.js",
     "test:conversation-state": "node src/conversationState.test.js",
@@ -32,7 +32,11 @@
     "test:all": "npm run check && npm test",
     "test:chat-stream": "node --test chat-stream.test.js",
     "benchmark:chat": "node scripts/benchmark-chat.js",
-    "export:conversations": "node scripts/export-conversations.js"
+    "export:conversations": "node scripts/export-conversations.js",
+    "test:launch": "node --test launch-contract.test.js",
+    "check:launch": "node scripts/check-launch.js",
+    "test:preview": "node --test public-preview.test.js",
+    "preview": "node scripts/serve-public-preview.js"
   },
   "engines": {
     "node": ">=20"

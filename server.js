@@ -35,8 +35,8 @@ const { normalizeQualification } = require('./qualification-service');
 const { buildFeaturedCartItem, getFeaturedOffers } = require('./featured-offers');
 const { appendChatFeedback } = require('./chat-feedback-service');
 const { cancelBankIdSession, collectBankIdSession, startBankIdSession } = require('./bankid-service');
-const { subscribeToNewsletter } = require('./newsletter-service');
-const { storeCheckoutOrder } = require('./order-service');
+const { getNewsletterStatus, subscribeToNewsletter } = require('./newsletter-service');
+const { isPublicPreview, previewAllows } = require('./public-preview');
 const { translateTexts } = require('./translation-service');
 const { parseOrigins } = require('./platform/config');
 const { SECURITY_HEADERS, getCorrelationId } = require('./platform/http');
@@ -57,10 +57,11 @@ const contentTypes = {
   '.pdf': 'application/pdf',
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.txt': 'text/plain; charset=utf-8',
   '.webp': 'image/webp',
 };
 
-const isInsideRoot = (filePath) => filePath === ROOT || filePath.startsWith(`${ROOT}${path.sep}`);
+const isInsideRoot = (filePath, root = ROOT) => filePath === root || filePath.startsWith(`${root}${path.sep}`);
 
 const sendJson = (response, statusCode, payload) => {
   const body = JSON.stringify(payload);
@@ -288,6 +289,12 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
       return true;
     }
 
+    if (pathname === '/api/newsletter/status') {
+      if (!requireMethod(request, response, 'GET')) return true;
+      sendJson(response, 200, getNewsletterStatus());
+      return true;
+    }
+
     if (pathname === '/api/newsletter') {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
@@ -297,7 +304,7 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
 
     if (pathname === '/api/bankid/start') {
       if (!requireMethod(request, response, 'POST')) return true;
-      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+      if (context.platformRuntime?.config.demoMode !== true) {
         const error = new Error('BankID integration is not configured for live mode');
         error.statusCode = 503;
         error.code = 'INTEGRATION_NOT_CONFIGURED';
@@ -310,7 +317,7 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
 
     if (pathname === '/api/bankid/collect') {
       if (!requireMethod(request, response, 'POST')) return true;
-      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+      if (context.platformRuntime?.config.demoMode !== true) {
         const error = new Error('BankID integration is not configured for live mode');
         error.statusCode = 503;
         error.code = 'INTEGRATION_NOT_CONFIGURED';
@@ -323,7 +330,7 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
 
     if (pathname === '/api/bankid/cancel') {
       if (!requireMethod(request, response, 'POST')) return true;
-      if (context.platformRuntime && !context.platformRuntime.config.demoMode) {
+      if (context.platformRuntime?.config.demoMode !== true) {
         const error = new Error('BankID integration is not configured for live mode');
         error.statusCode = 503;
         error.code = 'INTEGRATION_NOT_CONFIGURED';
@@ -336,15 +343,7 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
 
     if (pathname === '/api/orders') {
       if (!requireMethod(request, response, 'POST')) return true;
-      const rate = context.legacyLimiter.consume(`order:${request.socket?.remoteAddress || 'unknown'}`, context.platformRuntime?.config.orderRateLimit || 10);
-      if (!rate.allowed) {
-        const error = new Error('Too many order requests; try again later');
-        error.statusCode = 429;
-        error.code = 'RATE_LIMITED';
-        throw error;
-      }
-      const body = await readJsonBody(request);
-      sendJson(response, 201, storeCheckoutOrder(body));
+      sendJson(response, 423, { error: 'Ordering is unavailable', code: 'ORDERS_DISABLED' });
       return true;
     }
 
@@ -379,7 +378,7 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
   }
 };
 
-const sendStaticFile = (request, response, requestUrl) => {
+const sendStaticFile = (request, response, requestUrl, root = ROOT) => {
   if (!['GET', 'HEAD'].includes(request.method)) {
     response.writeHead(405, { Allow: 'GET, HEAD' });
     response.end('Method not allowed');
@@ -403,15 +402,15 @@ const sendStaticFile = (request, response, requestUrl) => {
   const segments = decodedPath.split(/[\\/]/);
   const publicExtensions = new Set(['.html', '.css', '.js', '.json', '.geojson', '.jpg', '.jpeg', '.png', '.svg', '.webp', '.gif', '.ico', '.mp4', '.webm', '.woff', '.woff2', '.ttf', '.pdf']);
   if (decodedPath.includes('\0') || segments.some((segment) => segment.startsWith('.') || ['scripts', 'node_modules', 'backend'].includes(segment)) ||
-      (decodedPath !== '/' && (!publicExtensions.has(path.extname(decodedPath)) || /^package(?:-lock)?\.json$/.test(path.basename(decodedPath))))) {
+      (decodedPath !== '/' && decodedPath !== '/robots.txt' && (!publicExtensions.has(path.extname(decodedPath)) || /^package(?:-lock)?\.json$/.test(path.basename(decodedPath))))) {
     response.writeHead(404);
     response.end('Not found');
     return;
   }
   const relativePath = decodedPath === '/' ? '/index.html' : decodedPath;
-  const filePath = path.resolve(ROOT, `.${relativePath}`);
+  const filePath = path.resolve(root, `.${relativePath}`);
 
-  if (!isInsideRoot(filePath)) {
+  if (!isInsideRoot(filePath, root)) {
     response.writeHead(403);
     response.end('Forbidden');
     return;
@@ -424,7 +423,7 @@ const sendStaticFile = (request, response, requestUrl) => {
     } catch {
       realPath = null;
     }
-    if (error || !stat.isFile() || !realPath || !isInsideRoot(realPath)) {
+    if (error || !stat.isFile() || !realPath || !isInsideRoot(realPath, root)) {
       response.writeHead(404);
       response.end('Not found');
       return;
@@ -446,10 +445,11 @@ const sendStaticFile = (request, response, requestUrl) => {
 };
 
 const createServer = (options = {}) => {
+  const publicPreview = options.publicPreview ?? isPublicPreview();
   let platformRuntime = options.platformRuntime || null;
   let platformError = null;
   const platformRequested = Boolean(platformRuntime || process.env.DEMO_MODE !== undefined || process.env.DATABASE_URL);
-  if (!platformRuntime && platformRequested) {
+  if (!publicPreview && !platformRuntime && platformRequested) {
     try {
       platformRuntime = createPlatformRuntime(options.platformOptions);
     } catch (error) {
@@ -463,6 +463,7 @@ const createServer = (options = {}) => {
   return http.createServer(async (request, response) => {
     const correlationId = getCorrelationId(request);
     response.setHeader('X-Correlation-ID', correlationId);
+    if (publicPreview) response.setHeader('X-Robots-Tag', 'noindex, nofollow');
     let requestUrl;
     try {
       requestUrl = new URL(request.url, 'http://localhost');
@@ -498,13 +499,39 @@ const createServer = (options = {}) => {
         }
       }
     }
+    const ordersEnabled = !publicPreview && !conversationStorageOnly && Boolean(platformRuntime) &&
+      (platformRuntime.config.demoMode === true || process.env.LIVE_ORDERS_ENABLED === 'true');
+    if (request.method !== 'OPTIONS') {
+      if (requestUrl.pathname === '/api/public/v1/environment' && request.method === 'GET') {
+        sendJson(response, 200, { publicPreview, demoMode: !publicPreview && platformRuntime?.config.demoMode === true,
+          ordersEnabled, accountsEnabled: false, chatEnabled: !publicPreview, newsletterEnabled: !publicPreview && getNewsletterStatus().enabled });
+        return;
+      }
+      if (publicPreview && request.method === 'GET' && ['/api/public/v1/health/live', '/api/public/v1/health/ready'].includes(requestUrl.pathname)) {
+        sendJson(response, 200, { ok: true, status: requestUrl.pathname.endsWith('/ready') ? 'ready' : 'live',
+          publicPreview: true, ordersEnabled: false, correlationId });
+        return;
+      }
+      if (/^\/api\/(?:public\/v1\/)?orders(?:\/|$)/.test(requestUrl.pathname) && !ordersEnabled) {
+        sendJson(response, 423, { error: 'Ordering is unavailable', code: 'ORDERS_DISABLED', correlationId });
+        return;
+      }
+      if (publicPreview && requestUrl.pathname === '/api/newsletter/status' && request.method === 'GET') {
+        sendJson(response, 200, { enabled: false });
+        return;
+      }
+      if (publicPreview && requestUrl.pathname.startsWith('/api/') && !previewAllows(requestUrl.pathname, request.method)) {
+        sendJson(response, 423, { error: 'This service is not available in the public preview', code: 'PREVIEW_ONLY', correlationId });
+        return;
+      }
+    }
     const requestsPlatform = /^\/api\/(public|admin|customer|partner)\/v1(?:\/|$)/.test(requestUrl.pathname) ||
       (platformRequested && !conversationStorageOnly && requestUrl.pathname === '/api/orders');
     if (requestsPlatform && platformError) {
       sendError(response, platformError, correlationId);
       return;
     }
-    if (platformRuntime && !conversationStorageOnly) {
+    if (!publicPreview && platformRuntime && !conversationStorageOnly) {
       const handledPlatform = await handlePlatformRequest(request, response, requestUrl, platformRuntime, correlationId);
       if (handledPlatform) return;
     }
@@ -530,13 +557,13 @@ const createServer = (options = {}) => {
       correlationId,
       legacyLimiter,
     });
-    if (!handledApi) sendStaticFile(request, response, requestUrl);
+    if (!handledApi) sendStaticFile(request, response, requestUrl, options.staticRoot || ROOT);
   });
 };
 
 if (require.main === module) {
   const start = async () => {
-    if (process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true') {
+    if (!isPublicPreview() && process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true') {
       const { Pool } = require('pg');
       const { loadPlatformConfig } = require('./platform/config');
       const { migrateUp } = require('./platform/migrations');

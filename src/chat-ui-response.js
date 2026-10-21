@@ -272,7 +272,9 @@ const buildOfferCardsFromOfferCalculation = (offerCalculation = {}, { language =
         ? ''
         : `${formatMoney(option.effectiveMonthlyCost, language)}${cardCopy.perMonthSuffix}`,
       savingsLabel: '',
-      rewardLabel: cardCopy.rewardLabel,
+      rewardLabel: Number(option.giftCardValue) > 0
+        ? `${String(language).startsWith('sv') ? 'Presentkort' : 'Gift card'}: ${formatMoney(option.giftCardValue, language)}`
+        : '',
       recommendationType: offerCalculation.recommendationMode === 'preview' ? 'example_offer' : option.recommendationType,
       strictMatch: option.strictMatch !== false,
       relaxedRequirements: option.relaxedRequirements,

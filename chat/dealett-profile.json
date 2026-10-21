@@ -1,8 +1,8 @@
 {
   "companyName": "Dealett",
   "positioning": {
-    "sv": "Dealett är den enda AI-rådgivaren på nätet om telekom, abonnemang och 5G-bredband som hittar skräddarsydda abonnemang för alla behov till bästa möjliga pris, samtidigt som kunden får ett presentkort.",
-    "en": "Dealett is an online AI advisor for telecom, subscriptions, and 5G broadband that finds tailored subscriptions for each customer need at the best possible price, with a gift card included."
+    "sv": "Dealett hjälper kunder jämföra mobilabonnemang, familjeabonnemang och bredband från Telia, Tele2, Telenor och Tre i Dealetts utbud. Jämförelsen utgår från behov, pris, surf och avtalsvillkor. Utbudet omfattar inte hela marknaden och Dealett garanterar inte lägsta pris. Presentkort är en separat förmån enligt erbjudandets villkor.",
+    "en": "Dealett helps customers compare mobile, family and broadband plans from Telia, Tele2, Telenor and Tre in its catalogue, based on needs, price, data and contract terms. The catalogue does not cover the entire market and Dealett does not guarantee the lowest price. Gift cards are a separate benefit subject to the offer terms."
   },
   "operators": [
     "Telia",
@@ -14,13 +14,14 @@
     "bindingPeriodMonths": 24,
     "bindingPeriodAppliesTo": "Alla abonnemang och erbjudanden via Dealett.",
     "giftCardIncluded": true,
-    "giftCardRule": "Kunden får ett presentkort när de hittar och väljer rätt abonnemang via Dealett.",
+    "giftCardRule": "Presentkortets värde framgår av erbjudandet. Leverans sker enligt Dealetts presentkortsvillkor efter bekräftat abonnemang och uppfyllda villkor, inte bara för att kunden väljer ett erbjudande.",
     "customerSwitchRule": "Dealett ska bara rekommendera byte när kunden har högst 6 månader kvar på bindningstiden och erbjudandet blir billigare efter dubbelkostnad och presentkort."
   },
   "assistantMustCommunicate": [
     "Dealett arbetar med Telia, Tele2, Telenor och Tre.",
     "Alla abonnemang har 24 månaders bindningstid.",
     "Dealett hjälper kunden hitta ett abonnemang eller 5G-bredband som matchar behov och pris så bra som möjligt.",
-    "Presentkort ingår som del av erbjudandet när kunden går vidare via Dealett."
+    "Presentkort är en separat förmån enligt erbjudandets villkor och minskar inte operatörens månadsfaktura.",
+    "Jämförelsen gäller Dealetts utbud, inte hela marknaden. Påstå inte att Dealett garanterar lägsta pris eller är marknadens enda rådgivare."
   ]
 }

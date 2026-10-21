@@ -67,15 +67,15 @@
   "pages": [
     {
       "path": "index.html",
-      "title": "Bättre deals, helt enkelt.",
+      "title": "Jämför mobilabonnemang, familj och bredband | Dealett",
       "purposeSv": "Startsidan presenterar Dealetts löfte: personlig rådgivning, rätt prisplan och presentkort. Den innehåller behovsanalys/quiz, exempelpaket, presentkort och täckningsjämförelse.",
       "purposeEn": "The home page presents Dealett's promise: personal guidance, the right price plan, and a gift card. It includes needs analysis, package examples, gift cards, and coverage comparison.",
       "sections": [
         {
           "id": "hero",
-          "heading": "Få Personlig rådgivning / Få rätt prisplan / Få ett presentkort",
-          "meaningSv": "Dealett hjälper kunden förstå sitt behov, hitta ett bättre abonnemang och få ett presentkort när kunden går vidare via Dealett.",
-          "customerAction": "Starta behovsanalysen eller chatta med Dealett assistant."
+          "heading": "Jämför abonnemang. Hitta din deal.",
+          "meaningSv": "Dealett jämför pris, surf och villkor i sitt utbud från Telia, Tele2, Telenor och Tre. Det är ett urval av marknaden. Presentkort är en separat förmån enligt erbjudandets villkor.",
+          "customerAction": "Öppna mobilkatalogen, läs Så jämför vi, starta behovsanalysen eller chatta med Dealett AI."
         },
         {
           "id": "needs-quiz",
@@ -97,7 +97,7 @@
         },
         {
           "id": "gift-card",
-          "heading": "Vi ger presentkort på varje köp",
+          "heading": "En extra förmån med din nya deal",
           "meaningSv": "Kunden kan få presentkort kopplat till sitt valda abonnemang. Det är en del av Dealetts erbjudande.",
           "customerAction": "Välj erbjudande och presentkortsfördelning innan varukorgen."
         },
@@ -235,9 +235,9 @@
         },
         {
           "id": "contact-form",
-          "heading": "Skicka ett meddelande",
-          "meaningSv": "Kontaktformuläret används när kunden vill skicka ett supportärende.",
-          "customerAction": "Använd formuläret för personliga supportärenden."
+          "heading": "Förbered din fråga",
+          "meaningSv": "Formuläret förbereder ett meddelande lokalt och skickar inget automatiskt. Kunden kan kopiera meddelandet. När en kontaktadress är konfigurerad kan kunden öppna sitt e-postprogram och skicka därifrån. Företagets operatör, plan och gruppstorlek följer med från offertlänken. Påstå aldrig att ett ärende har skickats eller tagits emot utan bekräftelse.",
+          "customerAction": "Fyll i formuläret och granska meddelandet. Kopiera det eller använd en tillgänglig kontaktväg. Skriv inte personnummer, lösenord eller BankID-koder."
         }
       ]
     },

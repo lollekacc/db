@@ -73,3 +73,21 @@ DEALETT_TEST_DATABASE_URL=postgresql://localhost/dealett_test npm run test:migra
 During this implementation, the same complete up/down suite was also verified on disposable PostgreSQL 16.14. The optional test remains the repeatable way to verify a target PostgreSQL installation.
 
 The existing recommendation/chat parity suites remain part of `npm test`. OpenAI-backed chat still requires `OPENAI_API_KEY`; outside demo mode, an unavailable AI service returns an error and never substitutes a scripted answer.
+
+## Launch configuration audit
+
+### Public preview release
+
+The HTTP server defaults to `PUBLIC_PREVIEW=true`. It serves only catalogue and stateless comparison routes; order routes return `423 ORDERS_DISABLED`, and identity, account, chat, newsletter and other non-catalogue APIs return `423 PREVIEW_ONLY`. It skips database startup/migrations in this mode, even if stale platform or AI configuration exists. An explicit demo configuration cannot override the preview restriction.
+
+Preview capability, liveness and readiness endpoints (`/api/public/v1/environment`, `/api/public/v1/health/live`, `/api/public/v1/health/ready`) remain available when `DEALETT_CONVERSATION_STORAGE_ONLY=true`. They report preview readiness and disabled orders without accessing the checkout platform or database. This does not certify sales readiness. Keep the conversation-only flag as configured; disabling it to work around an environment-route 404 can expose unrelated platform routes.
+
+`LIVE_ORDERS_ENABLED` defaults to false independently. Turning preview off cannot enable real orders by itself. The legacy JSON order-write route has been removed from the HTTP server; live orders must pass the existing platform identity and document checks. Local integration tests explicitly use `publicPreview: false` to test the non-preview implementation.
+
+Run `npm run test:preview` for the server boundary. Run `npm run build:preview` in `../df` to produce the static public package, then `npm run preview` here for a loopback-only review. The static preview does not call this backend at all. Publish the static directory, and deploy the backend gate separately if an existing backend is already publicly reachable. A successful local check does not change a running deployment.
+
+Run `npm run check:launch` from this directory with the intended environment variables to inspect local launch prerequisites. It makes no external requests, prints no secrets, and exits with status 1 while prerequisites or external verification remain pending. It does not load `.env`, prove mailbox delivery, approve operator documents, or certify a production deployment.
+
+`npm run test:launch` verifies catalogue-to-order commitment consistency, configured reward values, and newsletter persistence and consent. Newsletter signup is closed unless `NEWSLETTER_SIGNUP_ENABLED=true`; enable it only after durable storage, mailing, retention and unsubscribe handling are ready. The public receipt contains no subscriber details and does not disclose whether the address was already registered. A corrupt subscriber store fails closed instead of being replaced.
+
+The legacy BankID endpoints only simulate identities under an explicit platform demo configuration. Conversation-only storage does not enable them. A real identity adapter and authenticated customer API are still required for live use.

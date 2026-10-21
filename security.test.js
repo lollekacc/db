@@ -9,7 +9,7 @@ const { sendPlatformError } = require('./platform/http');
 const runtime = () => createPlatformRuntime({ environment: { DEMO_MODE: 'true', PUBLIC_CHAT_RATE_LIMIT: '1' } });
 
 test('public server blocks private files, malformed paths, and hostile browser origins', async (t) => {
-  const server = createServer({ platformRuntime: runtime() });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime() });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -34,7 +34,7 @@ test('public server blocks private files, malformed paths, and hostile browser o
 test('submission abuse is limited before processing', async (t) => {
   const limiter = new RollingWindowRateLimiter();
   for (let index = 0; index < 120; index++) limiter.consume('submission:127.0.0.1', 120);
-  const server = createServer({ platformRuntime: runtime(), legacyLimiter: limiter });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime(), legacyLimiter: limiter });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const response = await fetch(`http://127.0.0.1:${server.address().port}/api/translate`, { method: 'POST', body: '{}' });

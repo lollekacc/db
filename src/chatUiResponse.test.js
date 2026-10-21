@@ -237,7 +237,7 @@ assert.equal(cards.length, 2);
 assert.deepEqual(cards.map((card) => card.planId), ['telia-best', 'tele2-alternative']);
 assert.deepEqual(cards.map((card) => card.resultLabel), ['Best match', 'Lowest effective cost']);
 assert.equal(cards[0].reason, 'The included services replace current costs.');
-assert.equal(cards[0].rewardLabel, 'Gift card: XXX SEK');
+assert.equal(cards[0].rewardLabel, '', 'Model copy must not invent a gift-card value absent from the calculated offer');
 assert.equal(cards[0].monthlyPriceTitle, 'Price per person');
 assert.equal(cards[0].monthlyPriceLabel, 'SEK 598/person/month');
 assert.equal(cards[0].monthlyPriceSubLabel, 'Total price: SEK 1,196/month');

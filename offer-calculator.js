@@ -276,15 +276,14 @@ const hasDifferentOperator = (people = [], operator = {}) => {
 };
 
 const getGiftCardValue = ({ operator, plan, people }) => {
-  const placeholderValue = String(plan.giftCard || 'XXX');
-  const label = placeholderValue.match(/\skr$/i) ? placeholderValue : `${placeholderValue} kr`;
-  const amount = Math.max(Number(plan.giftCardValue) || Number(placeholderValue) || 0, 0);
+  const amount = Math.max(Number(plan.giftCardValue ?? plan.giftCard) || 0, 0);
+  const label = amount > 0 ? `${amount.toLocaleString('sv-SE')} kr` : 'Ej fastställt';
   const requiresOperatorChange = plan.giftCardRequiresOperatorChange !== false;
   const eligible = requiresOperatorChange ? hasDifferentOperator(people, operator) : true;
   if (!eligible) {
     return {
       amount: 0,
-      label,
+      label: 'Ingår inte för detta byte',
       eligible: false,
     };
   }
@@ -444,7 +443,7 @@ const createSwitchScenario = ({
     oldCostsDuringOverlap: roundMoney(oldCosts),
     fees: cost.oneTimeFees,
     giftCardValue: giftCard.amount,
-    giftCard: plan.giftCard || 'XXX',
+    giftCard: plan.giftCard ?? null,
     giftCardLabel: giftCard.label,
     giftCardEligible: giftCard.eligible,
     streamingSavings24: roundMoney(cost.selectedNeeds
@@ -660,6 +659,7 @@ const buildCandidate = ({ operator, plan, streamingVariant, qualification, peopl
     total24MonthResult: scenario.total24MonthResult,
     totalResultBeneficial: scenario.totalResultBeneficial,
     bindingMonths,
+    operatorDocuments: plan.operatorDocuments || null,
     international: capabilities,
     extraSim: {
       available: plan.extraSim?.available === true || plan.extraSim?.included === true,
@@ -958,15 +958,17 @@ const buildCartItemFromCalculatedOffer = ({ qualification = {}, planId }) => {
     price: option.planMonthlyPrice,
     monthlyPrice: option.planMonthlyPrice,
     regularMonthlyPrice: option.regularMonthlyPlanPrice,
+    bindingMonths: option.bindingMonths,
+    operatorDocuments: option.operatorDocuments || null,
     pricePerPerson: option.pricePerPerson,
     persons: option.peopleCount,
     phoneLines: option.peopleCount,
     productType: option.peopleCount > 1 ? 'family' : 'mobile',
     unitLabel: 'abonnemang',
     rewardTotal,
-    giftCard: option.giftCard || 'XXX',
-    giftCardLabel: option.giftCardLabel || 'XXX kr',
-    rewardMixLabel: `Presentkort: ${option.giftCardLabel || 'XXX kr'}`,
+    giftCard: option.giftCard ?? null,
+    giftCardLabel: option.giftCardLabel || 'Ej fastställt',
+    rewardMixLabel: `Presentkort: ${option.giftCardLabel || 'Ej fastställt'}`,
     rewards: rewardTotal ? { Presentkort: rewardTotal } : {},
     answers: { qualification, offerCalculation: option },
     features: [

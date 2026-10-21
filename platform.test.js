@@ -196,7 +196,7 @@ test('PostgreSQL demo seed is forbidden in production and destructive reset requ
 
 test('legacy chat seeds local history, requires the opaque token, and exposes flat simulated metadata', async (t) => {
   const runtime = makeRuntime();
-  const server = createServer({ platformRuntime: runtime });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime });
   const baseUrl = await listen(server);
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const previousKey = process.env.OPENAI_API_KEY;
@@ -260,7 +260,7 @@ test('legacy chat seeds local history, requires the opaque token, and exposes fl
 
 test('public order capture is idempotent, immutable, compatible, complete, and attribution-safe', async (t) => {
   const runtime = makeRuntime();
-  const server = createServer({ platformRuntime: runtime });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime });
   const baseUrl = await listen(server);
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const previousKey = process.env.OPENAI_API_KEY;
@@ -567,7 +567,7 @@ test('live capture requires trusted backend identity and the service awaits an a
 });
 
 test('PostgreSQL repository order contract works through async transactions with a mocked pool', async () => {
-  const clock = createClock();
+  const clock = () => new Date();
   let storedQuote;
   let persistedIdempotencyResponse;
   const fakeClient = {
@@ -626,7 +626,7 @@ test('explicit live mode cannot use legacy simulated BankID endpoints', async (t
     repository,
     clock,
   });
-  const server = createServer({ platformRuntime: runtime });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime });
   const baseUrl = await listen(server);
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const response = await requestJson(baseUrl, '/api/bankid/start', { method: 'POST', body: {} });
@@ -647,12 +647,12 @@ test('requested platform mode never falls back to the legacy JSON order store af
       else process.env[name] = previous[name];
     }
   });
-  const server = createServer();
+  const server = createServer({ publicPreview: false });
   const baseUrl = await listen(server);
   t.after(() => new Promise((resolve) => server.close(resolve)));
   const response = await requestJson(baseUrl, '/api/orders', {
     method: 'POST', headers: { 'idempotency-key': 'fail-closed-key-0001' }, body: orderPayload(),
   });
-  assert.equal(response.response.status, 500);
-  assert.equal(response.body.code, 'CONFIGURATION_ERROR');
+  assert.equal(response.response.status, 423);
+  assert.equal(response.body.code, 'ORDERS_DISABLED');
 });

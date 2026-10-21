@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { readEvents, replyPrefix } = require('./chat-stream');
+const { buildChatInstructions } = require('./chat-instructions');
 
 const { calculateOfferOptions } = require('./offer-calculator');
 const { getPlanCatalog } = require('./offer-service');
@@ -38,16 +39,7 @@ let openAiTransport = (...args) => fetch(...args);
 
 const readJson = (filePath) => JSON.parse(fs.readFileSync(filePath, 'utf8'));
 const chatInstructions = fs.readFileSync(CHAT_INSTRUCTIONS_PATH, 'utf8');
-const instructionSections = chatInstructions.split(/(?=^## )/m);
-const analysisInstructions = 'Task: analyze_customer_message. Return only the required structured analysis.\n\n' + instructionSections.filter(section =>
-  /^(?:# Dealett|## (?:Role|Source authority|Truthfulness and scope|Message analysis)\n)/.test(section)
-).join('\n');
-const replyInstructions = 'Task: generate_customer_reply. Write naturally within all supplied constraints and return only the required structured output.\n\n' + instructionSections.filter(section =>
-  !/^## (?:Task modes|Message analysis)\n/.test(section)
-).join('\n');
-const ordinaryReplyInstructions = replyInstructions.split(/(?=^## )/m).filter(section =>
-  !/^## (?:Recommendation calculation|Decision support and tradeoffs|Secondary offer)\n/.test(section)
-).join('\n');
+const { analysisInstructions, replyInstructions, ordinaryReplyInstructions } = buildChatInstructions(chatInstructions);
 
 const loadWebsiteData = () => Object.fromEntries(
   Object.entries(WEBSITE_SOURCES).map(([name, filePath]) => [name, readJson(filePath)])

@@ -86,7 +86,7 @@ test('interrupted and failed AI streams cannot become successful answers', async
 });
 
 test('HTTP route emits delta then done; failures use error without done', async () => {
-  const server = createServer();
+  const server = createServer({ publicPreview: false });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
     for (const mode of ['success', 'truncated']) {
@@ -126,11 +126,11 @@ test('client cancellation reaches the AI request', async () => {
   setOpenAiTransportForTests();
 });
 
-test('conversation-only storage saves chat without enabling platform routes or changing BankID', async () => {
+test('conversation-only storage saves chat without enabling platform routes or simulated identity', async () => {
   const { createPlatformRuntime } = require('./platform/runtime');
   const runtime = createPlatformRuntime({ environment: { DEMO_MODE: 'true' } });
   runtime.config = { ...runtime.config, demoMode: false };
-  const server = createServer({ platformRuntime: runtime, conversationStorageOnly: true });
+  const server = createServer({ publicPreview: false, platformRuntime: runtime, conversationStorageOnly: true });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const base = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -147,7 +147,7 @@ test('conversation-only storage saves chat without enabling platform routes or c
     const bankId = await fetch(`${base}/api/bankid/start`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
     });
-    assert.notEqual(bankId.status, 503);
+    assert.equal(bankId.status, 503);
     const platform = await fetch(`${base}/api/admin/v1/conversations`);
     assert.equal(platform.status, 404);
   } finally {
