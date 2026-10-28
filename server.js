@@ -446,17 +446,18 @@ const sendStaticFile = (request, response, requestUrl, root = ROOT) => {
 
 const createServer = (options = {}) => {
   const publicPreview = options.publicPreview ?? isPublicPreview();
+  const conversationStorageOnly = options.conversationStorageOnly ?? process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true';
+  const conversationStorageEnabled = process.env.DEALETT_CONVERSATION_STORAGE_ENABLED !== 'false';
   let platformRuntime = options.platformRuntime || null;
   let platformError = null;
   const platformRequested = Boolean(platformRuntime || process.env.DEMO_MODE !== undefined || process.env.DATABASE_URL);
-  if (!publicPreview && !platformRuntime && platformRequested) {
+  if (!publicPreview && !platformRuntime && platformRequested && (!conversationStorageOnly || conversationStorageEnabled)) {
     try {
       platformRuntime = createPlatformRuntime(options.platformOptions);
     } catch (error) {
       platformError = error;
     }
   }
-  const conversationStorageOnly = options.conversationStorageOnly ?? process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true';
   const legacyLimiter = options.legacyLimiter || new RollingWindowRateLimiter();
   const corsOrigins = platformRuntime?.config.corsOrigins || parseOrigins(process.env.CORS_ORIGINS);
 
@@ -563,7 +564,8 @@ const createServer = (options = {}) => {
 
 if (require.main === module) {
   const start = async () => {
-    if (!isPublicPreview() && process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true') {
+    if (!isPublicPreview() && process.env.DEALETT_CONVERSATION_STORAGE_ONLY === 'true' &&
+        process.env.DEALETT_CONVERSATION_STORAGE_ENABLED !== 'false') {
       const { Pool } = require('pg');
       const { loadPlatformConfig } = require('./platform/config');
       const { migrateUp } = require('./platform/migrations');

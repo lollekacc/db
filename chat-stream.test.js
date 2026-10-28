@@ -156,3 +156,73 @@ test('conversation-only storage saves chat without enabling platform routes or s
     setOpenAiTransportForTests(null);
   }
 });
+
+test('disabled conversation storage leaves chat and catalog available with broken database configuration', async t => {
+  const changes = {
+    DEALETT_CONVERSATION_STORAGE_ONLY: 'true',
+    DEALETT_CONVERSATION_STORAGE_ENABLED: 'false',
+    DATABASE_URL: 'postgresql://invalid:invalid@127.0.0.1:1/unavailable',
+    DEALETT_DATA_ENCRYPTION_KEY: 'invalid',
+    DEMO_MODE: 'false',
+  };
+  const saved = Object.fromEntries(Object.keys(changes).map(key => [key, process.env[key]]));
+  Object.assign(process.env, changes);
+  t.after(() => {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+    setOpenAiTransportForTests(null);
+  });
+  const server = createServer({ publicPreview: false });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  setOpenAiTransportForTests(transport());
+  for (const accept of ['application/json', 'text/event-stream']) {
+    setOpenAiTransportForTests(async (url, options) => {
+      const request = JSON.parse(options.body);
+      if (request.text.format.name !== 'dealett_customer_need' && !request.stream) {
+        return { ok: true, json: async () => completed };
+      }
+      return transport()(url, options);
+    });
+    const response = await fetch(`${base}/api/chat`, {
+      method: 'POST', headers: { Accept: accept, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Hej', conversationId: 'existing-conversation', conversationToken: 'existing-token' }),
+    });
+    assert.equal(response.status, 200);
+    const result = accept === 'application/json' ? await response.json()
+      : JSON.parse((await response.text()).split('event: done\ndata: ')[1].split('\n')[0]);
+    assert.equal(result.reply, answer.reply);
+    assert.equal(result.conversationToken, undefined);
+  }
+  for (const route of ['/api/featured-offers', '/api/mobile/plans', '/api/broadband/offers']) {
+    const response = await fetch(base + route);
+    assert.equal(response.status, 200);
+    assert.ok((await response.json()).length > 0);
+  }
+  const environment = await (await fetch(`${base}/api/public/v1/environment`)).json();
+  assert.equal(environment.chatEnabled, true);
+  assert.equal(environment.ordersEnabled, false);
+  assert.equal((await fetch(`${base}/api/admin/v1/conversations`)).status, 404);
+});
+
+test('server starts without database migrations when conversation storage is disabled', async t => {
+  const { spawn } = require('node:child_process');
+  const child = spawn(process.execPath, ['server.js'], {
+    cwd: __dirname,
+    env: { ...process.env, PORT: '0', PUBLIC_PREVIEW: 'false', DEMO_MODE: 'false',
+      DEALETT_CONVERSATION_STORAGE_ONLY: 'true', DEALETT_CONVERSATION_STORAGE_ENABLED: 'false',
+      DATABASE_URL: 'postgresql://invalid:invalid@127.0.0.1:1/unavailable', DEALETT_DATA_ENCRYPTION_KEY: 'invalid' },
+    windowsHide: true,
+  });
+  t.after(() => child.kill());
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Server did not start without storage')), 10000);
+    child.once('error', reject);
+    child.once('exit', code => { clearTimeout(timer); reject(new Error(`Server exited before listening: ${code}`)); });
+    child.stdout.on('data', chunk => {
+      if (chunk.toString().includes('Dealett backend running on port')) { clearTimeout(timer); resolve(); }
+    });
+  });
+});
