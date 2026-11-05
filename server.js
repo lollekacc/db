@@ -31,6 +31,7 @@ const {
   getPlans,
 } = require('./offer-service');
 const { createChatCompletion } = require('./chat-service');
+const { createVoiceSession } = require('./voice-service');
 const { normalizeQualification } = require('./qualification-service');
 const { buildFeaturedCartItem, getFeaturedOffers } = require('./featured-offers');
 const { appendChatFeedback } = require('./chat-feedback-service');
@@ -170,6 +171,23 @@ const handleApi = async (request, response, requestUrl, context = {}) => {
       if (!requireMethod(request, response, 'POST')) return true;
       const body = await readJsonBody(request);
       sendJson(response, 200, buildBroadbandCartItem(body));
+      return true;
+    }
+
+    if (pathname === '/api/voice/session') {
+      if (!requireMethod(request, response, 'POST')) return true;
+      if (context.platformError) throw context.platformError;
+      const rate = context.legacyLimiter.consume(`voice:${request.socket?.remoteAddress || 'unknown'}`, 6);
+      if (!rate.allowed) throw Object.assign(new Error('Too many voice connections; try again later'), { statusCode: 429 });
+      const body = await readJsonBody(request);
+      const controller = new AbortController();
+      const disconnect = () => { if (!response.writableEnded) controller.abort(); };
+      response.on('close', disconnect);
+      try {
+        sendJson(response, 200, await createVoiceSession(body, { signal: controller.signal }));
+      } finally {
+        response.removeListener('close', disconnect);
+      }
       return true;
     }
 
